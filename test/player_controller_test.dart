@@ -20,37 +20,34 @@ void main() {
     expect(episodeIdForMediaItem(item), episode.id);
   });
 
-  test(
-    'system control contract exposes transport, queue, and seek actions',
-    () {
-      final pausedActions = PodpineAudioHandler.notificationControls(
-        playing: false,
-      ).map((control) => control.action);
-      final playingActions = PodpineAudioHandler.notificationControls(
-        playing: true,
-      ).map((control) => control.action);
+  test('system controls expose podcast skip and seek actions', () {
+    final pausedActions = PodpineAudioHandler.notificationControls(
+      playing: false,
+    ).map((control) => control.action);
+    final playingActions = PodpineAudioHandler.notificationControls(
+      playing: true,
+    ).map((control) => control.action);
 
-      expect(
-        pausedActions,
-        containsAll(<MediaAction>[
-          MediaAction.skipToPrevious,
-          MediaAction.rewind,
-          MediaAction.play,
-          MediaAction.fastForward,
-          MediaAction.skipToNext,
-        ]),
-      );
-      expect(playingActions, contains(MediaAction.pause));
-      expect(
-        PodpineAudioHandler.systemActions,
-        containsAll(<MediaAction>[
-          MediaAction.seek,
-          MediaAction.seekForward,
-          MediaAction.seekBackward,
-        ]),
-      );
-    },
-  );
+    expect(
+      pausedActions,
+      containsAll(<MediaAction>[
+        MediaAction.rewind,
+        MediaAction.play,
+        MediaAction.fastForward,
+      ]),
+    );
+    expect(pausedActions, isNot(contains(MediaAction.skipToNext)));
+    expect(pausedActions, isNot(contains(MediaAction.skipToPrevious)));
+    expect(playingActions, contains(MediaAction.pause));
+    expect(
+      PodpineAudioHandler.systemActions,
+      containsAll(<MediaAction>[
+        MediaAction.seek,
+        MediaAction.seekForward,
+        MediaAction.seekBackward,
+      ]),
+    );
+  });
 
   test('controller sends a queue and routes playback commands', () async {
     final database = AppDatabase(NativeDatabase.memory());

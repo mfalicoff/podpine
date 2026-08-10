@@ -86,11 +86,9 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
 
   static List<MediaControl> notificationControls({required bool playing}) =>
       <MediaControl>[
-        MediaControl.skipToPrevious,
         MediaControl.rewind,
         if (playing) MediaControl.pause else MediaControl.play,
         MediaControl.fastForward,
-        MediaControl.skipToNext,
       ];
 
   Future<void> _configureAudioSession() async {
@@ -212,7 +210,7 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
       PlaybackState(
         controls: notificationControls(playing: _player.playing),
         systemActions: systemActions,
-        androidCompactActionIndices: const <int>[0, 2, 4],
+        androidCompactActionIndices: const <int>[0, 1, 2],
         processingState: switch (event.processingState) {
           ProcessingState.idle => AudioProcessingState.idle,
           ProcessingState.loading => AudioProcessingState.loading,

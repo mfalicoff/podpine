@@ -39,9 +39,10 @@ Use a real HTTPS episode on one physical iOS device and one Android device:
 1. Start an episode, lock the device, and confirm audio continues.
 2. Confirm title, podcast, artwork, elapsed time, and seek bar match the active
    episode.
-3. Exercise play, pause, seek, previous, and next from the lock screen (and the
-   Android notification).
-4. Repeat play/pause/previous/next from a Bluetooth or wired headset.
+3. Exercise play, pause, seek, 15-second rewind, and 30-second forward from the
+   lock screen (and the Android notification).
+4. Repeat play/pause/previous/next from a Bluetooth or wired headset; headset
+   previous/next commands navigate the episode queue.
 5. Advance to the next queued episode and confirm metadata and artwork update.
 6. Background the app for at least two minutes, then reopen it and confirm the
    in-app player reflects the system position and active episode.
