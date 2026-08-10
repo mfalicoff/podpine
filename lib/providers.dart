@@ -50,6 +50,7 @@ final playerControllerProvider = ChangeNotifierProvider<PlayerController>((
     ref.watch(audioHandlerProvider),
     ref.read(appControllerProvider).recordPosition,
     ref.read(appControllerProvider).setCompleted,
+    chapterLoader: ref.read(appControllerProvider).loadChapters,
   );
   ref.onDispose(controller.dispose);
   return controller;

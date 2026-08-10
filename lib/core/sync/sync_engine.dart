@@ -23,6 +23,7 @@ class SyncEngine {
     final episodes = results[1] as List<RemoteEpisode>;
     final queue = results[2] as List<RemoteEpisode>;
     final now = DateTime.now().toUtc();
+    final cachedChapters = await database.episodeChapterMetadata();
     final podcastIds = podcasts.map((podcast) => podcast.id).toSet();
 
     // Some queue responses omit podcast ids. The full episode snapshot is the
@@ -78,6 +79,11 @@ class SyncEngine {
             queued: Value(episode.queued),
             downloaded: Value(episode.downloaded),
             isYoutube: Value(episode.isYoutube),
+            chaptersJson: Value(
+              episode.chaptersJson == '[]'
+                  ? cachedChapters[episode.id] ?? '[]'
+                  : episode.chaptersJson,
+            ),
             updatedAt: now,
           ),
         )

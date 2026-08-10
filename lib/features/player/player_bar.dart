@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
+import 'playback_options.dart';
 import 'player_controller.dart';
 
 class PlayerBar extends ConsumerWidget {
@@ -152,7 +153,7 @@ class _FullPlayer extends ConsumerWidget {
         .clamp(1, double.infinity)
         .toDouble();
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(28, 18, 28, 26),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -188,6 +189,47 @@ class _FullPlayer extends ConsumerWidget {
                 fontFamily: 'sans-serif',
                 color: Colors.black54,
               ),
+            ),
+            if (player.currentChapter case final chapter?) ...[
+              const SizedBox(height: 8),
+              Text(
+                chapter.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'sans-serif',
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _SettingChip(
+                  icon: Icons.speed_rounded,
+                  label:
+                      '${player.speed.toStringAsFixed(player.speed % 1 == 0 ? 1 : 2)}×${player.hasPodcastSpeedOverride ? ' · podcast' : ''}',
+                ),
+                _SettingChip(
+                  icon: Icons.graphic_eq_rounded,
+                  label:
+                      '${player.skipSilence.label}${player.hasPodcastSkipSilenceOverride ? ' · podcast' : ''}',
+                ),
+                if (player.sleepAtEpisodeEnd)
+                  const _SettingChip(
+                    icon: Icons.bedtime_outlined,
+                    label: 'End of episode',
+                  )
+                else if (player.sleepTimerRemaining case final remaining?)
+                  _SettingChip(
+                    icon: Icons.bedtime_outlined,
+                    label: '${remaining.inMinutes + 1} min',
+                  ),
+              ],
             ),
             const SizedBox(height: 20),
             Slider(
@@ -227,10 +269,6 @@ class _FullPlayer extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                TextButton(
-                  onPressed: () => _showSpeed(context, player),
-                  child: Text('${player.speed}×'),
-                ),
                 IconButton(
                   iconSize: 32,
                   onPressed: () => player.skip(-15),
@@ -251,9 +289,33 @@ class _FullPlayer extends ConsumerWidget {
                   onPressed: () => player.skip(30),
                   icon: const Icon(Icons.forward_30_rounded),
                 ),
-                IconButton(
-                  onPressed: () {},
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 4,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _showSpeed(context, player),
+                  icon: const Icon(Icons.speed_rounded),
+                  label: const Text('Speed'),
+                ),
+                TextButton.icon(
+                  onPressed: () => _showSkipSilence(context, player),
+                  icon: const Icon(Icons.graphic_eq_rounded),
+                  label: const Text('Silence'),
+                ),
+                if (player.chapters.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () => _showChapters(context, player),
+                    icon: const Icon(Icons.list_rounded),
+                    label: Text('${player.chapters.length} chapters'),
+                  ),
+                TextButton.icon(
+                  onPressed: () => _showSleepTimer(context, player),
                   icon: const Icon(Icons.bedtime_outlined),
+                  label: const Text('Timer'),
                 ),
               ],
             ),
@@ -270,21 +332,226 @@ class _FullPlayer extends ConsumerWidget {
     return '$minutes:$seconds';
   }
 
-  static Future<void> _showSpeed(BuildContext context, dynamic player) =>
-      showDialog<void>(
-        context: context,
-        builder: (context) => SimpleDialog(
+  static Future<void> _showSpeed(
+    BuildContext context,
+    PlayerController player,
+  ) {
+    var selected = player.speed;
+    var forPodcast = player.hasPodcastSpeedOverride;
+    return showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
           title: const Text('Playback speed'),
-          children: [
-            for (final speed in [0.8, 1.0, 1.2, 1.5, 1.8, 2.0])
-              SimpleDialogOption(
-                onPressed: () {
-                  player.setSpeed(speed);
-                  Navigator.pop(context);
-                },
-                child: Text('$speed×'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${selected.toStringAsFixed(2)}×',
+                style: Theme.of(context).textTheme.headlineMedium,
               ),
+              Slider(
+                value: selected,
+                min: 0.5,
+                max: 3,
+                divisions: 50,
+                label: '${selected.toStringAsFixed(2)}×',
+                onChanged: (value) => setState(() => selected = value),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: forPodcast,
+                title: Text('Only for ${player.current?.podcastTitle}'),
+                subtitle: const Text(
+                  'Otherwise this becomes the global default.',
+                ),
+                onChanged: (value) =>
+                    setState(() => forPodcast = value ?? false),
+              ),
+            ],
+          ),
+          actions: [
+            if (player.hasPodcastSpeedOverride)
+              TextButton(
+                onPressed: () async {
+                  await player.clearPodcastSpeedOverride();
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: const Text('Use global'),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                await player.setSpeed(selected, forPodcast: forPodcast);
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('Apply'),
+            ),
           ],
         ),
-      );
+      ),
+    );
+  }
+
+  static Future<void> _showSkipSilence(
+    BuildContext context,
+    PlayerController player,
+  ) {
+    var selected = player.skipSilence;
+    var forPodcast = player.hasPodcastSkipSilenceOverride;
+    return showDialog<void>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Skip silence'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioGroup<SkipSilenceStrength>(
+                groupValue: selected,
+                onChanged: (value) =>
+                    setState(() => selected = value ?? selected),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final strength in SkipSilenceStrength.values)
+                      RadioListTile<SkipSilenceStrength>(
+                        contentPadding: EdgeInsets.zero,
+                        value: strength,
+                        title: Text(strength.label),
+                        subtitle: strength == SkipSilenceStrength.conservative
+                            ? const Text('Recommended for natural speech')
+                            : null,
+                      ),
+                  ],
+                ),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: forPodcast,
+                title: Text('Only for ${player.current?.podcastTitle}'),
+                onChanged: (value) =>
+                    setState(() => forPodcast = value ?? false),
+              ),
+              Text(
+                player.skipSilenceDiagnostics,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          actions: [
+            if (player.hasPodcastSkipSilenceOverride)
+              TextButton(
+                onPressed: () async {
+                  await player.clearPodcastSkipSilenceOverride();
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: const Text('Use global'),
+              ),
+            FilledButton(
+              onPressed: () async {
+                await player.setSkipSilence(selected, forPodcast: forPodcast);
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Future<void> _showSleepTimer(
+    BuildContext context,
+    PlayerController player,
+  ) => showDialog<void>(
+    context: context,
+    builder: (context) => SimpleDialog(
+      title: const Text('Sleep timer'),
+      children: [
+        for (final minutes in <int>[10, 15, 30, 45, 60])
+          SimpleDialogOption(
+            onPressed: () async {
+              await player.setSleepTimer(Duration(minutes: minutes));
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: Text('$minutes minutes'),
+          ),
+        SimpleDialogOption(
+          onPressed: () async {
+            await player.setSleepTimer(null, endOfEpisode: true);
+            if (context.mounted) Navigator.pop(context);
+          },
+          child: const Text('End of episode'),
+        ),
+        if (player.sleepTimerEndsAt != null || player.sleepAtEpisodeEnd)
+          SimpleDialogOption(
+            onPressed: () async {
+              await player.setSleepTimer(null);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Cancel timer'),
+          ),
+      ],
+    ),
+  );
+
+  static Future<void> _showChapters(
+    BuildContext context,
+    PlayerController player,
+  ) => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
+            child: Text(
+              'Chapters',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
+          for (final chapter in player.chapters)
+            ListTile(
+              selected: chapter.start == player.currentChapter?.start,
+              leading: Text(_time(chapter.start)),
+              title: Text(chapter.title),
+              onTap: () async {
+                await player.seek(chapter.start);
+                if (context.mounted) Navigator.pop(context);
+              },
+            ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _SettingChip extends StatelessWidget {
+  const _SettingChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(99),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15),
+        const SizedBox(width: 5),
+        Text(label, style: Theme.of(context).textTheme.labelMedium),
+      ],
+    ),
+  );
 }

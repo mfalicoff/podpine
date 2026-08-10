@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
+import '../../features/player/playback_options.dart';
+
 part 'app_database.g.dart';
 
 @DataClassName('PodcastRecord')
@@ -33,6 +35,7 @@ class EpisodeRows extends Table {
   BoolColumn get queued => boolean().withDefault(const Constant(false))();
   BoolColumn get downloaded => boolean().withDefault(const Constant(false))();
   BoolColumn get isYoutube => boolean().withDefault(const Constant(false))();
+  TextColumn get chaptersJson => text().withDefault(const Constant('[]'))();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override
@@ -62,7 +65,36 @@ class SyncMutations extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [PodcastRows, EpisodeRows, QueueRows, SyncMutations])
+@DataClassName('PlaybackPreferencesRecord')
+class PlaybackPreferenceRows extends Table {
+  IntColumn get id => integer().withDefault(const Constant(0))();
+  RealColumn get speed => real().withDefault(const Constant(1))();
+  TextColumn get skipSilence => text().withDefault(const Constant('off'))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('PodcastPlaybackOverrideRecord')
+class PodcastPlaybackOverrideRows extends Table {
+  IntColumn get podcastId => integer().references(PodcastRows, #id)();
+  RealColumn get speed => real().nullable()();
+  TextColumn get skipSilence => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {podcastId};
+}
+
+@DriftDatabase(
+  tables: [
+    PodcastRows,
+    EpisodeRows,
+    QueueRows,
+    SyncMutations,
+    PlaybackPreferenceRows,
+    PodcastPlaybackOverrideRows,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(
@@ -77,7 +109,19 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (migrator) => migrator.createAll(),
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.addColumn(episodeRows, episodeRows.chaptersJson);
+        await migrator.createTable(playbackPreferenceRows);
+        await migrator.createTable(podcastPlaybackOverrideRows);
+      }
+    },
+  );
 
   Stream<List<PodcastRecord>> watchPodcasts() => (select(
     podcastRows,
@@ -112,6 +156,69 @@ class AppDatabase extends _$AppDatabase {
       (update(syncMutations)..where((row) => row.id.equals(id))).write(
         SyncMutationsCompanion(attempts: Value(attempts + 1)),
       );
+
+  Future<PlaybackPreferences> playbackPreferences() async {
+    final row = await select(playbackPreferenceRows).getSingleOrNull();
+    return PlaybackPreferences(
+      speed: row?.speed ?? 1,
+      skipSilence: SkipSilenceStrength.parse(row?.skipSilence),
+    );
+  }
+
+  Future<void> setGlobalPlaybackPreferences(PlaybackPreferences preferences) =>
+      into(playbackPreferenceRows).insertOnConflictUpdate(
+        PlaybackPreferenceRowsCompanion.insert(
+          id: const Value(0),
+          speed: Value(preferences.speed),
+          skipSilence: Value(preferences.skipSilence.name),
+        ),
+      );
+
+  Future<Map<int, PodcastPlaybackOverride>> podcastPlaybackOverrides() async {
+    final rows = await select(podcastPlaybackOverrideRows).get();
+    return <int, PodcastPlaybackOverride>{
+      for (final row in rows)
+        row.podcastId: PodcastPlaybackOverride(
+          speed: row.speed,
+          skipSilence: row.skipSilence == null
+              ? null
+              : SkipSilenceStrength.parse(row.skipSilence),
+        ),
+    };
+  }
+
+  Future<Map<int, String>> episodeChapterMetadata() async {
+    final query = selectOnly(episodeRows)
+      ..addColumns([episodeRows.id, episodeRows.chaptersJson]);
+    return <int, String>{
+      for (final row in await query.get())
+        row.read(episodeRows.id)!: row.read(episodeRows.chaptersJson) ?? '[]',
+    };
+  }
+
+  Future<void> setEpisodeChapters(int episodeId, String chaptersJson) =>
+      (update(episodeRows)..where((row) => row.id.equals(episodeId))).write(
+        EpisodeRowsCompanion(chaptersJson: Value(chaptersJson)),
+      );
+
+  Future<void> setPodcastPlaybackOverride(
+    int podcastId,
+    PodcastPlaybackOverride override,
+  ) async {
+    if (override.isEmpty) {
+      await (delete(
+        podcastPlaybackOverrideRows,
+      )..where((row) => row.podcastId.equals(podcastId))).go();
+      return;
+    }
+    await into(podcastPlaybackOverrideRows).insertOnConflictUpdate(
+      PodcastPlaybackOverrideRowsCompanion.insert(
+        podcastId: Value(podcastId),
+        speed: Value(override.speed),
+        skipSilence: Value(override.skipSilence?.name),
+      ),
+    );
+  }
 
   Future<void> replaceRemoteSnapshot({
     required List<PodcastRowsCompanion> podcasts,
@@ -259,6 +366,7 @@ class AppDatabase extends _$AppDatabase {
     await transaction(() async {
       await delete(queueRows).go();
       await delete(syncMutations).go();
+      await delete(podcastPlaybackOverrideRows).go();
       await delete(episodeRows).go();
       await delete(podcastRows).go();
     });

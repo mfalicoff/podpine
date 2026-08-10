@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../core/database/app_database.dart';
@@ -12,6 +13,10 @@ const audioUrlExtra = 'audioUrl';
 const playbackEventType = 'type';
 const playbackCompletionEvent = 'episodeCompleted';
 const playbackErrorEvent = 'playbackError';
+const sleepTimerExpiredEvent = 'sleepTimerExpired';
+const skipSilenceDiagnosticEvent = 'skipSilenceDiagnostic';
+const setSkipSilenceAction = 'setSkipSilence';
+const setSleepTimerAction = 'setSleepTimer';
 
 MediaItem mediaItemForEpisode(EpisodeRecord episode) {
   final artwork = Uri.tryParse(episode.artworkUrl.trim());
@@ -88,6 +93,8 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
   StreamSubscription<PlayerException>? _errorSubscription;
   final Set<int> _completedIndices = <int>{};
   int _queueGeneration = 0;
+  Timer? _sleepTimer;
+  bool _sleepAtEpisodeEnd = false;
 
   static const systemActions = <MediaAction>{
     MediaAction.seek,
@@ -200,6 +207,50 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> setSpeed(double speed) => _player.setSpeed(speed);
 
   @override
+  Future<dynamic> customAction(
+    String name, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    switch (name) {
+      case setSkipSilenceAction:
+        final strength = '${extras?['strength'] ?? 'off'}';
+        final enabled = strength != 'off';
+        Object? failure;
+        try {
+          await _player.setSkipSilenceEnabled(enabled);
+        } catch (error) {
+          failure = error;
+        }
+        final supported =
+            !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+        final diagnostics = <String, dynamic>{
+          'strength': strength,
+          'enabled': enabled && failure == null,
+          'supported': supported,
+          'nativeMode': supported ? 'androidSilenceSkipping' : 'unavailable',
+          if (failure != null) 'error': '$failure',
+        };
+        customEvent.add(<String, dynamic>{
+          playbackEventType: skipSilenceDiagnosticEvent,
+          ...diagnostics,
+        });
+        return diagnostics;
+      case setSleepTimerAction:
+        _sleepTimer?.cancel();
+        _sleepTimer = null;
+        _sleepAtEpisodeEnd = extras?['endOfEpisode'] == true;
+        final seconds = extras?['seconds'] as int?;
+        if (seconds != null && seconds > 0) {
+          _sleepAtEpisodeEnd = false;
+          _sleepTimer = Timer(Duration(seconds: seconds), _expireSleepTimer);
+        }
+        return null;
+      default:
+        return super.customAction(name, extras);
+    }
+  }
+
+  @override
   Future<void> stop() async {
     await _player.stop();
     await super.stop();
@@ -263,6 +314,17 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
       'eventId': '$_queueGeneration:$index',
       episodeIdExtra: episodeIdForMediaItem(items[index]),
     });
+    if (_sleepAtEpisodeEnd) unawaited(_expireSleepTimer());
+  }
+
+  Future<void> _expireSleepTimer() async {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    _sleepAtEpisodeEnd = false;
+    await _player.pause();
+    customEvent.add(const <String, dynamic>{
+      playbackEventType: sleepTimerExpiredEvent,
+    });
   }
 
   void _onPlayerError(PlayerException error) {
@@ -293,6 +355,7 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   Future<void> disposeHandler() async {
+    _sleepTimer?.cancel();
     await _eventSubscription?.cancel();
     await _indexSubscription?.cancel();
     await _discontinuitySubscription?.cancel();

@@ -75,6 +75,10 @@ void main() {
         expect(episode.downloaded, isFalse);
         expect(episode.isYoutube, isFalse);
         expect(episode.queuePosition, 3);
+        expect(jsonDecode(episode.chaptersJson), [
+          {'startTime': 0.0, 'title': 'Opening'},
+          {'startTime': 125.5, 'title': 'Main topic'},
+        ]);
       },
     );
 
@@ -95,6 +99,26 @@ void main() {
         episode.publishedAt,
         DateTime.fromMillisecondsSinceEpoch(1786388400000, isUtc: true),
       );
+    });
+
+    test('fetches and normalizes Podcasting 2.0 chapters', () async {
+      final backend = _fixtureBackend(
+        '/api/data/fetch_podcasting_2_data',
+        {
+          'chapters': [
+            {'startTime': 0, 'title': 'Intro'},
+            {'startTime': 42.25, 'title': 'Discussion'},
+          ],
+          'transcripts': <Object>[],
+          'people': <Object>[],
+        },
+        expectedQuery: const {'episode_id': '101', 'user_id': '42'},
+      );
+
+      expect(jsonDecode(await backend.getChapters(42, 101)), [
+        {'startTime': 0.0, 'title': 'Intro'},
+        {'startTime': 42.25, 'title': 'Discussion'},
+      ]);
     });
 
     test(

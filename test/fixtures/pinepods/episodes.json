@@ -15,7 +15,14 @@
       "Queued": 1,
       "Downloaded": "0",
       "Is_YouTube": "false",
-      "Queue_Position": "3"
+      "Queue_Position": "3",
+      "Chapters": {
+        "version": "1.2.0",
+        "chapters": [
+          {"startTime": 0, "title": "Opening"},
+          {"startTime": 125.5, "title": "Main topic"}
+        ]
+      }
     }
   ]
 }

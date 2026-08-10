@@ -4,6 +4,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../core/database/app_database.dart';
+import 'playback_options.dart';
 import 'podpine_audio_handler.dart';
 
 /// UI-facing playback state. The platform-capable [AudioHandler] owns audio;
@@ -13,13 +14,15 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
     this.database,
     this._handler,
     this._recordPosition,
-    this._setCompleted,
-  ) {
+    this._setCompleted, {
+    Future<String> Function(EpisodeRecord episode)? chapterLoader,
+  }) : _loadChapters = chapterLoader {
     WidgetsBinding.instance.addObserver(this);
     _playbackSubscription = _handler.playbackState.listen(_onPlaybackState);
     _mediaItemSubscription = _handler.mediaItem.listen(_onMediaItem);
     _customEventSubscription = _handler.customEvent.listen(_onCustomEvent);
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _settingsReady = _loadSettings();
   }
 
   final AppDatabase database;
@@ -28,6 +31,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
   _recordPosition;
   final Future<void> Function(EpisodeRecord episode, bool completed)
   _setCompleted;
+  final Future<String> Function(EpisodeRecord episode)? _loadChapters;
   final Map<int, EpisodeRecord> _episodesById = <int, EpisodeRecord>{};
   final Set<String> _handledCompletionEvents = <String>{};
   final Set<int> _completedEpisodeIds = <int>{};
@@ -36,6 +40,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
   StreamSubscription<MediaItem?>? _mediaItemSubscription;
   StreamSubscription<dynamic>? _customEventSubscription;
   Timer? _timer;
+  late final Future<void> _settingsReady;
   PlaybackState _playbackState = PlaybackState();
 
   EpisodeRecord? current;
@@ -46,22 +51,64 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
   bool _selectingEpisode = false;
   int _lastPersistedSecond = -1;
   double speed = 1;
+  PlaybackPreferences globalPreferences = const PlaybackPreferences();
+  final Map<int, PodcastPlaybackOverride> _podcastOverrides =
+      <int, PodcastPlaybackOverride>{};
+  SkipSilenceStrength skipSilence = SkipSilenceStrength.off;
+  String skipSilenceDiagnostics = 'Silence skipping is off.';
+  DateTime? sleepTimerEndsAt;
+  bool sleepAtEpisodeEnd = false;
   String? error;
   bool errorCanRetry = false;
 
   Duration get duration => Duration(seconds: current?.durationSeconds ?? 0);
 
+  List<PodcastChapter> get chapters {
+    final episode = current;
+    if (episode == null) return const <PodcastChapter>[];
+    return ChapterParser.parse(
+      episode.chaptersJson,
+      description: episode.description,
+    );
+  }
+
+  PodcastChapter? get currentChapter {
+    PodcastChapter? active;
+    for (final chapter in chapters) {
+      if (chapter.start > position) break;
+      active = chapter;
+    }
+    return active;
+  }
+
+  Duration? get sleepTimerRemaining {
+    final end = sleepTimerEndsAt;
+    if (end == null) return null;
+    final remaining = end.difference(DateTime.now());
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  bool get hasPodcastSpeedOverride =>
+      current != null && _podcastOverrides[current!.podcastId]?.speed != null;
+
+  bool get hasPodcastSkipSilenceOverride =>
+      current != null &&
+      _podcastOverrides[current!.podcastId]?.skipSilence != null;
+
   Future<void> playEpisode(EpisodeRecord episode) async {
     if (current?.id == episode.id) return toggle();
 
+    await _settingsReady;
     await _persist();
     _completedEpisodeIds.remove(episode.id);
     current = episode;
+    unawaited(_hydrateChapters(episode));
     position = Duration(seconds: episode.positionSeconds);
     _lastPersistedSecond = -1;
     loading = true;
     error = null;
     errorCanRetry = false;
+    _selectEffectiveSettings(episode.podcastId);
     notifyListeners();
 
     if (episode.audioUrl.trim().isEmpty) {
@@ -96,6 +143,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
       await _handler.skipToQueueItem(activeIndex);
       await _handler.seek(position);
       await _handler.setSpeed(speed);
+      await _applySkipSilence();
       isPlaying = true;
       unawaited(_playGuarded());
     } catch (_) {
@@ -165,9 +213,98 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
     await _handler.skipToNext();
   }
 
-  Future<void> setSpeed(double value) async {
-    speed = value;
-    if (!_demoPlayback) await _handler.setSpeed(value);
+  Future<void> setSpeed(double value, {bool forPodcast = false}) async {
+    await _settingsReady;
+    final normalized = (value.clamp(0.5, 3.0) * 20).round() / 20;
+    final episode = current;
+    if (forPodcast && episode != null) {
+      final existing =
+          _podcastOverrides[episode.podcastId] ??
+          const PodcastPlaybackOverride();
+      final updated = PodcastPlaybackOverride(
+        speed: normalized,
+        skipSilence: existing.skipSilence,
+      );
+      _podcastOverrides[episode.podcastId] = updated;
+      await database.setPodcastPlaybackOverride(episode.podcastId, updated);
+    } else {
+      globalPreferences = PlaybackPreferences(
+        speed: normalized,
+        skipSilence: globalPreferences.skipSilence,
+      );
+      await database.setGlobalPlaybackPreferences(globalPreferences);
+    }
+    speed = normalized;
+    if (!_demoPlayback) await _handler.setSpeed(normalized);
+    notifyListeners();
+  }
+
+  Future<void> clearPodcastSpeedOverride() async {
+    await _settingsReady;
+    final episode = current;
+    if (episode == null) return;
+    final existing =
+        _podcastOverrides[episode.podcastId] ?? const PodcastPlaybackOverride();
+    final updated = PodcastPlaybackOverride(skipSilence: existing.skipSilence);
+    await _savePodcastOverride(episode.podcastId, updated);
+    speed = globalPreferences.speed;
+    if (!_demoPlayback) await _handler.setSpeed(speed);
+    notifyListeners();
+  }
+
+  Future<void> setSkipSilence(
+    SkipSilenceStrength value, {
+    bool forPodcast = false,
+  }) async {
+    await _settingsReady;
+    final episode = current;
+    if (forPodcast && episode != null) {
+      final existing =
+          _podcastOverrides[episode.podcastId] ??
+          const PodcastPlaybackOverride();
+      final updated = PodcastPlaybackOverride(
+        speed: existing.speed,
+        skipSilence: value,
+      );
+      await _savePodcastOverride(episode.podcastId, updated);
+    } else {
+      globalPreferences = PlaybackPreferences(
+        speed: globalPreferences.speed,
+        skipSilence: value,
+      );
+      await database.setGlobalPlaybackPreferences(globalPreferences);
+    }
+    skipSilence = value;
+    await _applySkipSilence();
+    notifyListeners();
+  }
+
+  Future<void> clearPodcastSkipSilenceOverride() async {
+    await _settingsReady;
+    final episode = current;
+    if (episode == null) return;
+    final existing =
+        _podcastOverrides[episode.podcastId] ?? const PodcastPlaybackOverride();
+    await _savePodcastOverride(
+      episode.podcastId,
+      PodcastPlaybackOverride(speed: existing.speed),
+    );
+    skipSilence = globalPreferences.skipSilence;
+    await _applySkipSilence();
+    notifyListeners();
+  }
+
+  Future<void> setSleepTimer(
+    Duration? duration, {
+    bool endOfEpisode = false,
+  }) async {
+    await _settingsReady;
+    sleepTimerEndsAt = duration == null ? null : DateTime.now().add(duration);
+    sleepAtEpisodeEnd = endOfEpisode;
+    await _handler.customAction(setSleepTimerAction, <String, dynamic>{
+      if (duration != null) 'seconds': duration.inSeconds,
+      'endOfEpisode': endOfEpisode,
+    });
     notifyListeners();
   }
 
@@ -182,7 +319,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
         state.processingState == AudioProcessingState.loading ||
         state.processingState == AudioProcessingState.buffering;
     position = state.position;
-    speed = state.speed;
+    if (!_selectingEpisode) speed = state.speed;
     if (state.processingState == AudioProcessingState.error) {
       error ??= 'This episode could not be played. Try again.';
       errorCanRetry = true;
@@ -200,8 +337,11 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
     final previousEpisode = current;
     final previousPosition = position;
     current = episode;
+    unawaited(_hydrateChapters(episode));
     position = _playbackState.position;
     _lastPersistedSecond = -1;
+    _selectEffectiveSettings(episode.podcastId);
+    unawaited(_applyEffectiveSettings());
     if (previousEpisode != null) {
       unawaited(_recordPosition(previousEpisode, previousPosition));
     }
@@ -233,7 +373,95 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
           : 'Couldn’t play “$title”. Check your connection and try again.';
       errorCanRetry = !willSkip;
       notifyListeners();
+      return;
     }
+    if (type == sleepTimerExpiredEvent) {
+      sleepTimerEndsAt = null;
+      sleepAtEpisodeEnd = false;
+      isPlaying = false;
+      notifyListeners();
+      return;
+    }
+    if (type == skipSilenceDiagnosticEvent) {
+      _updateSkipSilenceDiagnostics(event);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    globalPreferences = await database.playbackPreferences();
+    _podcastOverrides
+      ..clear()
+      ..addAll(await database.podcastPlaybackOverrides());
+    if (current == null) {
+      speed = globalPreferences.speed;
+      skipSilence = globalPreferences.skipSilence;
+    }
+    notifyListeners();
+  }
+
+  Future<void> _hydrateChapters(EpisodeRecord episode) async {
+    final loader = _loadChapters;
+    if (loader == null || episode.chaptersJson != '[]') return;
+    final metadata = await loader(episode);
+    if (metadata == '[]' || current?.id != episode.id) return;
+    final hydrated = episode.copyWith(chaptersJson: metadata);
+    current = hydrated;
+    _episodesById[episode.id] = hydrated;
+    notifyListeners();
+  }
+
+  void _selectEffectiveSettings(int podcastId) {
+    final override = _podcastOverrides[podcastId];
+    speed = override?.speed ?? globalPreferences.speed;
+    skipSilence = override?.skipSilence ?? globalPreferences.skipSilence;
+  }
+
+  Future<void> _applyEffectiveSettings() async {
+    if (_demoPlayback) return;
+    await _handler.setSpeed(speed);
+    await _applySkipSilence();
+  }
+
+  Future<void> _applySkipSilence() async {
+    if (_demoPlayback) {
+      skipSilenceDiagnostics = skipSilence == SkipSilenceStrength.off
+          ? 'Silence skipping is off.'
+          : '${skipSilence.label} silence skipping is selected (demo playback).';
+      return;
+    }
+    final result = await _handler.customAction(
+      setSkipSilenceAction,
+      <String, dynamic>{'strength': skipSilence.name},
+    );
+    if (result is Map) _updateSkipSilenceDiagnostics(result);
+  }
+
+  void _updateSkipSilenceDiagnostics(Map event) {
+    if (event['supported'] == false && skipSilence != SkipSilenceStrength.off) {
+      skipSilenceDiagnostics =
+          '${skipSilence.label} selected; native silence skipping is unavailable on this platform.';
+    } else if (event['error'] != null) {
+      skipSilenceDiagnostics =
+          'Silence skipping could not be enabled: ${event['error']}';
+    } else if (skipSilence == SkipSilenceStrength.off) {
+      skipSilenceDiagnostics = 'Silence skipping is off.';
+    } else {
+      skipSilenceDiagnostics =
+          '${skipSilence.label} mode uses the platform speech-safe silence detector.';
+    }
+  }
+
+  Future<void> _savePodcastOverride(
+    int podcastId,
+    PodcastPlaybackOverride value,
+  ) async {
+    if (value.isEmpty) {
+      _podcastOverrides.remove(podcastId);
+    } else {
+      _podcastOverrides[podcastId] = value;
+    }
+    await database.setPodcastPlaybackOverride(podcastId, value);
   }
 
   Future<void> _completeEpisode(EpisodeRecord episode) async {
@@ -278,6 +506,12 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _tick() {
+    final remaining = sleepTimerRemaining;
+    if (remaining == Duration.zero && sleepTimerEndsAt != null) {
+      sleepTimerEndsAt = null;
+      sleepAtEpisodeEnd = false;
+      if (_demoPlayback) isPlaying = false;
+    }
     if (_demoPlayback && isPlaying && current != null) {
       position += Duration(milliseconds: (1000 * speed).round());
       if (duration > Duration.zero && position >= duration) {

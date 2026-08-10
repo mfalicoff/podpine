@@ -34,6 +34,7 @@ class RemoteEpisode {
     required this.queued,
     required this.downloaded,
     required this.isYoutube,
+    this.chaptersJson = '[]',
     this.queuePosition,
   });
 
@@ -51,6 +52,7 @@ class RemoteEpisode {
   final bool queued;
   final bool downloaded;
   final bool isYoutube;
+  final String chaptersJson;
   final int? queuePosition;
 }
 
@@ -59,6 +61,7 @@ abstract interface class PodcastBackend {
   Future<List<RemotePodcast>> getSubscriptions(int userId);
   Future<List<RemoteEpisode>> getEpisodes(int userId);
   Future<List<RemoteEpisode>> getQueue(int userId);
+  Future<String> getChapters(int userId, int episodeId);
   Future<void> updatePlayback(int userId, int episodeId, Duration position);
   Future<void> markCompleted(int userId, int episodeId, bool completed);
   Future<void> addToQueue(int userId, int episodeId);

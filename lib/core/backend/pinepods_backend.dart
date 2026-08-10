@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'podcast_backend.dart';
+import '../../features/player/playback_options.dart';
 
 class PinepodsException implements Exception {
   const PinepodsException(this.message, {this.statusCode});
@@ -118,6 +119,20 @@ class PinepodsBackend implements PodcastBackend {
   }
 
   @override
+  Future<String> getChapters(int userId, int episodeId) async {
+    final json = await _get('/api/data/fetch_podcasting_2_data', {
+      'episode_id': '$episodeId',
+      'user_id': '$userId',
+    });
+    if (json is! Map) {
+      throw const PinepodsException(
+        'Pinepods returned malformed Podcasting 2.0 data.',
+      );
+    }
+    return ChapterParser.normalizeMetadata(_field(json, 'chapters'));
+  }
+
+  @override
   Future<void> updatePlayback(int userId, int episodeId, Duration position) =>
       _post('/api/data/record_listen_duration', {
         'episode_id': episodeId,
@@ -217,6 +232,9 @@ class PinepodsBackend implements PodcastBackend {
       queued: _bool(_field(json, 'queued')),
       downloaded: _bool(_field(json, 'downloaded')),
       isYoutube: _bool(_field(json, 'is_youtube')),
+      chaptersJson: ChapterParser.normalizeMetadata(
+        _field(json, 'chapters') ?? _field(json, 'episode_chapters'),
+      ),
       queuePosition: queuePosition == null ? null : _int(queuePosition),
     );
   }

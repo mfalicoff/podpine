@@ -158,6 +158,24 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  Future<String> loadChapters(EpisodeRecord episode) async {
+    if (episode.chaptersJson != '[]' ||
+        backend == null ||
+        userId == null ||
+        episode.id <= 0) {
+      return episode.chaptersJson;
+    }
+    try {
+      final chapters = await backend!.getChapters(userId!, episode.id);
+      if (chapters != '[]') {
+        await database.setEpisodeChapters(episode.id, chapters);
+      }
+      return chapters;
+    } catch (_) {
+      return episode.chaptersJson;
+    }
+  }
+
   Future<void> addToQueue(EpisodeRecord episode, {bool next = false}) async {
     await database.addToQueue(episode.id, next: next);
     if (backend != null && userId != null && episode.id > 0) {

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:podpine/core/database/app_database.dart';
 import 'package:podpine/features/player/player_controller.dart';
+import 'package:podpine/features/player/playback_options.dart';
 import 'package:podpine/features/player/podpine_audio_handler.dart';
 
 void main() {
@@ -246,6 +249,152 @@ void main() {
     expect(controller.error, contains('try again'));
     expect(controller.errorCanRetry, isTrue);
   });
+
+  test('effective podcast settings are applied before playback', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final handler = _RecordingAudioHandler();
+    final episode = _episode(1, title: 'First');
+    await database.into(database.podcastRows).insert(_podcast);
+    await database.into(database.episodeRows).insert(episode);
+    await database.setGlobalPlaybackPreferences(
+      const PlaybackPreferences(
+        speed: 1.25,
+        skipSilence: SkipSilenceStrength.conservative,
+      ),
+    );
+    await database.setPodcastPlaybackOverride(
+      episode.podcastId,
+      const PodcastPlaybackOverride(
+        speed: 1.75,
+        skipSilence: SkipSilenceStrength.moderate,
+      ),
+    );
+
+    final controller = PlayerController(
+      database,
+      handler,
+      (_, _) async {},
+      (_, _) async {},
+    );
+    addTearDown(() {
+      controller.dispose();
+      return database.close();
+    });
+
+    await controller.playEpisode(episode);
+    await pumpEventQueue();
+
+    expect(controller.speed, 1.75);
+    expect(controller.skipSilence, SkipSilenceStrength.moderate);
+    expect(controller.hasPodcastSpeedOverride, isTrue);
+    expect(handler.speedCalls, contains(1.75));
+    expect(handler.customActions, contains('setSkipSilence:moderate'));
+    expect(
+      handler.commands.indexOf('speed:1.75'),
+      lessThan(handler.commands.indexOf('play')),
+    );
+    expect(
+      handler.commands.indexOf('setSkipSilence:moderate'),
+      lessThan(handler.commands.indexOf('play')),
+    );
+  });
+
+  test('global and podcast preferences persist independently', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final handler = _RecordingAudioHandler();
+    final episode = _episode(1, title: 'First');
+    await database.into(database.podcastRows).insert(_podcast);
+    await database.into(database.episodeRows).insert(episode);
+    final controller = PlayerController(
+      database,
+      handler,
+      (_, _) async {},
+      (_, _) async {},
+    );
+    addTearDown(() {
+      controller.dispose();
+      return database.close();
+    });
+    await controller.playEpisode(episode);
+
+    await controller.setSpeed(1.4);
+    await controller.setSkipSilence(SkipSilenceStrength.conservative);
+    await controller.setSpeed(2.05, forPodcast: true);
+    await controller.setSkipSilence(
+      SkipSilenceStrength.aggressive,
+      forPodcast: true,
+    );
+
+    final global = await database.playbackPreferences();
+    final override = (await database.podcastPlaybackOverrides())[7];
+    expect(global.speed, 1.4);
+    expect(global.skipSilence, SkipSilenceStrength.conservative);
+    expect(override?.speed, 2.05);
+    expect(override?.skipSilence, SkipSilenceStrength.aggressive);
+
+    await controller.clearPodcastSpeedOverride();
+    await controller.clearPodcastSkipSilenceOverride();
+    expect(controller.speed, 1.4);
+    expect(controller.skipSilence, SkipSilenceStrength.conservative);
+    expect(await database.podcastPlaybackOverrides(), isEmpty);
+  });
+
+  test('sleep timer commands include fixed and end-of-episode modes', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final handler = _RecordingAudioHandler();
+    final controller = PlayerController(
+      database,
+      handler,
+      (_, _) async {},
+      (_, _) async {},
+    );
+    addTearDown(() {
+      controller.dispose();
+      return database.close();
+    });
+
+    await controller.setSleepTimer(const Duration(minutes: 15));
+    expect(handler.customActions, contains('setSleepTimer:900'));
+    expect(controller.sleepTimerEndsAt, isNotNull);
+
+    await controller.setSleepTimer(null, endOfEpisode: true);
+    expect(handler.customActions, contains('setSleepTimer:end'));
+    expect(controller.sleepAtEpisodeEnd, isTrue);
+  });
+
+  test('Podcasting 2.0 chapters hydrate without delaying playback', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final handler = _RecordingAudioHandler();
+    final episode = _episode(1, title: 'First');
+    await database.into(database.podcastRows).insert(_podcast);
+    await database.into(database.episodeRows).insert(episode);
+    final chapterRequest = Completer<String>();
+    final controller = PlayerController(
+      database,
+      handler,
+      (_, _) async {},
+      (_, _) async {},
+      chapterLoader: (_) => chapterRequest.future,
+    );
+    addTearDown(() {
+      controller.dispose();
+      return database.close();
+    });
+
+    await controller.playEpisode(episode);
+    expect(handler.playCalls, 1);
+    expect(controller.chapters, isEmpty);
+
+    chapterRequest.complete(
+      '[{"startTime":0,"title":"Opening"},{"startTime":30,"title":"Topic"}]',
+    );
+    await pumpEventQueue();
+
+    expect(controller.chapters.map((chapter) => chapter.title), [
+      'Opening',
+      'Topic',
+    ]);
+  });
 }
 
 const _podcast = PodcastRecord(
@@ -273,6 +422,7 @@ EpisodeRecord _episode(int id, {required String title}) => EpisodeRecord(
   queued: false,
   downloaded: false,
   isYoutube: false,
+  chaptersJson: '[]',
   updatedAt: DateTime.utc(2026, 8, 10),
 );
 
@@ -280,6 +430,9 @@ class _RecordingAudioHandler extends BaseAudioHandler {
   List<MediaItem> receivedQueue = <MediaItem>[];
   final selectedIndices = <int>[];
   final seeks = <Duration>[];
+  final speedCalls = <double>[];
+  final customActions = <String>[];
+  final commands = <String>[];
   int playCalls = 0;
   int pauseCalls = 0;
   int previousCalls = 0;
@@ -301,6 +454,7 @@ class _RecordingAudioHandler extends BaseAudioHandler {
   @override
   Future<void> play() async {
     playCalls++;
+    commands.add('play');
     playbackState.add(
       playbackState.value.copyWith(
         processingState: AudioProcessingState.ready,
@@ -323,7 +477,34 @@ class _RecordingAudioHandler extends BaseAudioHandler {
 
   @override
   Future<void> setSpeed(double speed) async {
+    speedCalls.add(speed);
+    commands.add('speed:$speed');
     playbackState.add(playbackState.value.copyWith(speed: speed));
+  }
+
+  @override
+  Future<dynamic> customAction(
+    String name, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    final Object? value;
+    if (name == setSkipSilenceAction) {
+      value = extras?['strength'];
+    } else if (extras?['endOfEpisode'] == true) {
+      value = 'end';
+    } else {
+      value = extras?['seconds'];
+    }
+    customActions.add('$name:$value');
+    commands.add('$name:$value');
+    if (name == setSkipSilenceAction) {
+      return <String, dynamic>{
+        'strength': value,
+        'enabled': value != 'off',
+        'supported': true,
+      };
+    }
+    return null;
   }
 
   @override

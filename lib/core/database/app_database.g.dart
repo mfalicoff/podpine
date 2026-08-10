@@ -629,6 +629,18 @@ class $EpisodeRowsTable extends EpisodeRows
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _chaptersJsonMeta = const VerificationMeta(
+    'chaptersJson',
+  );
+  @override
+  late final GeneratedColumn<String> chaptersJson = GeneratedColumn<String>(
+    'chapters_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -656,6 +668,7 @@ class $EpisodeRowsTable extends EpisodeRows
     queued,
     downloaded,
     isYoutube,
+    chaptersJson,
     updatedAt,
   ];
   @override
@@ -774,6 +787,15 @@ class $EpisodeRowsTable extends EpisodeRows
         isYoutube.isAcceptableOrUnknown(data['is_youtube']!, _isYoutubeMeta),
       );
     }
+    if (data.containsKey('chapters_json')) {
+      context.handle(
+        _chaptersJsonMeta,
+        chaptersJson.isAcceptableOrUnknown(
+          data['chapters_json']!,
+          _chaptersJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('updated_at')) {
       context.handle(
         _updatedAtMeta,
@@ -847,6 +869,10 @@ class $EpisodeRowsTable extends EpisodeRows
         DriftSqlType.bool,
         data['${effectivePrefix}is_youtube'],
       )!,
+      chaptersJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}chapters_json'],
+      )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -875,6 +901,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
   final bool queued;
   final bool downloaded;
   final bool isYoutube;
+  final String chaptersJson;
   final DateTime updatedAt;
   const EpisodeRecord({
     required this.id,
@@ -891,6 +918,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
     required this.queued,
     required this.downloaded,
     required this.isYoutube,
+    required this.chaptersJson,
     required this.updatedAt,
   });
   @override
@@ -910,6 +938,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
     map['queued'] = Variable<bool>(queued);
     map['downloaded'] = Variable<bool>(downloaded);
     map['is_youtube'] = Variable<bool>(isYoutube);
+    map['chapters_json'] = Variable<String>(chaptersJson);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -930,6 +959,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
       queued: Value(queued),
       downloaded: Value(downloaded),
       isYoutube: Value(isYoutube),
+      chaptersJson: Value(chaptersJson),
       updatedAt: Value(updatedAt),
     );
   }
@@ -954,6 +984,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
       queued: serializer.fromJson<bool>(json['queued']),
       downloaded: serializer.fromJson<bool>(json['downloaded']),
       isYoutube: serializer.fromJson<bool>(json['isYoutube']),
+      chaptersJson: serializer.fromJson<String>(json['chaptersJson']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -975,6 +1006,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
       'queued': serializer.toJson<bool>(queued),
       'downloaded': serializer.toJson<bool>(downloaded),
       'isYoutube': serializer.toJson<bool>(isYoutube),
+      'chaptersJson': serializer.toJson<String>(chaptersJson),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -994,6 +1026,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
     bool? queued,
     bool? downloaded,
     bool? isYoutube,
+    String? chaptersJson,
     DateTime? updatedAt,
   }) => EpisodeRecord(
     id: id ?? this.id,
@@ -1010,6 +1043,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
     queued: queued ?? this.queued,
     downloaded: downloaded ?? this.downloaded,
     isYoutube: isYoutube ?? this.isYoutube,
+    chaptersJson: chaptersJson ?? this.chaptersJson,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   EpisodeRecord copyWithCompanion(EpisodeRowsCompanion data) {
@@ -1042,6 +1076,9 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
           ? data.downloaded.value
           : this.downloaded,
       isYoutube: data.isYoutube.present ? data.isYoutube.value : this.isYoutube,
+      chaptersJson: data.chaptersJson.present
+          ? data.chaptersJson.value
+          : this.chaptersJson,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -1063,6 +1100,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
           ..write('queued: $queued, ')
           ..write('downloaded: $downloaded, ')
           ..write('isYoutube: $isYoutube, ')
+          ..write('chaptersJson: $chaptersJson, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -1084,6 +1122,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
     queued,
     downloaded,
     isYoutube,
+    chaptersJson,
     updatedAt,
   );
   @override
@@ -1104,6 +1143,7 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
           other.queued == this.queued &&
           other.downloaded == this.downloaded &&
           other.isYoutube == this.isYoutube &&
+          other.chaptersJson == this.chaptersJson &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -1122,6 +1162,7 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
   final Value<bool> queued;
   final Value<bool> downloaded;
   final Value<bool> isYoutube;
+  final Value<String> chaptersJson;
   final Value<DateTime> updatedAt;
   const EpisodeRowsCompanion({
     this.id = const Value.absent(),
@@ -1138,6 +1179,7 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
     this.queued = const Value.absent(),
     this.downloaded = const Value.absent(),
     this.isYoutube = const Value.absent(),
+    this.chaptersJson = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
   EpisodeRowsCompanion.insert({
@@ -1155,6 +1197,7 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
     this.queued = const Value.absent(),
     this.downloaded = const Value.absent(),
     this.isYoutube = const Value.absent(),
+    this.chaptersJson = const Value.absent(),
     required DateTime updatedAt,
   }) : podcastId = Value(podcastId),
        podcastTitle = Value(podcastTitle),
@@ -1176,6 +1219,7 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
     Expression<bool>? queued,
     Expression<bool>? downloaded,
     Expression<bool>? isYoutube,
+    Expression<String>? chaptersJson,
     Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
@@ -1193,6 +1237,7 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
       if (queued != null) 'queued': queued,
       if (downloaded != null) 'downloaded': downloaded,
       if (isYoutube != null) 'is_youtube': isYoutube,
+      if (chaptersJson != null) 'chapters_json': chaptersJson,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
   }
@@ -1212,6 +1257,7 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
     Value<bool>? queued,
     Value<bool>? downloaded,
     Value<bool>? isYoutube,
+    Value<String>? chaptersJson,
     Value<DateTime>? updatedAt,
   }) {
     return EpisodeRowsCompanion(
@@ -1229,6 +1275,7 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
       queued: queued ?? this.queued,
       downloaded: downloaded ?? this.downloaded,
       isYoutube: isYoutube ?? this.isYoutube,
+      chaptersJson: chaptersJson ?? this.chaptersJson,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -1278,6 +1325,9 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
     if (isYoutube.present) {
       map['is_youtube'] = Variable<bool>(isYoutube.value);
     }
+    if (chaptersJson.present) {
+      map['chapters_json'] = Variable<String>(chaptersJson.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -1301,6 +1351,7 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
           ..write('queued: $queued, ')
           ..write('downloaded: $downloaded, ')
           ..write('isYoutube: $isYoutube, ')
+          ..write('chaptersJson: $chaptersJson, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -1967,6 +2018,539 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
   }
 }
 
+class $PlaybackPreferenceRowsTable extends PlaybackPreferenceRows
+    with TableInfo<$PlaybackPreferenceRowsTable, PlaybackPreferencesRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PlaybackPreferenceRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _speedMeta = const VerificationMeta('speed');
+  @override
+  late final GeneratedColumn<double> speed = GeneratedColumn<double>(
+    'speed',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _skipSilenceMeta = const VerificationMeta(
+    'skipSilence',
+  );
+  @override
+  late final GeneratedColumn<String> skipSilence = GeneratedColumn<String>(
+    'skip_silence',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('off'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, speed, skipSilence];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'playback_preference_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PlaybackPreferencesRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('speed')) {
+      context.handle(
+        _speedMeta,
+        speed.isAcceptableOrUnknown(data['speed']!, _speedMeta),
+      );
+    }
+    if (data.containsKey('skip_silence')) {
+      context.handle(
+        _skipSilenceMeta,
+        skipSilence.isAcceptableOrUnknown(
+          data['skip_silence']!,
+          _skipSilenceMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PlaybackPreferencesRecord map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlaybackPreferencesRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      speed: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}speed'],
+      )!,
+      skipSilence: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}skip_silence'],
+      )!,
+    );
+  }
+
+  @override
+  $PlaybackPreferenceRowsTable createAlias(String alias) {
+    return $PlaybackPreferenceRowsTable(attachedDatabase, alias);
+  }
+}
+
+class PlaybackPreferencesRecord extends DataClass
+    implements Insertable<PlaybackPreferencesRecord> {
+  final int id;
+  final double speed;
+  final String skipSilence;
+  const PlaybackPreferencesRecord({
+    required this.id,
+    required this.speed,
+    required this.skipSilence,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['speed'] = Variable<double>(speed);
+    map['skip_silence'] = Variable<String>(skipSilence);
+    return map;
+  }
+
+  PlaybackPreferenceRowsCompanion toCompanion(bool nullToAbsent) {
+    return PlaybackPreferenceRowsCompanion(
+      id: Value(id),
+      speed: Value(speed),
+      skipSilence: Value(skipSilence),
+    );
+  }
+
+  factory PlaybackPreferencesRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlaybackPreferencesRecord(
+      id: serializer.fromJson<int>(json['id']),
+      speed: serializer.fromJson<double>(json['speed']),
+      skipSilence: serializer.fromJson<String>(json['skipSilence']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'speed': serializer.toJson<double>(speed),
+      'skipSilence': serializer.toJson<String>(skipSilence),
+    };
+  }
+
+  PlaybackPreferencesRecord copyWith({
+    int? id,
+    double? speed,
+    String? skipSilence,
+  }) => PlaybackPreferencesRecord(
+    id: id ?? this.id,
+    speed: speed ?? this.speed,
+    skipSilence: skipSilence ?? this.skipSilence,
+  );
+  PlaybackPreferencesRecord copyWithCompanion(
+    PlaybackPreferenceRowsCompanion data,
+  ) {
+    return PlaybackPreferencesRecord(
+      id: data.id.present ? data.id.value : this.id,
+      speed: data.speed.present ? data.speed.value : this.speed,
+      skipSilence: data.skipSilence.present
+          ? data.skipSilence.value
+          : this.skipSilence,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlaybackPreferencesRecord(')
+          ..write('id: $id, ')
+          ..write('speed: $speed, ')
+          ..write('skipSilence: $skipSilence')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, speed, skipSilence);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlaybackPreferencesRecord &&
+          other.id == this.id &&
+          other.speed == this.speed &&
+          other.skipSilence == this.skipSilence);
+}
+
+class PlaybackPreferenceRowsCompanion
+    extends UpdateCompanion<PlaybackPreferencesRecord> {
+  final Value<int> id;
+  final Value<double> speed;
+  final Value<String> skipSilence;
+  const PlaybackPreferenceRowsCompanion({
+    this.id = const Value.absent(),
+    this.speed = const Value.absent(),
+    this.skipSilence = const Value.absent(),
+  });
+  PlaybackPreferenceRowsCompanion.insert({
+    this.id = const Value.absent(),
+    this.speed = const Value.absent(),
+    this.skipSilence = const Value.absent(),
+  });
+  static Insertable<PlaybackPreferencesRecord> custom({
+    Expression<int>? id,
+    Expression<double>? speed,
+    Expression<String>? skipSilence,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (speed != null) 'speed': speed,
+      if (skipSilence != null) 'skip_silence': skipSilence,
+    });
+  }
+
+  PlaybackPreferenceRowsCompanion copyWith({
+    Value<int>? id,
+    Value<double>? speed,
+    Value<String>? skipSilence,
+  }) {
+    return PlaybackPreferenceRowsCompanion(
+      id: id ?? this.id,
+      speed: speed ?? this.speed,
+      skipSilence: skipSilence ?? this.skipSilence,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (speed.present) {
+      map['speed'] = Variable<double>(speed.value);
+    }
+    if (skipSilence.present) {
+      map['skip_silence'] = Variable<String>(skipSilence.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlaybackPreferenceRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('speed: $speed, ')
+          ..write('skipSilence: $skipSilence')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PodcastPlaybackOverrideRowsTable extends PodcastPlaybackOverrideRows
+    with
+        TableInfo<
+          $PodcastPlaybackOverrideRowsTable,
+          PodcastPlaybackOverrideRecord
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PodcastPlaybackOverrideRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _podcastIdMeta = const VerificationMeta(
+    'podcastId',
+  );
+  @override
+  late final GeneratedColumn<int> podcastId = GeneratedColumn<int>(
+    'podcast_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES podcast_rows (id)',
+    ),
+  );
+  static const VerificationMeta _speedMeta = const VerificationMeta('speed');
+  @override
+  late final GeneratedColumn<double> speed = GeneratedColumn<double>(
+    'speed',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _skipSilenceMeta = const VerificationMeta(
+    'skipSilence',
+  );
+  @override
+  late final GeneratedColumn<String> skipSilence = GeneratedColumn<String>(
+    'skip_silence',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [podcastId, speed, skipSilence];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'podcast_playback_override_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PodcastPlaybackOverrideRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('podcast_id')) {
+      context.handle(
+        _podcastIdMeta,
+        podcastId.isAcceptableOrUnknown(data['podcast_id']!, _podcastIdMeta),
+      );
+    }
+    if (data.containsKey('speed')) {
+      context.handle(
+        _speedMeta,
+        speed.isAcceptableOrUnknown(data['speed']!, _speedMeta),
+      );
+    }
+    if (data.containsKey('skip_silence')) {
+      context.handle(
+        _skipSilenceMeta,
+        skipSilence.isAcceptableOrUnknown(
+          data['skip_silence']!,
+          _skipSilenceMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {podcastId};
+  @override
+  PodcastPlaybackOverrideRecord map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PodcastPlaybackOverrideRecord(
+      podcastId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}podcast_id'],
+      )!,
+      speed: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}speed'],
+      ),
+      skipSilence: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}skip_silence'],
+      ),
+    );
+  }
+
+  @override
+  $PodcastPlaybackOverrideRowsTable createAlias(String alias) {
+    return $PodcastPlaybackOverrideRowsTable(attachedDatabase, alias);
+  }
+}
+
+class PodcastPlaybackOverrideRecord extends DataClass
+    implements Insertable<PodcastPlaybackOverrideRecord> {
+  final int podcastId;
+  final double? speed;
+  final String? skipSilence;
+  const PodcastPlaybackOverrideRecord({
+    required this.podcastId,
+    this.speed,
+    this.skipSilence,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['podcast_id'] = Variable<int>(podcastId);
+    if (!nullToAbsent || speed != null) {
+      map['speed'] = Variable<double>(speed);
+    }
+    if (!nullToAbsent || skipSilence != null) {
+      map['skip_silence'] = Variable<String>(skipSilence);
+    }
+    return map;
+  }
+
+  PodcastPlaybackOverrideRowsCompanion toCompanion(bool nullToAbsent) {
+    return PodcastPlaybackOverrideRowsCompanion(
+      podcastId: Value(podcastId),
+      speed: speed == null && nullToAbsent
+          ? const Value.absent()
+          : Value(speed),
+      skipSilence: skipSilence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(skipSilence),
+    );
+  }
+
+  factory PodcastPlaybackOverrideRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PodcastPlaybackOverrideRecord(
+      podcastId: serializer.fromJson<int>(json['podcastId']),
+      speed: serializer.fromJson<double?>(json['speed']),
+      skipSilence: serializer.fromJson<String?>(json['skipSilence']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'podcastId': serializer.toJson<int>(podcastId),
+      'speed': serializer.toJson<double?>(speed),
+      'skipSilence': serializer.toJson<String?>(skipSilence),
+    };
+  }
+
+  PodcastPlaybackOverrideRecord copyWith({
+    int? podcastId,
+    Value<double?> speed = const Value.absent(),
+    Value<String?> skipSilence = const Value.absent(),
+  }) => PodcastPlaybackOverrideRecord(
+    podcastId: podcastId ?? this.podcastId,
+    speed: speed.present ? speed.value : this.speed,
+    skipSilence: skipSilence.present ? skipSilence.value : this.skipSilence,
+  );
+  PodcastPlaybackOverrideRecord copyWithCompanion(
+    PodcastPlaybackOverrideRowsCompanion data,
+  ) {
+    return PodcastPlaybackOverrideRecord(
+      podcastId: data.podcastId.present ? data.podcastId.value : this.podcastId,
+      speed: data.speed.present ? data.speed.value : this.speed,
+      skipSilence: data.skipSilence.present
+          ? data.skipSilence.value
+          : this.skipSilence,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PodcastPlaybackOverrideRecord(')
+          ..write('podcastId: $podcastId, ')
+          ..write('speed: $speed, ')
+          ..write('skipSilence: $skipSilence')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(podcastId, speed, skipSilence);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PodcastPlaybackOverrideRecord &&
+          other.podcastId == this.podcastId &&
+          other.speed == this.speed &&
+          other.skipSilence == this.skipSilence);
+}
+
+class PodcastPlaybackOverrideRowsCompanion
+    extends UpdateCompanion<PodcastPlaybackOverrideRecord> {
+  final Value<int> podcastId;
+  final Value<double?> speed;
+  final Value<String?> skipSilence;
+  const PodcastPlaybackOverrideRowsCompanion({
+    this.podcastId = const Value.absent(),
+    this.speed = const Value.absent(),
+    this.skipSilence = const Value.absent(),
+  });
+  PodcastPlaybackOverrideRowsCompanion.insert({
+    this.podcastId = const Value.absent(),
+    this.speed = const Value.absent(),
+    this.skipSilence = const Value.absent(),
+  });
+  static Insertable<PodcastPlaybackOverrideRecord> custom({
+    Expression<int>? podcastId,
+    Expression<double>? speed,
+    Expression<String>? skipSilence,
+  }) {
+    return RawValuesInsertable({
+      if (podcastId != null) 'podcast_id': podcastId,
+      if (speed != null) 'speed': speed,
+      if (skipSilence != null) 'skip_silence': skipSilence,
+    });
+  }
+
+  PodcastPlaybackOverrideRowsCompanion copyWith({
+    Value<int>? podcastId,
+    Value<double?>? speed,
+    Value<String?>? skipSilence,
+  }) {
+    return PodcastPlaybackOverrideRowsCompanion(
+      podcastId: podcastId ?? this.podcastId,
+      speed: speed ?? this.speed,
+      skipSilence: skipSilence ?? this.skipSilence,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (podcastId.present) {
+      map['podcast_id'] = Variable<int>(podcastId.value);
+    }
+    if (speed.present) {
+      map['speed'] = Variable<double>(speed.value);
+    }
+    if (skipSilence.present) {
+      map['skip_silence'] = Variable<String>(skipSilence.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PodcastPlaybackOverrideRowsCompanion(')
+          ..write('podcastId: $podcastId, ')
+          ..write('speed: $speed, ')
+          ..write('skipSilence: $skipSilence')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1974,6 +2558,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $EpisodeRowsTable episodeRows = $EpisodeRowsTable(this);
   late final $QueueRowsTable queueRows = $QueueRowsTable(this);
   late final $SyncMutationsTable syncMutations = $SyncMutationsTable(this);
+  late final $PlaybackPreferenceRowsTable playbackPreferenceRows =
+      $PlaybackPreferenceRowsTable(this);
+  late final $PodcastPlaybackOverrideRowsTable podcastPlaybackOverrideRows =
+      $PodcastPlaybackOverrideRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1983,6 +2571,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     episodeRows,
     queueRows,
     syncMutations,
+    playbackPreferenceRows,
+    podcastPlaybackOverrideRows,
   ];
 }
 
@@ -2024,6 +2614,32 @@ final class $$PodcastRowsTableReferences
     ).filter((f) => f.podcastId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_episodeRowsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $PodcastPlaybackOverrideRowsTable,
+    List<PodcastPlaybackOverrideRecord>
+  >
+  _podcastPlaybackOverrideRowsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.podcastPlaybackOverrideRows,
+        aliasName:
+            'podcast_rows__id__podcast_playback_override_rows__podcast_id',
+      );
+
+  $$PodcastPlaybackOverrideRowsTableProcessedTableManager
+  get podcastPlaybackOverrideRowsRefs {
+    final manager = $$PodcastPlaybackOverrideRowsTableTableManager(
+      $_db,
+      $_db.podcastPlaybackOverrideRows,
+    ).filter((f) => f.podcastId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _podcastPlaybackOverrideRowsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -2096,6 +2712,35 @@ class $$PodcastRowsTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> podcastPlaybackOverrideRowsRefs(
+    Expression<bool> Function(
+      $$PodcastPlaybackOverrideRowsTableFilterComposer f,
+    )
+    f,
+  ) {
+    final $$PodcastPlaybackOverrideRowsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.podcastPlaybackOverrideRows,
+          getReferencedColumn: (t) => t.podcastId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PodcastPlaybackOverrideRowsTableFilterComposer(
+                $db: $db,
+                $table: $db.podcastPlaybackOverrideRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -2205,6 +2850,35 @@ class $$PodcastRowsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> podcastPlaybackOverrideRowsRefs<T extends Object>(
+    Expression<T> Function(
+      $$PodcastPlaybackOverrideRowsTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$PodcastPlaybackOverrideRowsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.podcastPlaybackOverrideRows,
+          getReferencedColumn: (t) => t.podcastId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PodcastPlaybackOverrideRowsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.podcastPlaybackOverrideRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$PodcastRowsTableTableManager
@@ -2220,7 +2894,10 @@ class $$PodcastRowsTableTableManager
           $$PodcastRowsTableUpdateCompanionBuilder,
           (PodcastRecord, $$PodcastRowsTableReferences),
           PodcastRecord,
-          PrefetchHooks Function({bool episodeRowsRefs})
+          PrefetchHooks Function({
+            bool episodeRowsRefs,
+            bool podcastPlaybackOverrideRowsRefs,
+          })
         > {
   $$PodcastRowsTableTableManager(_$AppDatabase db, $PodcastRowsTable table)
     : super(
@@ -2277,36 +2954,67 @@ class $$PodcastRowsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({episodeRowsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (episodeRowsRefs) db.episodeRows],
-              addJoins: null,
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (episodeRowsRefs)
-                    await $_getPrefetchedData<
-                      PodcastRecord,
-                      $PodcastRowsTable,
-                      EpisodeRecord
-                    >(
-                      currentTable: table,
-                      referencedTable: $$PodcastRowsTableReferences
-                          ._episodeRowsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$PodcastRowsTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).episodeRowsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.podcastId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+          prefetchHooksCallback:
+              ({
+                episodeRowsRefs = false,
+                podcastPlaybackOverrideRowsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (episodeRowsRefs) db.episodeRows,
+                    if (podcastPlaybackOverrideRowsRefs)
+                      db.podcastPlaybackOverrideRows,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (episodeRowsRefs)
+                        await $_getPrefetchedData<
+                          PodcastRecord,
+                          $PodcastRowsTable,
+                          EpisodeRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PodcastRowsTableReferences
+                              ._episodeRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PodcastRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).episodeRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.podcastId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (podcastPlaybackOverrideRowsRefs)
+                        await $_getPrefetchedData<
+                          PodcastRecord,
+                          $PodcastRowsTable,
+                          PodcastPlaybackOverrideRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PodcastRowsTableReferences
+                              ._podcastPlaybackOverrideRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PodcastRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).podcastPlaybackOverrideRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.podcastId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -2323,7 +3031,10 @@ typedef $$PodcastRowsTableProcessedTableManager =
       $$PodcastRowsTableUpdateCompanionBuilder,
       (PodcastRecord, $$PodcastRowsTableReferences),
       PodcastRecord,
-      PrefetchHooks Function({bool episodeRowsRefs})
+      PrefetchHooks Function({
+        bool episodeRowsRefs,
+        bool podcastPlaybackOverrideRowsRefs,
+      })
     >;
 typedef $$EpisodeRowsTableCreateCompanionBuilder =
     EpisodeRowsCompanion Function({
@@ -2341,6 +3052,7 @@ typedef $$EpisodeRowsTableCreateCompanionBuilder =
       Value<bool> queued,
       Value<bool> downloaded,
       Value<bool> isYoutube,
+      Value<String> chaptersJson,
       required DateTime updatedAt,
     });
 typedef $$EpisodeRowsTableUpdateCompanionBuilder =
@@ -2359,6 +3071,7 @@ typedef $$EpisodeRowsTableUpdateCompanionBuilder =
       Value<bool> queued,
       Value<bool> downloaded,
       Value<bool> isYoutube,
+      Value<String> chaptersJson,
       Value<DateTime> updatedAt,
     });
 
@@ -2473,6 +3186,11 @@ class $$EpisodeRowsTableFilterComposer
 
   ColumnFilters<bool> get isYoutube => $composableBuilder(
     column: $table.isYoutube,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get chaptersJson => $composableBuilder(
+    column: $table.chaptersJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2604,6 +3322,11 @@ class $$EpisodeRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get chaptersJson => $composableBuilder(
+    column: $table.chaptersJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -2694,6 +3417,11 @@ class $$EpisodeRowsTableAnnotationComposer
 
   GeneratedColumn<bool> get isYoutube =>
       $composableBuilder(column: $table.isYoutube, builder: (column) => column);
+
+  GeneratedColumn<String> get chaptersJson => $composableBuilder(
+    column: $table.chaptersJson,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
@@ -2789,6 +3517,7 @@ class $$EpisodeRowsTableTableManager
                 Value<bool> queued = const Value.absent(),
                 Value<bool> downloaded = const Value.absent(),
                 Value<bool> isYoutube = const Value.absent(),
+                Value<String> chaptersJson = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => EpisodeRowsCompanion(
                 id: id,
@@ -2805,6 +3534,7 @@ class $$EpisodeRowsTableTableManager
                 queued: queued,
                 downloaded: downloaded,
                 isYoutube: isYoutube,
+                chaptersJson: chaptersJson,
                 updatedAt: updatedAt,
               ),
           createCompanionCallback:
@@ -2823,6 +3553,7 @@ class $$EpisodeRowsTableTableManager
                 Value<bool> queued = const Value.absent(),
                 Value<bool> downloaded = const Value.absent(),
                 Value<bool> isYoutube = const Value.absent(),
+                Value<String> chaptersJson = const Value.absent(),
                 required DateTime updatedAt,
               }) => EpisodeRowsCompanion.insert(
                 id: id,
@@ -2839,6 +3570,7 @@ class $$EpisodeRowsTableTableManager
                 queued: queued,
                 downloaded: downloaded,
                 isYoutube: isYoutube,
+                chaptersJson: chaptersJson,
                 updatedAt: updatedAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -3420,6 +4152,488 @@ typedef $$SyncMutationsTableProcessedTableManager =
       PendingMutation,
       PrefetchHooks Function()
     >;
+typedef $$PlaybackPreferenceRowsTableCreateCompanionBuilder =
+    PlaybackPreferenceRowsCompanion Function({
+      Value<int> id,
+      Value<double> speed,
+      Value<String> skipSilence,
+    });
+typedef $$PlaybackPreferenceRowsTableUpdateCompanionBuilder =
+    PlaybackPreferenceRowsCompanion Function({
+      Value<int> id,
+      Value<double> speed,
+      Value<String> skipSilence,
+    });
+
+class $$PlaybackPreferenceRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $PlaybackPreferenceRowsTable> {
+  $$PlaybackPreferenceRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get speed => $composableBuilder(
+    column: $table.speed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get skipSilence => $composableBuilder(
+    column: $table.skipSilence,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PlaybackPreferenceRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PlaybackPreferenceRowsTable> {
+  $$PlaybackPreferenceRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get speed => $composableBuilder(
+    column: $table.speed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get skipSilence => $composableBuilder(
+    column: $table.skipSilence,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PlaybackPreferenceRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PlaybackPreferenceRowsTable> {
+  $$PlaybackPreferenceRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<double> get speed =>
+      $composableBuilder(column: $table.speed, builder: (column) => column);
+
+  GeneratedColumn<String> get skipSilence => $composableBuilder(
+    column: $table.skipSilence,
+    builder: (column) => column,
+  );
+}
+
+class $$PlaybackPreferenceRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PlaybackPreferenceRowsTable,
+          PlaybackPreferencesRecord,
+          $$PlaybackPreferenceRowsTableFilterComposer,
+          $$PlaybackPreferenceRowsTableOrderingComposer,
+          $$PlaybackPreferenceRowsTableAnnotationComposer,
+          $$PlaybackPreferenceRowsTableCreateCompanionBuilder,
+          $$PlaybackPreferenceRowsTableUpdateCompanionBuilder,
+          (
+            PlaybackPreferencesRecord,
+            BaseReferences<
+              _$AppDatabase,
+              $PlaybackPreferenceRowsTable,
+              PlaybackPreferencesRecord
+            >,
+          ),
+          PlaybackPreferencesRecord,
+          PrefetchHooks Function()
+        > {
+  $$PlaybackPreferenceRowsTableTableManager(
+    _$AppDatabase db,
+    $PlaybackPreferenceRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PlaybackPreferenceRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PlaybackPreferenceRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PlaybackPreferenceRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<double> speed = const Value.absent(),
+                Value<String> skipSilence = const Value.absent(),
+              }) => PlaybackPreferenceRowsCompanion(
+                id: id,
+                speed: speed,
+                skipSilence: skipSilence,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<double> speed = const Value.absent(),
+                Value<String> skipSilence = const Value.absent(),
+              }) => PlaybackPreferenceRowsCompanion.insert(
+                id: id,
+                speed: speed,
+                skipSilence: skipSilence,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PlaybackPreferenceRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PlaybackPreferenceRowsTable,
+      PlaybackPreferencesRecord,
+      $$PlaybackPreferenceRowsTableFilterComposer,
+      $$PlaybackPreferenceRowsTableOrderingComposer,
+      $$PlaybackPreferenceRowsTableAnnotationComposer,
+      $$PlaybackPreferenceRowsTableCreateCompanionBuilder,
+      $$PlaybackPreferenceRowsTableUpdateCompanionBuilder,
+      (
+        PlaybackPreferencesRecord,
+        BaseReferences<
+          _$AppDatabase,
+          $PlaybackPreferenceRowsTable,
+          PlaybackPreferencesRecord
+        >,
+      ),
+      PlaybackPreferencesRecord,
+      PrefetchHooks Function()
+    >;
+typedef $$PodcastPlaybackOverrideRowsTableCreateCompanionBuilder =
+    PodcastPlaybackOverrideRowsCompanion Function({
+      Value<int> podcastId,
+      Value<double?> speed,
+      Value<String?> skipSilence,
+    });
+typedef $$PodcastPlaybackOverrideRowsTableUpdateCompanionBuilder =
+    PodcastPlaybackOverrideRowsCompanion Function({
+      Value<int> podcastId,
+      Value<double?> speed,
+      Value<String?> skipSilence,
+    });
+
+final class $$PodcastPlaybackOverrideRowsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PodcastPlaybackOverrideRowsTable,
+          PodcastPlaybackOverrideRecord
+        > {
+  $$PodcastPlaybackOverrideRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PodcastRowsTable _podcastIdTable(_$AppDatabase db) =>
+      db.podcastRows.createAlias(
+        'podcast_playback_override_rows__podcast_id__podcast_rows__id',
+      );
+
+  $$PodcastRowsTableProcessedTableManager get podcastId {
+    final $_column = $_itemColumn<int>('podcast_id')!;
+
+    final manager = $$PodcastRowsTableTableManager(
+      $_db,
+      $_db.podcastRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_podcastIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PodcastPlaybackOverrideRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $PodcastPlaybackOverrideRowsTable> {
+  $$PodcastPlaybackOverrideRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<double> get speed => $composableBuilder(
+    column: $table.speed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get skipSilence => $composableBuilder(
+    column: $table.skipSilence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PodcastRowsTableFilterComposer get podcastId {
+    final $$PodcastRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PodcastPlaybackOverrideRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PodcastPlaybackOverrideRowsTable> {
+  $$PodcastPlaybackOverrideRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<double> get speed => $composableBuilder(
+    column: $table.speed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get skipSilence => $composableBuilder(
+    column: $table.skipSilence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PodcastRowsTableOrderingComposer get podcastId {
+    final $$PodcastRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PodcastPlaybackOverrideRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PodcastPlaybackOverrideRowsTable> {
+  $$PodcastPlaybackOverrideRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<double> get speed =>
+      $composableBuilder(column: $table.speed, builder: (column) => column);
+
+  GeneratedColumn<String> get skipSilence => $composableBuilder(
+    column: $table.skipSilence,
+    builder: (column) => column,
+  );
+
+  $$PodcastRowsTableAnnotationComposer get podcastId {
+    final $$PodcastRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PodcastPlaybackOverrideRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PodcastPlaybackOverrideRowsTable,
+          PodcastPlaybackOverrideRecord,
+          $$PodcastPlaybackOverrideRowsTableFilterComposer,
+          $$PodcastPlaybackOverrideRowsTableOrderingComposer,
+          $$PodcastPlaybackOverrideRowsTableAnnotationComposer,
+          $$PodcastPlaybackOverrideRowsTableCreateCompanionBuilder,
+          $$PodcastPlaybackOverrideRowsTableUpdateCompanionBuilder,
+          (
+            PodcastPlaybackOverrideRecord,
+            $$PodcastPlaybackOverrideRowsTableReferences,
+          ),
+          PodcastPlaybackOverrideRecord,
+          PrefetchHooks Function({bool podcastId})
+        > {
+  $$PodcastPlaybackOverrideRowsTableTableManager(
+    _$AppDatabase db,
+    $PodcastPlaybackOverrideRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PodcastPlaybackOverrideRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PodcastPlaybackOverrideRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PodcastPlaybackOverrideRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> podcastId = const Value.absent(),
+                Value<double?> speed = const Value.absent(),
+                Value<String?> skipSilence = const Value.absent(),
+              }) => PodcastPlaybackOverrideRowsCompanion(
+                podcastId: podcastId,
+                speed: speed,
+                skipSilence: skipSilence,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> podcastId = const Value.absent(),
+                Value<double?> speed = const Value.absent(),
+                Value<String?> skipSilence = const Value.absent(),
+              }) => PodcastPlaybackOverrideRowsCompanion.insert(
+                podcastId: podcastId,
+                speed: speed,
+                skipSilence: skipSilence,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PodcastPlaybackOverrideRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({podcastId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (podcastId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.podcastId,
+                                referencedTable:
+                                    $$PodcastPlaybackOverrideRowsTableReferences
+                                        ._podcastIdTable(db),
+                                referencedColumn:
+                                    $$PodcastPlaybackOverrideRowsTableReferences
+                                        ._podcastIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PodcastPlaybackOverrideRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PodcastPlaybackOverrideRowsTable,
+      PodcastPlaybackOverrideRecord,
+      $$PodcastPlaybackOverrideRowsTableFilterComposer,
+      $$PodcastPlaybackOverrideRowsTableOrderingComposer,
+      $$PodcastPlaybackOverrideRowsTableAnnotationComposer,
+      $$PodcastPlaybackOverrideRowsTableCreateCompanionBuilder,
+      $$PodcastPlaybackOverrideRowsTableUpdateCompanionBuilder,
+      (
+        PodcastPlaybackOverrideRecord,
+        $$PodcastPlaybackOverrideRowsTableReferences,
+      ),
+      PodcastPlaybackOverrideRecord,
+      PrefetchHooks Function({bool podcastId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3432,4 +4646,15 @@ class $AppDatabaseManager {
       $$QueueRowsTableTableManager(_db, _db.queueRows);
   $$SyncMutationsTableTableManager get syncMutations =>
       $$SyncMutationsTableTableManager(_db, _db.syncMutations);
+  $$PlaybackPreferenceRowsTableTableManager get playbackPreferenceRows =>
+      $$PlaybackPreferenceRowsTableTableManager(
+        _db,
+        _db.playbackPreferenceRows,
+      );
+  $$PodcastPlaybackOverrideRowsTableTableManager
+  get podcastPlaybackOverrideRows =>
+      $$PodcastPlaybackOverrideRowsTableTableManager(
+        _db,
+        _db.podcastPlaybackOverrideRows,
+      );
 }
