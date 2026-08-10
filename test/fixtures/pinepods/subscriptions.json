@@ -1,0 +1,13 @@
+{
+  "Pods": [
+    {
+      "Podcast_ID": "12",
+      "PodcastName": "Fixture Cast",
+      "AUTHOR": "Podpine",
+      "Artwork_URL": "https://example.test/podcast.png",
+      "Description": "A fixture-backed podcast.",
+      "Feed_URL": "https://example.test/feed.xml",
+      "Episode_Count": "7.0"
+    }
+  ]
+}

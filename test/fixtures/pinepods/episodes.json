@@ -1,0 +1,21 @@
+{
+  "EPISODES": [
+    {
+      "Episode_ID": "101.0",
+      "PodcastId": 12,
+      "Podcast_Name": "Fixture Cast",
+      "EpisodeTitle": "Types and casing",
+      "Episode_Description": "Contract fixture",
+      "EpisodeArtwork": "https://example.test/episode.png",
+      "Episode_URL": "https://example.test/episode.mp3",
+      "Episode_Pub_Date": "2026-08-10T15:30:00-04:00",
+      "EpisodeDuration": "3600.0",
+      "Listen_Duration": 72.9,
+      "COMPLETED": "TRUE",
+      "Queued": 1,
+      "Downloaded": "0",
+      "Is_YouTube": "false",
+      "Queue_Position": "3"
+    }
+  ]
+}

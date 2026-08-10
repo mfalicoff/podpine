@@ -1,0 +1,13 @@
+{
+  "check": {
+    "Status_Code": "200",
+    "Pinepods_Instance": "TRUE"
+  },
+  "verify": {
+    "STATUS": "success"
+  },
+  "user": {
+    "Status": "success",
+    "Retrieved_ID": "42"
+  }
+}

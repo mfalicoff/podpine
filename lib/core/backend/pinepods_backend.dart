@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -18,11 +19,13 @@ class PinepodsBackend implements PodcastBackend {
     required String serverUrl,
     required this.apiKey,
     http.Client? client,
+    this.requestTimeout = const Duration(seconds: 15),
   }) : baseUri = Uri.parse(serverUrl.replaceFirst(RegExp(r'/+$'), '')),
        _client = client ?? http.Client();
 
   final Uri baseUri;
   final String apiKey;
+  final Duration requestTimeout;
   final http.Client _client;
 
   Map<String, String> get _headers => {
@@ -35,27 +38,39 @@ class PinepodsBackend implements PodcastBackend {
       baseUri.replace(path: '${baseUri.path}$path', queryParameters: query);
 
   Future<Object?> _get(String path, [Map<String, String>? query]) async {
-    final response = await _client
-        .get(_uri(path, query), headers: _headers)
-        .timeout(const Duration(seconds: 15));
-    return _decode(response);
+    return _send(() => _client.get(_uri(path, query), headers: _headers));
   }
 
   Future<Object?> _post(String path, Map<String, Object?> body) async {
-    final response = await _client
-        .post(_uri(path), headers: _headers, body: jsonEncode(body))
-        .timeout(const Duration(seconds: 15));
-    return _decode(response);
+    return _send(
+      () => _client.post(_uri(path), headers: _headers, body: jsonEncode(body)),
+    );
+  }
+
+  Future<Object?> _send(Future<http.Response> Function() request) async {
+    try {
+      return _decode(await request().timeout(requestTimeout));
+    } on PinepodsException {
+      rethrow;
+    } on TimeoutException {
+      throw const PinepodsException(
+        'Pinepods did not respond before the request timed out.',
+      );
+    } on FormatException {
+      throw const PinepodsException('Pinepods returned malformed JSON.');
+    } on http.ClientException catch (error) {
+      throw PinepodsException('Could not reach Pinepods: ${error.message}');
+    }
   }
 
   Object? _decode(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw PinepodsException(
-        response.statusCode == 401
-            ? 'The API key was rejected by this server.'
-            : 'Pinepods returned HTTP ${response.statusCode}.',
-        statusCode: response.statusCode,
-      );
+      throw PinepodsException(switch (response.statusCode) {
+        401 => 'The API key was rejected by this server.',
+        403 => 'The API key is not allowed to perform this action.',
+        404 => 'The requested Pinepods endpoint was not found.',
+        final code => 'Pinepods returned HTTP $code.',
+      }, statusCode: response.statusCode);
     }
     if (response.body.trim().isEmpty) return null;
     return jsonDecode(response.body);
@@ -64,13 +79,15 @@ class PinepodsBackend implements PodcastBackend {
   @override
   Future<int> verifyConnection() async {
     final check = await _get('/api/pinepods_check');
-    if (check is! Map || check['pinepods_instance'] != true) {
+    if (check is! Map || !_bool(_field(check, 'pinepods_instance'))) {
       throw const PinepodsException('This URL is not a Pinepods server.');
     }
     await _get('/api/data/verify_key');
     final user = await _get('/api/data/get_user');
-    if (user is Map && user['retrieved_id'] != null) {
-      final userId = _int(user['retrieved_id']);
+    if (user is Map) {
+      final userId = _int(
+        _field(user, 'retrieved_id') ?? _field(user, 'user_id'),
+      );
       if (userId > 0) return userId;
     }
     throw const PinepodsException(
@@ -81,9 +98,7 @@ class PinepodsBackend implements PodcastBackend {
   @override
   Future<List<RemotePodcast>> getSubscriptions(int userId) async {
     final json = await _get('/api/data/return_pods/$userId');
-    final rows = json is Map ? json['pods'] : null;
-    if (rows is! List) return const [];
-    return rows.whereType<Map>().map(_podcastFromJson).toList();
+    return _mapRows(json, 'pods', 'subscriptions', _podcastFromJson);
   }
 
   @override
@@ -91,9 +106,7 @@ class PinepodsBackend implements PodcastBackend {
     final json = await _get('/api/data/return_episodes/$userId', {
       'limit': '500',
     });
-    final rows = json is Map ? json['episodes'] : null;
-    if (rows is! List) return const [];
-    return rows.whereType<Map>().map(_episodeFromJson).toList();
+    return _mapRows(json, 'episodes', 'episodes', _episodeFromJson);
   }
 
   @override
@@ -101,9 +114,7 @@ class PinepodsBackend implements PodcastBackend {
     final json = await _get('/api/data/get_queued_episodes', {
       'user_id': '$userId',
     });
-    final rows = json is Map ? json['data'] : null;
-    if (rows is! List) return const [];
-    return rows.whereType<Map>().map(_episodeFromJson).toList();
+    return _mapRows(json, 'data', 'queue', _episodeFromJson);
   }
 
   @override
@@ -136,42 +147,123 @@ class PinepodsBackend implements PodcastBackend {
     {'episode_id': episodeId, 'user_id': userId, 'is_youtube': false},
   );
 
-  static RemotePodcast _podcastFromJson(Map json) => RemotePodcast(
-    id: _int(json['podcastid']),
-    title: '${json['podcastname'] ?? 'Untitled podcast'}',
-    author: '${json['author'] ?? ''}',
-    artworkUrl: '${json['artworkurl'] ?? ''}',
-    description: '${json['description'] ?? ''}',
-    feedUrl: '${json['feedurl'] ?? ''}',
-    episodeCount: _int(json['episodecount']),
-  );
+  static List<T> _mapRows<T>(
+    Object? response,
+    String field,
+    String resource,
+    T Function(Map json) convert,
+  ) {
+    if (response is! Map) {
+      throw PinepodsException(
+        'Pinepods returned a malformed $resource response.',
+      );
+    }
+    final rows = _field(response, field);
+    if (rows is! List) {
+      throw PinepodsException(
+        'Pinepods returned a malformed $resource response.',
+      );
+    }
+    return rows
+        .map((row) {
+          if (row is! Map) {
+            throw PinepodsException(
+              'Pinepods returned a malformed $resource item.',
+            );
+          }
+          return convert(row);
+        })
+        .toList(growable: false);
+  }
 
-  static RemoteEpisode _episodeFromJson(Map json) => RemoteEpisode(
-    id: _int(json['episodeid']),
-    podcastId: _int(json['podcastid']),
-    podcastTitle: '${json['podcastname'] ?? ''}',
-    title: '${json['episodetitle'] ?? 'Untitled episode'}',
-    description: '${json['episodedescription'] ?? ''}',
-    artworkUrl: '${json['episodeartwork'] ?? ''}',
-    audioUrl: '${json['episodeurl'] ?? ''}',
-    publishedAt:
-        DateTime.tryParse('${json['episodepubdate'] ?? ''}')?.toUtc() ??
-        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
-    durationSeconds: _int(json['episodeduration']),
-    positionSeconds: _int(json['listenduration']),
-    completed: json['completed'] == true,
-    queued: json['queued'] == true,
-    downloaded: json['downloaded'] == true,
-    isYoutube: json['is_youtube'] == true,
-    queuePosition: json['queueposition'] == null
-        ? null
-        : _int(json['queueposition']),
-  );
+  static RemotePodcast _podcastFromJson(Map json) {
+    final id = _int(_field(json, 'podcastid'));
+    if (id <= 0) {
+      throw const PinepodsException(
+        'Pinepods returned a subscription without a valid podcast ID.',
+      );
+    }
+    return RemotePodcast(
+      id: id,
+      title: '${_field(json, 'podcastname') ?? 'Untitled podcast'}',
+      author: '${_field(json, 'author') ?? ''}',
+      artworkUrl: '${_field(json, 'artworkurl') ?? ''}',
+      description: '${_field(json, 'description') ?? ''}',
+      feedUrl: '${_field(json, 'feedurl') ?? ''}',
+      episodeCount: _int(_field(json, 'episodecount')),
+    );
+  }
+
+  static RemoteEpisode _episodeFromJson(Map json) {
+    final id = _int(_field(json, 'episodeid'));
+    if (id <= 0) {
+      throw const PinepodsException(
+        'Pinepods returned an episode without a valid episode ID.',
+      );
+    }
+    final queuePosition = _field(json, 'queueposition');
+    return RemoteEpisode(
+      id: id,
+      podcastId: _int(_field(json, 'podcastid')),
+      podcastTitle: '${_field(json, 'podcastname') ?? ''}',
+      title: '${_field(json, 'episodetitle') ?? 'Untitled episode'}',
+      description: '${_field(json, 'episodedescription') ?? ''}',
+      artworkUrl: '${_field(json, 'episodeartwork') ?? ''}',
+      audioUrl: '${_field(json, 'episodeurl') ?? ''}',
+      publishedAt: _dateTime(_field(json, 'episodepubdate')),
+      durationSeconds: _int(_field(json, 'episodeduration')),
+      positionSeconds: _int(_field(json, 'listenduration')),
+      completed: _bool(_field(json, 'completed')),
+      queued: _bool(_field(json, 'queued')),
+      downloaded: _bool(_field(json, 'downloaded')),
+      isYoutube: _bool(_field(json, 'is_youtube')),
+      queuePosition: queuePosition == null ? null : _int(queuePosition),
+    );
+  }
+
+  static Object? _field(Map json, String name) {
+    final expected = _canonicalKey(name);
+    for (final entry in json.entries) {
+      if (_canonicalKey('${entry.key}') == expected) return entry.value;
+    }
+    return null;
+  }
+
+  static String _canonicalKey(String key) =>
+      key.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
 
   static int _int(Object? value) => switch (value) {
     int number => number,
     num number => number.toInt(),
-    String text => int.tryParse(text) ?? 0,
+    String text => num.tryParse(text.trim())?.toInt() ?? 0,
     _ => 0,
   };
+
+  static bool _bool(Object? value) => switch (value) {
+    bool boolean => boolean,
+    num number => number != 0,
+    String text => const {
+      'true',
+      '1',
+      'yes',
+      'y',
+      'on',
+    }.contains(text.trim().toLowerCase()),
+    _ => false,
+  };
+
+  static DateTime _dateTime(Object? value) {
+    if (value is num) {
+      final milliseconds = value.abs() < 100000000000 ? value * 1000 : value;
+      return DateTime.fromMillisecondsSinceEpoch(
+        milliseconds.toInt(),
+        isUtc: true,
+      );
+    }
+    final text = '$value'.trim();
+    final parsedNumber = num.tryParse(text);
+    if (parsedNumber != null) return _dateTime(parsedNumber);
+    return DateTime.tryParse(text)?.toUtc() ??
+        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  }
 }

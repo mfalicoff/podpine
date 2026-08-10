@@ -1,0 +1,18 @@
+{
+  "unauthorized": {
+    "statusCode": 401,
+    "body": {"detail": "invalid API key"}
+  },
+  "forbidden": {
+    "statusCode": 403,
+    "body": {"detail": "user mismatch"}
+  },
+  "notFound": {
+    "statusCode": 404,
+    "body": {"detail": "unknown endpoint"}
+  },
+  "malformedJson": "{not valid json",
+  "malformedSubscriptions": {
+    "pods": "not a list"
+  }
+}
