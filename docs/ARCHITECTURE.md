@@ -9,8 +9,10 @@ flowchart LR
     SY <--> DB["Local Drift database"]
     DB --> UI["Flutter UI"]
     UI --> DB
-    UI <--> PL["Audio player"]
-    PL --> DB
+    UI <--> PC["Player controller"]
+    PC <--> AS["audio_service handler"]
+    AS <--> PL["just_audio"]
+    PC --> DB
 ```
 
 ## Boundaries
@@ -19,7 +21,8 @@ flowchart LR
 - `AppDatabase` owns subscriptions, episodes, queue order, and pending mutations. UI streams come from the database, not live HTTP responses.
 - `SyncEngine` pushes the mutation outbox before pulling a new server snapshot. This prevents a refresh from immediately replacing a successful offline edit with older remote state.
 - `AppController` coordinates the session and optimistic mutations. Network failure does not roll local state back; it adds a retryable outbox entry.
-- `PlayerController` owns the playback lifecycle and persists position every 15 seconds plus pause, seek, and episode changes.
+- `PodpineAudioHandler` owns the sole `just_audio` instance and publishes queue, metadata, position, and controls to Android and iOS through `audio_service`.
+- `PlayerController` is the UI-facing façade. It maps handler state back to local episodes and persists position every 15 seconds plus pause, seek, and episode changes.
 
 ## Sync rules in this slice
 
@@ -33,9 +36,8 @@ The next sync iteration should coalesce repeated position entries per episode, a
 
 ## Next implementation milestones
 
-1. Add `audio_service` platform integration for lock-screen controls and robust background playback.
-2. Add a download manager with resumable jobs, storage accounting, and Wi-Fi policy.
-3. Implement Pinepods search, subscribe, and unsubscribe endpoints.
-4. Add queue drag/reorder and operation-level conflict handling.
-5. Schedule opportunistic refresh with Android WorkManager and iOS BackgroundTasks.
-6. Add API fixture tests for Pinepods response variants and migration tests for Drift schema changes.
+1. Add a download manager with resumable jobs, storage accounting, and Wi-Fi policy.
+2. Implement Pinepods search, subscribe, and unsubscribe endpoints.
+3. Add queue drag/reorder and operation-level conflict handling.
+4. Schedule opportunistic refresh with Android WorkManager and iOS BackgroundTasks.
+5. Add API fixture tests for Pinepods response variants and migration tests for Drift schema changes.

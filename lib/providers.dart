@@ -1,3 +1,4 @@
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -5,6 +6,10 @@ import 'app_controller.dart';
 import 'core/database/app_database.dart';
 import 'core/storage/credential_store.dart';
 import 'features/player/player_controller.dart';
+
+final audioHandlerProvider = Provider<AudioHandler>(
+  (ref) => throw StateError('Audio service was not initialized.'),
+);
 
 final databaseProvider = Provider<AppDatabase>((ref) {
   final database = AppDatabase();
@@ -42,6 +47,7 @@ final playerControllerProvider = ChangeNotifierProvider<PlayerController>((
 ) {
   final controller = PlayerController(
     ref.watch(databaseProvider),
+    ref.watch(audioHandlerProvider),
     ref.read(appControllerProvider).recordPosition,
   );
   ref.onDispose(controller.dispose);

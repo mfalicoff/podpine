@@ -37,10 +37,14 @@ dependencies:
   flutter_riverpod: ^2.6.1
   go_router: ^17.5.0
   http: ^1.6.0
-  flutter_secure_storage: ^11.0.0
+  # v11 requires Android API 37/next-generation AGP. Stay on the latest v10
+  # migration release until Flutter's stable Android toolchain supports it.
+  flutter_secure_storage: ^10.3.1
   drift: ^2.34.3
   drift_flutter: ^0.3.1
   connectivity_plus: ^7.3.1
+  audio_service: ^0.18.19
+  audio_session: ^0.2.4
   just_audio: ^0.10.6
   intl: ^0.20.3
   uuid: ^4.6.0
