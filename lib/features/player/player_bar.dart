@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
+import 'player_controller.dart';
 
 class PlayerBar extends ConsumerWidget {
   const PlayerBar({super.key});
@@ -27,6 +28,7 @@ class PlayerBar extends ConsumerWidget {
         ),
         child: Column(
           children: [
+            if (player.error != null) _PlaybackError(player: player),
             LinearProgressIndicator(
               value: progress.clamp(0, 1),
               minHeight: 2,
@@ -97,6 +99,44 @@ class PlayerBar extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _PlaybackError extends StatelessWidget {
+  const _PlaybackError({required this.player});
+
+  final PlayerController player;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: double.infinity,
+    color: Theme.of(context).colorScheme.errorContainer,
+    padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+    child: Row(
+      children: [
+        Icon(
+          Icons.error_outline_rounded,
+          color: Theme.of(context).colorScheme.onErrorContainer,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            player.error!,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onErrorContainer,
+              fontSize: 12,
+            ),
+          ),
+        ),
+        if (player.errorCanRetry)
+          TextButton(onPressed: player.retry, child: const Text('Retry')),
+        IconButton(
+          tooltip: 'Dismiss playback error',
+          onPressed: player.dismissError,
+          icon: const Icon(Icons.close_rounded),
+        ),
+      ],
+    ),
+  );
 }
 
 class _FullPlayer extends ConsumerWidget {

@@ -1,11 +1,14 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:podpine/core/database/app_database.dart';
 import 'package:podpine/features/player/player_controller.dart';
 import 'package:podpine/features/player/podpine_audio_handler.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('episode metadata includes now-playing artwork and audio identity', () {
     final episode = _episode(1, title: 'A useful episode');
 
@@ -53,6 +56,7 @@ void main() {
     final database = AppDatabase(NativeDatabase.memory());
     final handler = _RecordingAudioHandler();
     final positions = <String>[];
+    final completed = <int>[];
     final first = _episode(1, title: 'First');
     final second = _episode(2, title: 'Second');
     await database.into(database.podcastRows).insert(_podcast);
@@ -60,12 +64,16 @@ void main() {
     await database.into(database.episodeRows).insert(second);
     await database.addToQueue(second.id);
 
-    final controller = PlayerController(database, handler, (
-      episode,
-      position,
-    ) async {
-      positions.add('${episode.id}:${position.inSeconds}');
-    });
+    final controller = PlayerController(
+      database,
+      handler,
+      (episode, position) async {
+        positions.add('${episode.id}:${position.inSeconds}');
+      },
+      (episode, value) async {
+        if (value) completed.add(episode.id);
+      },
+    );
     addTearDown(() {
       controller.dispose();
       return database.close();
@@ -106,6 +114,137 @@ void main() {
       lessThan(const Duration(milliseconds: 50)),
     );
     expect(controller.isPlaying, isTrue);
+  });
+
+  test(
+    'completion advances and marks the finished episode exactly once',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final handler = _RecordingAudioHandler();
+      final positions = <String>[];
+      final completed = <int>[];
+      final first = _episode(1, title: 'First');
+      final second = _episode(2, title: 'Second');
+      await database.into(database.podcastRows).insert(_podcast);
+      await database.into(database.episodeRows).insert(first);
+      await database.into(database.episodeRows).insert(second);
+      await database.addToQueue(first.id);
+      await database.addToQueue(second.id);
+
+      final controller = PlayerController(
+        database,
+        handler,
+        (episode, position) async {
+          positions.add('${episode.id}:${position.inSeconds}');
+        },
+        (episode, value) async {
+          if (value) completed.add(episode.id);
+        },
+      );
+      addTearDown(() {
+        controller.dispose();
+        return database.close();
+      });
+
+      await controller.playEpisode(first);
+      const completion = <String, dynamic>{
+        playbackEventType: playbackCompletionEvent,
+        'eventId': '1:0',
+        episodeIdExtra: 1,
+      };
+      handler.customEvent.add(completion);
+      handler.customEvent.add(completion);
+      handler.mediaItem.add(handler.receivedQueue[1]);
+      await pumpEventQueue();
+
+      expect(completed, <int>[1]);
+      expect(positions, contains('1:120'));
+      expect(controller.current?.id, 2);
+    },
+  );
+
+  test(
+    'background and interruption pause flush the current position',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final handler = _RecordingAudioHandler();
+      final positions = <String>[];
+      final episode = _episode(1, title: 'First');
+      await database.into(database.podcastRows).insert(_podcast);
+      await database.into(database.episodeRows).insert(episode);
+
+      final controller = PlayerController(database, handler, (
+        episode,
+        position,
+      ) async {
+        positions.add('${episode.id}:${position.inSeconds}');
+      }, (_, _) async {});
+      addTearDown(() {
+        controller.dispose();
+        return database.close();
+      });
+
+      await controller.playEpisode(episode);
+      handler.playbackState.add(
+        PlaybackState(
+          processingState: AudioProcessingState.ready,
+          playing: true,
+          updatePosition: const Duration(seconds: 31),
+        ),
+      );
+      await pumpEventQueue();
+      controller.didChangeAppLifecycleState(AppLifecycleState.paused);
+      await pumpEventQueue();
+      expect(positions, contains('1:31'));
+
+      handler.playbackState.add(
+        PlaybackState(
+          processingState: AudioProcessingState.ready,
+          playing: false,
+          updatePosition: const Duration(seconds: 47),
+        ),
+      );
+      await pumpEventQueue();
+      expect(positions, contains('1:47'));
+    },
+  );
+
+  test('playback errors expose skip and retry states', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final handler = _RecordingAudioHandler();
+    final episode = _episode(1, title: 'First');
+    await database.into(database.podcastRows).insert(_podcast);
+    await database.into(database.episodeRows).insert(episode);
+
+    final controller = PlayerController(
+      database,
+      handler,
+      (_, _) async {},
+      (_, _) async {},
+    );
+    addTearDown(() {
+      controller.dispose();
+      return database.close();
+    });
+    await controller.playEpisode(episode);
+
+    handler.customEvent.add(const <String, dynamic>{
+      playbackEventType: playbackErrorEvent,
+      episodeIdExtra: 1,
+      'willSkip': true,
+    });
+    await pumpEventQueue();
+    expect(controller.error, contains('Skipped'));
+    expect(controller.errorCanRetry, isFalse);
+
+    handler.customEvent.add(const <String, dynamic>{
+      playbackEventType: playbackErrorEvent,
+      episodeIdExtra: 1,
+      'willSkip': false,
+    });
+    await pumpEventQueue();
+    expect(controller.error, contains('try again'));
+    expect(controller.errorCanRetry, isTrue);
   });
 }
 

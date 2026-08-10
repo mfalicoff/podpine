@@ -9,6 +9,9 @@ import '../../core/database/app_database.dart';
 
 const episodeIdExtra = 'episodeId';
 const audioUrlExtra = 'audioUrl';
+const playbackEventType = 'type';
+const playbackCompletionEvent = 'episodeCompleted';
+const playbackErrorEvent = 'playbackError';
 
 MediaItem mediaItemForEpisode(EpisodeRecord episode) {
   final artwork = Uri.tryParse(episode.artworkUrl.trim());
@@ -71,12 +74,20 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
       },
     );
     _indexSubscription = _player.currentIndexStream.listen(_broadcastItem);
+    _discontinuitySubscription = _player.positionDiscontinuityStream.listen(
+      _onPositionDiscontinuity,
+    );
+    _errorSubscription = _player.errorStream.listen(_onPlayerError);
   }
 
-  final AudioPlayer _player = AudioPlayer(maxSkipsOnError: 3);
+  final AudioPlayer _player = AudioPlayer();
   late final Future<void> _ready;
   StreamSubscription<PlaybackEvent>? _eventSubscription;
   StreamSubscription<int?>? _indexSubscription;
+  StreamSubscription<PositionDiscontinuity>? _discontinuitySubscription;
+  StreamSubscription<PlayerException>? _errorSubscription;
+  final Set<int> _completedIndices = <int>{};
+  int _queueGeneration = 0;
 
   static const systemActions = <MediaAction>{
     MediaAction.seek,
@@ -99,6 +110,8 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> updateQueue(List<MediaItem> queue) async {
     await _player.stop();
+    _queueGeneration++;
+    _completedIndices.clear();
     final newQueue = List<MediaItem>.unmodifiable(queue);
     this.queue.add(newQueue);
     mediaItem.add(null);
@@ -206,6 +219,9 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   void _broadcastState(PlaybackEvent event) {
+    if (event.processingState == ProcessingState.completed) {
+      _emitCompletion(event.currentIndex);
+    }
     playbackState.add(
       PlaybackState(
         controls: notificationControls(playing: _player.playing),
@@ -229,9 +245,58 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
     );
   }
 
+  void _onPositionDiscontinuity(PositionDiscontinuity discontinuity) {
+    if (discontinuity.reason != PositionDiscontinuityReason.autoAdvance) return;
+    _emitCompletion(discontinuity.previousEvent.currentIndex);
+  }
+
+  void _emitCompletion(int? index) {
+    final items = queue.value;
+    if (index == null ||
+        index < 0 ||
+        index >= items.length ||
+        !_completedIndices.add(index)) {
+      return;
+    }
+    customEvent.add(<String, dynamic>{
+      playbackEventType: playbackCompletionEvent,
+      'eventId': '$_queueGeneration:$index',
+      episodeIdExtra: episodeIdForMediaItem(items[index]),
+    });
+  }
+
+  void _onPlayerError(PlayerException error) {
+    final index = error.index ?? _player.currentIndex;
+    final items = queue.value;
+    final episodeId = index != null && index >= 0 && index < items.length
+        ? episodeIdForMediaItem(items[index])
+        : null;
+    final willSkip = _player.hasNext;
+    customEvent.add(<String, dynamic>{
+      playbackEventType: playbackErrorEvent,
+      episodeIdExtra: episodeId,
+      'willSkip': willSkip,
+    });
+    unawaited(_recoverFromError(willSkip: willSkip));
+  }
+
+  Future<void> _recoverFromError({required bool willSkip}) async {
+    try {
+      if (willSkip) {
+        await skipToNext();
+      } else {
+        await _player.pause();
+      }
+    } catch (_) {
+      await _player.pause();
+    }
+  }
+
   Future<void> disposeHandler() async {
     await _eventSubscription?.cancel();
     await _indexSubscription?.cancel();
+    await _discontinuitySubscription?.cancel();
+    await _errorSubscription?.cancel();
     await _player.dispose();
   }
 }
