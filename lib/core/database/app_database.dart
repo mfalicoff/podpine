@@ -281,20 +281,14 @@ class AppDatabase extends _$AppDatabase {
         await migrator.createTable(inboxPreferenceRows);
         await migrator.createTable(podcastInboxOverrideRows);
         final now = DateTime.now().toUtc();
-        final existingEpisodes = await select(episodeRows).get();
-        await batch(
-          (batch) => batch.insertAll(
-            inboxRows,
-            existingEpisodes
-                .map(
-                  (episode) => InboxRowsCompanion.insert(
-                    episodeId: Value(episode.id),
-                    discoveredAt: episode.updatedAt,
-                    removedAt: Value(now),
-                  ),
-                )
-                .toList(),
-          ),
+        // An old schema cannot be decoded with the latest EpisodeRecord: later
+        // columns have not been added yet. Copy only stable raw columns so an
+        // upgrade from v1-v3 never tries to materialize a v10 data class.
+        await customStatement(
+          'INSERT INTO inbox_rows '
+          '(episode_id, discovered_at, removed_at) '
+          'SELECT id, updated_at, ? FROM episode_rows',
+          [now.millisecondsSinceEpoch ~/ 1000],
         );
       }
       if (from < 5) {
@@ -321,24 +315,42 @@ class AppDatabase extends _$AppDatabase {
         await migrator.createTable(syncDeviceRows);
       }
       if (from < 9) {
-        await migrator.addColumn(
-          inboxPreferenceRows,
-          inboxPreferenceRows.markRemovedAsPlayed,
-        );
+        if (!await _hasColumn(
+          'inbox_preference_rows',
+          'mark_removed_as_played',
+        )) {
+          await migrator.addColumn(
+            inboxPreferenceRows,
+            inboxPreferenceRows.markRemovedAsPlayed,
+          );
+        }
       }
       if (from < 10) {
-        await migrator.addColumn(downloadJobRows, downloadJobRows.automatic);
-        await migrator.addColumn(downloadJobRows, downloadJobRows.attempts);
-        await migrator.addColumn(
-          downloadJobRows,
-          downloadJobRows.nextAttemptAt,
-        );
-        await migrator.addColumn(downloadJobRows, downloadJobRows.playedAt);
+        if (!await _hasColumn('download_job_rows', 'automatic')) {
+          await migrator.addColumn(downloadJobRows, downloadJobRows.automatic);
+        }
+        if (!await _hasColumn('download_job_rows', 'attempts')) {
+          await migrator.addColumn(downloadJobRows, downloadJobRows.attempts);
+        }
+        if (!await _hasColumn('download_job_rows', 'next_attempt_at')) {
+          await migrator.addColumn(
+            downloadJobRows,
+            downloadJobRows.nextAttemptAt,
+          );
+        }
+        if (!await _hasColumn('download_job_rows', 'played_at')) {
+          await migrator.addColumn(downloadJobRows, downloadJobRows.playedAt);
+        }
         await migrator.createTable(downloadPreferenceRows);
         await migrator.createTable(podcastDownloadOverrideRows);
       }
     },
   );
+
+  Future<bool> _hasColumn(String table, String column) async {
+    final columns = await customSelect('PRAGMA table_info($table)').get();
+    return columns.any((row) => row.read<String>('name') == column);
+  }
 
   Stream<List<PodcastRecord>> watchPodcasts() => (select(
     podcastRows,

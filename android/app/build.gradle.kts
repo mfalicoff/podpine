@@ -4,6 +4,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val releaseKeystorePath = providers.environmentVariable("PODPINE_ANDROID_KEYSTORE_PATH").orNull
+val releaseKeystorePassword = providers.environmentVariable("PODPINE_ANDROID_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("PODPINE_ANDROID_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("PODPINE_ANDROID_KEY_PASSWORD").orNull
+val hasReleaseSigning = listOf(
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "app.podpine.podpine"
     compileSdk = flutter.compileSdkVersion
@@ -15,7 +26,6 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "app.podpine.podpine"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
@@ -25,11 +35,24 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // CI verifies release compilation without production credentials.
+            // Store artifacts must set all PODPINE_ANDROID_* variables above.
+            signingConfig = signingConfigs.getByName(
+                if (hasReleaseSigning) "release" else "debug",
+            )
         }
     }
 }

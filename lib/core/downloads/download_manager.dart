@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../database/app_database.dart';
+import '../diagnostics/diagnostics.dart';
 import 'download_file_store.dart';
 import 'download_models.dart';
 import 'download_platform.dart';
@@ -21,6 +22,7 @@ class DownloadManager extends ChangeNotifier {
     DownloadClientFactory? clientFactory,
     this.onDownloadedChanged,
     this.storageReserveBytes = 100 * 1024 * 1024,
+    this.diagnostics = const SentryDiagnosticReporter(),
     DateTime Function()? now,
   }) : files = files ?? const DeviceDownloadFileStore(),
        storage = storage ?? const DeviceStorageSpaceProbe(),
@@ -39,6 +41,7 @@ class DownloadManager extends ChangeNotifier {
   final Future<void> Function(EpisodeRecord episode, bool downloaded)?
   onDownloadedChanged;
   final int storageReserveBytes;
+  final DiagnosticReporter diagnostics;
   final Map<int, _ActiveDownload> _active = <int, _ActiveDownload>{};
   StreamSubscription<List<EpisodeRecord>>? _episodeSubscription;
   Timer? _policyTimer;
@@ -178,6 +181,15 @@ class DownloadManager extends ChangeNotifier {
 
     final active = _ActiveDownload(_clientFactory(), effectiveFloor);
     _active[episode.id] = active;
+    await diagnostics.breadcrumb(
+      DiagnosticArea.download,
+      'queued',
+      data: {
+        'outcome': 'queued',
+        'automatic': automatic,
+        'resumed': current != null,
+      },
+    );
     notifyListeners();
     unawaited(_run(episode.id, active));
   }
@@ -312,6 +324,7 @@ class DownloadManager extends ChangeNotifier {
 
   Future<void> _run(int episodeId, _ActiveDownload active) async {
     DownloadByteSink? sink;
+    int? responseStatus;
     try {
       var job = await database.downloadJob(episodeId);
       if (job == null || active.command == _DownloadCommand.cancel) return;
@@ -328,6 +341,7 @@ class DownloadManager extends ChangeNotifier {
           ? await files.length(job.partialPath)
           : 0;
       var response = await _send(job, offset, active.client);
+      responseStatus = response.statusCode;
 
       if (response.statusCode == 401 || response.statusCode == 403) {
         await response.stream.drain<void>();
@@ -343,6 +357,7 @@ class DownloadManager extends ChangeNotifier {
           );
           job = (await database.downloadJob(episodeId))!;
           response = await _send(job, offset, active.client);
+          responseStatus = response.statusCode;
         }
       }
 
@@ -358,6 +373,7 @@ class DownloadManager extends ChangeNotifier {
         await files.delete(job.partialPath);
         offset = 0;
         response = await _send(job, 0, active.client);
+        responseStatus = response.statusCode;
       }
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -374,6 +390,7 @@ class DownloadManager extends ChangeNotifier {
         await files.delete(job.partialPath);
         offset = 0;
         response = await _send(job, 0, active.client);
+        responseStatus = response.statusCode;
         append = false;
       } else if (offset > 0 && response.statusCode == 200) {
         await files.delete(job.partialPath);
@@ -434,6 +451,15 @@ class DownloadManager extends ChangeNotifier {
 
       if (active.command == _DownloadCommand.pause ||
           active.command == _DownloadCommand.cancel) {
+        await diagnostics.breadcrumb(
+          DiagnosticArea.download,
+          active.command == _DownloadCommand.pause ? 'paused' : 'cancelled',
+          data: {
+            'outcome': active.command == _DownloadCommand.pause
+                ? 'paused'
+                : 'cancelled',
+          },
+        );
         return;
       }
       if (totalBytes != null && downloaded != totalBytes) {
@@ -442,7 +468,7 @@ class DownloadManager extends ChangeNotifier {
         );
       }
       await _complete(job, downloaded, totalBytes: totalBytes);
-    } catch (error) {
+    } catch (error, stackTrace) {
       if (active.command == _DownloadCommand.none &&
           await database.downloadJob(episodeId) != null) {
         final message = _storageError(error)
@@ -471,6 +497,19 @@ class DownloadManager extends ChangeNotifier {
             nextAttemptAt: Value(nextAttemptAt),
             updatedAt: Value(DateTime.now().toUtc()),
           ),
+        );
+        await diagnostics.failure(
+          DiagnosticArea.download,
+          'transfer',
+          error,
+          stackTrace,
+          data: {
+            'automatic': partial?.automatic ?? false,
+            'attempts': attempts,
+            'retry_scheduled': nextAttemptAt != null,
+            'http_status_family': httpStatusFamily(responseStatus),
+            'bytes_bucket': downloadBytesBucket(length),
+          },
         );
         if (nextAttemptAt != null) _schedulePolicyAt(nextAttemptAt);
       }
@@ -538,6 +577,15 @@ class DownloadManager extends ChangeNotifier {
     final episode = await database.episodeById(job.episodeId);
     if (episode != null) await _setDownloaded(episode, true);
     await refreshStorageSnapshot();
+    await diagnostics.breadcrumb(
+      DiagnosticArea.download,
+      'completed',
+      data: {
+        'outcome': 'succeeded',
+        'automatic': job.automatic,
+        'bytes_bucket': downloadBytesBucket(actualLength),
+      },
+    );
   }
 
   Future<void> _setDownloaded(EpisodeRecord episode, bool value) async {

@@ -1,0 +1,84 @@
+name: Mobile CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.44.9
+
+jobs:
+  quality:
+    name: Format, analyze, test, and Drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed lib test integration_test
+      - name: Analyze
+        run: flutter analyze --fatal-infos
+      - name: Run unit and widget tests
+        run: flutter test --coverage
+      - name: Verify Drift generation is current
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+          dart run drift_dev schema dump \
+            lib/core/database/app_database.dart drift_schemas/
+          git diff --exit-code -- \
+            lib/core/database/app_database.g.dart drift_schemas/
+
+  android-release:
+    name: Android release build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build release app bundle (verification signing only)
+        run: flutter build appbundle --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release-verification
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 7
+
+  ios-release:
+    name: iOS release build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: quality
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Build release app without signing
+        run: flutter build ios --release --no-codesign

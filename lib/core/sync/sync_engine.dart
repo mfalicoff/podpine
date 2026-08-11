@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import '../backend/pinepods_backend.dart';
 import '../backend/podcast_backend.dart';
 import '../database/app_database.dart';
+import '../diagnostics/diagnostics.dart';
 import 'playback_sync.dart';
 import 'queue_sync.dart';
 
@@ -16,20 +17,50 @@ class SyncEngine {
     this.userId, {
     DateTime Function()? clock,
     double Function()? jitter,
+    this.diagnostics = const SentryDiagnosticReporter(),
   }) : _clock = clock ?? _utcNow,
        _jitter = jitter ?? Random().nextDouble;
 
   final AppDatabase database;
   final PodcastBackend backend;
   final int userId;
+  final DiagnosticReporter diagnostics;
   final DateTime Function() _clock;
   final double Function() _jitter;
 
   static const maxRetryDelay = Duration(minutes: 5);
 
   Future<void> refresh({bool forceMutationRetry = false}) async {
+    await diagnostics.breadcrumb(DiagnosticArea.sync, 'refresh_started');
+    try {
+      await _refresh(forceMutationRetry: forceMutationRetry);
+      await diagnostics.breadcrumb(
+        DiagnosticArea.sync,
+        'refresh_succeeded',
+        data: {'outcome': 'succeeded'},
+      );
+    } on SyncDeferredException {
+      rethrow;
+    } catch (error, stackTrace) {
+      await diagnostics.failure(
+        DiagnosticArea.sync,
+        'refresh',
+        error,
+        stackTrace,
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> _refresh({required bool forceMutationRetry}) async {
     await flushPendingMutations(ignoreBackoff: forceMutationRetry);
-    if ((await database.pendingMutations()).isNotEmpty) {
+    final pending = await database.pendingMutations();
+    if (pending.isNotEmpty) {
+      await diagnostics.breadcrumb(
+        DiagnosticArea.sync,
+        'refresh_deferred',
+        data: {'outcome': 'deferred', 'pending_count': pending.length},
+      );
       throw const SyncDeferredException();
     }
     final results = await Future.wait([
@@ -288,10 +319,31 @@ class SyncEngine {
             );
         }
         await database.removeMutation(mutation.id);
-      } catch (error) {
+        await diagnostics.breadcrumb(
+          DiagnosticArea.sync,
+          'mutation_succeeded',
+          data: {
+            'outcome': 'succeeded',
+            'mutation_type': _diagnosticMutationType(mutation.type),
+            'attempts': mutation.attempts,
+          },
+        );
+      } catch (error, stackTrace) {
         final attemptedAt = _clock();
         final message = _shortError(error);
-        if (_isPermanent(error)) {
+        final permanent = _isPermanent(error);
+        await diagnostics.failure(
+          DiagnosticArea.sync,
+          'mutation_flush',
+          error,
+          stackTrace,
+          data: {
+            'mutation_type': _diagnosticMutationType(mutation.type),
+            'attempts': mutation.attempts + 1,
+            'permanent': permanent,
+          },
+        );
+        if (permanent) {
           await database.markMutationFailed(
             id: mutation.id,
             attempts: mutation.attempts,
@@ -364,6 +416,20 @@ class SyncEngine {
     final message = error.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
     return message.length <= 500 ? message : '${message.substring(0, 497)}...';
   }
+
+  static String _diagnosticMutationType(String value) =>
+      const {
+        'position',
+        'completed',
+        'downloaded',
+        'podcast_subscribe',
+        'podcast_unsubscribe',
+        'queue_add',
+        'queue_remove',
+        'queue_reorder',
+      }.contains(value)
+      ? value
+      : 'unknown';
 
   static DateTime _utcNow() => DateTime.now().toUtc();
 
