@@ -176,6 +176,14 @@ abstract interface class PodcastBackend {
   Future<void> removeFromQueue(int userId, int episodeId);
 }
 
+abstract interface class EpisodeDownloadBackend {
+  Future<void> setEpisodeDownloaded(int userId, int episodeId, bool downloaded);
+}
+
+abstract interface class QueueReorderBackend {
+  Future<void> reorderQueue(int userId, List<int> episodeIds);
+}
+
 int _jsonInt(Object? value) => switch (value) {
   int number => number,
   num number => number.toInt(),

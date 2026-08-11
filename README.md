@@ -14,6 +14,7 @@ Podpine is an offline-first Flutter client for a self-hosted [Pinepods](https://
 - Rich, cached podcast and episode detail views before and after subscription
 - Optimistic subscribe/unsubscribe with offline retry
 - Responsive Home, Library, Queue, and Search views
+- Persistent new-episode Inbox with triage actions and configurable swipes
 - Persistent mini-player and full player with background audio
 - Lock-screen, notification, Bluetooth, and headset media controls
 - Seek, skip intervals, playback speed, and periodic position persistence

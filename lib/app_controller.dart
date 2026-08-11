@@ -349,8 +349,18 @@ class AppController extends ChangeNotifier {
     if (backend != null && userId != null && episode.id > 0) {
       try {
         await backend!.addToQueue(userId!, episode.id);
+        final reorderBackend = backend is QueueReorderBackend
+            ? backend! as QueueReorderBackend
+            : null;
+        if (next && reorderBackend != null) {
+          final queue = await database.watchQueue().first;
+          await reorderBackend.reorderQueue(
+            userId!,
+            queue.map((item) => item.id).toList(),
+          );
+        }
       } catch (_) {
-        await _enqueueMutation('queue_add', episode.id, const {});
+        await _enqueueMutation('queue_add', episode.id, {'next': next});
         error = 'Queue changed offline.';
         notifyListeners();
       }
@@ -367,6 +377,39 @@ class AppController extends ChangeNotifier {
         error = 'Queue changed offline.';
         notifyListeners();
       }
+    }
+  }
+
+  Future<void> removeFromInbox(EpisodeRecord episode) =>
+      database.removeFromInbox(episode.id);
+
+  Future<void> restoreToInbox(EpisodeRecord episode) =>
+      database.restoreToInbox(episode.id);
+
+  Future<void> setDownloaded(EpisodeRecord episode, bool downloaded) async {
+    await database.setDownloaded(episode.id, downloaded);
+    final currentBackend = backend;
+    final downloadBackend = currentBackend is EpisodeDownloadBackend
+        ? currentBackend as EpisodeDownloadBackend
+        : null;
+    if (downloadBackend != null && userId != null && episode.id > 0) {
+      try {
+        await downloadBackend.setEpisodeDownloaded(
+          userId!,
+          episode.id,
+          downloaded,
+        );
+        return;
+      } catch (_) {
+        // The durable mutation below preserves the optimistic local change.
+      }
+    }
+    if (episode.id > 0) {
+      await _enqueueMutation('downloaded', episode.id, {'value': downloaded});
+      error = downloaded
+          ? 'Download requested offline.'
+          : 'Download removal saved offline.';
+      notifyListeners();
     }
   }
 

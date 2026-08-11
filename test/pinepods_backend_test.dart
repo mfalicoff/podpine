@@ -284,6 +284,49 @@ void main() {
         'user_id': 42,
       });
     });
+
+    test('requests and deletes server-side episode downloads', () async {
+      final requests = <http.Request>[];
+      final backend = _backend(
+        MockClient((request) async {
+          requests.add(request);
+          return _json({'processed_count': 1, 'failed_count': 0});
+        }),
+      );
+
+      await backend.setEpisodeDownloaded(42, 101, true);
+      await backend.setEpisodeDownloaded(42, 101, false);
+
+      expect(requests.map((request) => request.url.path), [
+        '/api/data/bulk_download_episodes',
+        '/api/data/bulk_delete_downloaded_episodes',
+      ]);
+      for (final request in requests) {
+        expect(jsonDecode(request.body), {
+          'episode_ids': [101],
+          'user_id': 42,
+          'is_youtube': false,
+        });
+      }
+    });
+
+    test('reorders the server queue for play next', () async {
+      late http.Request request;
+      final backend = _backend(
+        MockClient((value) async {
+          request = value;
+          return _json({'message': 'Queue reordered'});
+        }),
+      );
+
+      await backend.reorderQueue(42, [101, 202]);
+
+      expect(request.url.path, '/api/data/reorder_queue');
+      expect(request.url.queryParameters, {'user_id': '42'});
+      expect(jsonDecode(request.body), {
+        'episode_ids': [101, 202],
+      });
+    });
   });
 
   group('Pinepods failure contracts', () {

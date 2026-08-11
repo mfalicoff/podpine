@@ -9,9 +9,15 @@ import '../details/podcast_detail_screen.dart';
 import 'artwork.dart';
 
 class EpisodeTile extends ConsumerWidget {
-  const EpisodeTile({super.key, required this.episode, this.compact = false});
+  const EpisodeTile({
+    super.key,
+    required this.episode,
+    this.compact = false,
+    this.onLongPress,
+  });
   final EpisodeRecord episode;
   final bool compact;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,6 +28,7 @@ class EpisodeTile extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
+        onLongPress: onLongPress,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
             builder: (_) => EpisodeDetailScreen(

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../features/player/playback_options.dart';
+import '../../features/inbox/inbox_models.dart';
 
 part 'app_database.g.dart';
 
@@ -68,6 +69,36 @@ class QueueRows extends Table {
   Set<Column<Object>> get primaryKey => {episodeId};
 }
 
+@DataClassName('InboxRecord')
+class InboxRows extends Table {
+  IntColumn get episodeId => integer().references(EpisodeRows, #id)();
+  DateTimeColumn get discoveredAt => dateTime()();
+  DateTimeColumn get removedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {episodeId};
+}
+
+@DataClassName('InboxPreferencesRecord')
+class InboxPreferenceRows extends Table {
+  IntColumn get id => integer().withDefault(const Constant(0))();
+  TextColumn get leftAction => text().withDefault(const Constant('remove'))();
+  TextColumn get rightAction => text().withDefault(const Constant('queue'))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('PodcastInboxOverrideRecord')
+class PodcastInboxOverrideRows extends Table {
+  IntColumn get podcastId => integer().references(PodcastRows, #id)();
+  TextColumn get leftAction => text().nullable()();
+  TextColumn get rightAction => text().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {podcastId};
+}
+
 @DataClassName('PendingMutation')
 class SyncMutations extends Table {
   TextColumn get id => text()();
@@ -107,6 +138,9 @@ class PodcastPlaybackOverrideRows extends Table {
     DiscoveryCacheRows,
     EpisodeRows,
     QueueRows,
+    InboxRows,
+    InboxPreferenceRows,
+    PodcastInboxOverrideRows,
     SyncMutations,
     PlaybackPreferenceRows,
     PodcastPlaybackOverrideRows,
@@ -126,7 +160,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -143,6 +177,27 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(podcastRows, podcastRows.explicit);
         await migrator.addColumn(podcastRows, podcastRows.podcastIndexId);
         await migrator.createTable(discoveryCacheRows);
+      }
+      if (from < 4) {
+        await migrator.createTable(inboxRows);
+        await migrator.createTable(inboxPreferenceRows);
+        await migrator.createTable(podcastInboxOverrideRows);
+        final now = DateTime.now().toUtc();
+        final existingEpisodes = await select(episodeRows).get();
+        await batch(
+          (batch) => batch.insertAll(
+            inboxRows,
+            existingEpisodes
+                .map(
+                  (episode) => InboxRowsCompanion.insert(
+                    episodeId: Value(episode.id),
+                    discoveredAt: episode.updatedAt,
+                    removedAt: Value(now),
+                  ),
+                )
+                .toList(),
+          ),
+        );
       }
     },
   );
@@ -249,7 +304,13 @@ class AppDatabase extends _$AppDatabase {
         await (delete(
           queueRows,
         )..where((row) => row.episodeId.isIn(episodeIds))).go();
+        await (delete(
+          inboxRows,
+        )..where((row) => row.episodeId.isIn(episodeIds))).go();
       }
+      await (delete(
+        podcastInboxOverrideRows,
+      )..where((row) => row.podcastId.equals(podcastId))).go();
       await (delete(
         podcastPlaybackOverrideRows,
       )..where((row) => row.podcastId.equals(podcastId))).go();
@@ -268,6 +329,121 @@ class AppDatabase extends _$AppDatabase {
     ])..orderBy([OrderingTerm.asc(queueRows.sortKey)]);
     return query.watch().map(
       (rows) => rows.map((row) => row.readTable(episodeRows)).toList(),
+    );
+  }
+
+  Stream<List<EpisodeRecord>> watchInbox({
+    InboxFilter filter = InboxFilter.all,
+    InboxSort sort = InboxSort.newest,
+  }) {
+    final query = select(episodeRows).join([
+      innerJoin(inboxRows, inboxRows.episodeId.equalsExp(episodeRows.id)),
+    ])..where(inboxRows.removedAt.isNull());
+    switch (filter) {
+      case InboxFilter.all:
+        break;
+      case InboxFilter.unplayed:
+        query.where(episodeRows.completed.equals(false));
+      case InboxFilter.queued:
+        query.where(episodeRows.queued.equals(true));
+      case InboxFilter.downloaded:
+        query.where(episodeRows.downloaded.equals(true));
+    }
+    query.orderBy(switch (sort) {
+      InboxSort.newest => [
+        OrderingTerm.desc(inboxRows.discoveredAt),
+        OrderingTerm.desc(episodeRows.publishedAt),
+      ],
+      InboxSort.oldest => [
+        OrderingTerm.asc(inboxRows.discoveredAt),
+        OrderingTerm.asc(episodeRows.publishedAt),
+      ],
+      InboxSort.podcast => [
+        OrderingTerm.asc(episodeRows.podcastTitle),
+        OrderingTerm.desc(episodeRows.publishedAt),
+      ],
+    });
+    return query.watch().map(
+      (rows) => rows.map((row) => row.readTable(episodeRows)).toList(),
+    );
+  }
+
+  Stream<int> watchInboxUnreadCount() {
+    final count = episodeRows.id.count();
+    final query =
+        selectOnly(episodeRows).join([
+            innerJoin(inboxRows, inboxRows.episodeId.equalsExp(episodeRows.id)),
+          ])
+          ..addColumns([count])
+          ..where(
+            inboxRows.removedAt.isNull() & episodeRows.completed.equals(false),
+          );
+    return query.watchSingle().map((row) => row.read(count) ?? 0);
+  }
+
+  Future<void> removeFromInbox(int episodeId) =>
+      (update(inboxRows)..where((row) => row.episodeId.equals(episodeId)))
+          .write(InboxRowsCompanion(removedAt: Value(DateTime.now().toUtc())));
+
+  Future<void> restoreToInbox(int episodeId) =>
+      (update(inboxRows)..where((row) => row.episodeId.equals(episodeId)))
+          .write(const InboxRowsCompanion(removedAt: Value(null)));
+
+  Future<InboxSwipePreferences> inboxSwipePreferences() async {
+    final row = await select(inboxPreferenceRows).getSingleOrNull();
+    return InboxSwipePreferences(
+      left: InboxSwipeAction.parse(row?.leftAction),
+      right: row == null
+          ? InboxSwipeAction.queue
+          : InboxSwipeAction.parse(row.rightAction),
+    );
+  }
+
+  Future<void> setInboxSwipePreferences(InboxSwipePreferences preferences) =>
+      into(inboxPreferenceRows).insertOnConflictUpdate(
+        InboxPreferenceRowsCompanion.insert(
+          id: const Value(0),
+          leftAction: Value(preferences.left.name),
+          rightAction: Value(preferences.right.name),
+        ),
+      );
+
+  Future<PodcastInboxOverride> podcastInboxOverride(int podcastId) async {
+    final row = await (select(
+      podcastInboxOverrideRows,
+    )..where((entry) => entry.podcastId.equals(podcastId))).getSingleOrNull();
+    return PodcastInboxOverride(
+      left: row?.leftAction == null
+          ? null
+          : InboxSwipeAction.parse(row!.leftAction),
+      right: row?.rightAction == null
+          ? null
+          : InboxSwipeAction.parse(row!.rightAction),
+    );
+  }
+
+  Future<InboxSwipePreferences> resolvedInboxSwipePreferences(
+    int podcastId,
+  ) async => (await podcastInboxOverride(
+    podcastId,
+  )).resolve(await inboxSwipePreferences());
+
+  Future<void> setPodcastInboxOverride(
+    int podcastId,
+    PodcastInboxOverride override,
+  ) async {
+    if (override.isEmpty) {
+      await (delete(
+        podcastInboxOverrideRows,
+      )..where((row) => row.podcastId.equals(podcastId))).go();
+      return;
+    }
+    await into(podcastInboxOverrideRows).insertOnConflictUpdate(
+      PodcastInboxOverrideRowsCompanion.insert(
+        podcastId: Value(podcastId),
+        leftAction: Value(override.left?.name),
+        rightAction: Value(override.right?.name),
+      ),
     );
   }
 
@@ -355,6 +531,12 @@ class AppDatabase extends _$AppDatabase {
     required List<QueueRowsCompanion> queue,
   }) async {
     await transaction(() async {
+      final knownInboxEpisodeIds =
+          (await (selectOnly(
+                inboxRows,
+              )..addColumns([inboxRows.episodeId])).get())
+              .map((row) => row.read(inboxRows.episodeId)!)
+              .toSet();
       final remotePodcastIds = podcasts
           .map((podcast) => podcast.id.value)
           .toSet();
@@ -376,13 +558,19 @@ class AppDatabase extends _$AppDatabase {
           await (delete(
             queueRows,
           )..where((row) => row.episodeId.isIn(staleEpisodeIds))).go();
+          await (delete(
+            inboxRows,
+          )..where((row) => row.episodeId.isIn(staleEpisodeIds))).go();
         }
         await (delete(
           episodeRows,
         )..where((row) => row.podcastId.equals(podcast.id))).go();
-        await (delete(podcastPlaybackOverrideRows)
-              ..where((row) => row.podcastId.equals(podcast.id)))
-            .go();
+        await (delete(
+          podcastPlaybackOverrideRows,
+        )..where((row) => row.podcastId.equals(podcast.id))).go();
+        await (delete(
+          podcastInboxOverrideRows,
+        )..where((row) => row.podcastId.equals(podcast.id))).go();
         await (delete(
           podcastRows,
         )..where((row) => row.id.equals(podcast.id))).go();
@@ -391,6 +579,19 @@ class AppDatabase extends _$AppDatabase {
         batch.insertAllOnConflictUpdate(podcastRows, podcasts);
         batch.insertAllOnConflictUpdate(episodeRows, episodes);
       });
+      final discoveredAt = DateTime.now().toUtc();
+      final newInboxRows = episodes
+          .where((episode) => !knownInboxEpisodeIds.contains(episode.id.value))
+          .map(
+            (episode) => InboxRowsCompanion.insert(
+              episodeId: Value(episode.id.value),
+              discoveredAt: discoveredAt,
+            ),
+          )
+          .toList();
+      if (newInboxRows.isNotEmpty) {
+        await batch((batch) => batch.insertAll(inboxRows, newInboxRows));
+      }
       await delete(queueRows).go();
       await batch((batch) => batch.insertAll(queueRows, queue));
     });
@@ -409,6 +610,14 @@ class AppDatabase extends _$AppDatabase {
       (update(episodeRows)..where((e) => e.id.equals(episodeId))).write(
         EpisodeRowsCompanion(
           positionSeconds: Value(position.inSeconds),
+          updatedAt: Value(DateTime.now().toUtc()),
+        ),
+      );
+
+  Future<void> setDownloaded(int episodeId, bool value) =>
+      (update(episodeRows)..where((e) => e.id.equals(episodeId))).write(
+        EpisodeRowsCompanion(
+          downloaded: Value(value),
           updatedAt: Value(DateTime.now().toUtc()),
         ),
       );
@@ -518,6 +727,15 @@ class AppDatabase extends _$AppDatabase {
     await batch((batch) {
       batch.insertAll(podcastRows, podcasts);
       batch.insertAll(episodeRows, episodes);
+      batch.insertAll(
+        inboxRows,
+        episodes.map(
+          (episode) => InboxRowsCompanion.insert(
+            episodeId: episode.id,
+            discoveredAt: now,
+          ),
+        ),
+      );
     });
     await addToQueue(-101);
     await addToQueue(-103);
@@ -526,8 +744,11 @@ class AppDatabase extends _$AppDatabase {
   Future<void> clearAll() async {
     await transaction(() async {
       await delete(queueRows).go();
+      await delete(inboxRows).go();
       await delete(syncMutations).go();
       await delete(discoveryCacheRows).go();
+      await delete(podcastInboxOverrideRows).go();
+      await delete(inboxPreferenceRows).go();
       await delete(podcastPlaybackOverrideRows).go();
       await delete(episodeRows).go();
       await delete(podcastRows).go();

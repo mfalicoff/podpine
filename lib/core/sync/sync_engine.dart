@@ -134,10 +134,31 @@ class SyncEngine {
           case 'queue_add':
             if (episodeId == null) break;
             await backend.addToQueue(userId, episodeId);
+            if (payload['next'] == true && backend is QueueReorderBackend) {
+              final queue = await database.watchQueue().first;
+              await (backend as QueueReorderBackend).reorderQueue(
+                userId,
+                queue.map((item) => item.id).toList(),
+              );
+            }
             break;
           case 'queue_remove':
             if (episodeId == null) break;
             await backend.removeFromQueue(userId, episodeId);
+            break;
+          case 'downloaded':
+            if (episodeId == null) break;
+            final downloadBackend = backend is EpisodeDownloadBackend
+                ? backend as EpisodeDownloadBackend
+                : null;
+            if (downloadBackend == null) {
+              throw UnsupportedError('Episode downloads are unavailable.');
+            }
+            await downloadBackend.setEpisodeDownloaded(
+              userId,
+              episodeId,
+              payload['value'] == true,
+            );
             break;
           case 'podcast_subscribe':
             final podcast = RemotePodcast.fromJson(payload);

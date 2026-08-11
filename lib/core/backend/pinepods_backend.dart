@@ -15,7 +15,8 @@ class PinepodsException implements Exception {
   String toString() => message;
 }
 
-class PinepodsBackend implements PodcastBackend {
+class PinepodsBackend
+    implements PodcastBackend, EpisodeDownloadBackend, QueueReorderBackend {
   PinepodsBackend({
     required String serverUrl,
     required this.apiKey,
@@ -42,9 +43,17 @@ class PinepodsBackend implements PodcastBackend {
     return _send(() => _client.get(_uri(path, query), headers: _headers));
   }
 
-  Future<Object?> _post(String path, Map<String, Object?> body) async {
+  Future<Object?> _post(
+    String path,
+    Map<String, Object?> body, [
+    Map<String, String>? query,
+  ]) async {
     return _send(
-      () => _client.post(_uri(path), headers: _headers, body: jsonEncode(body)),
+      () => _client.post(
+        _uri(path, query),
+        headers: _headers,
+        body: jsonEncode(body),
+      ),
     );
   }
 
@@ -309,6 +318,29 @@ class PinepodsBackend implements PodcastBackend {
   Future<void> removeFromQueue(int userId, int episodeId) => _post(
     '/api/data/remove_queued_pod',
     {'episode_id': episodeId, 'user_id': userId, 'is_youtube': false},
+  );
+
+  @override
+  Future<void> setEpisodeDownloaded(
+    int userId,
+    int episodeId,
+    bool downloaded,
+  ) => _post(
+    downloaded
+        ? '/api/data/bulk_download_episodes'
+        : '/api/data/bulk_delete_downloaded_episodes',
+    {
+      'episode_ids': [episodeId],
+      'user_id': userId,
+      'is_youtube': false,
+    },
+  );
+
+  @override
+  Future<void> reorderQueue(int userId, List<int> episodeIds) => _post(
+    '/api/data/reorder_queue',
+    {'episode_ids': episodeIds},
+    {'user_id': '$userId'},
   );
 
   static List<T> _mapRows<T>(

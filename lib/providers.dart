@@ -42,6 +42,10 @@ final queueProvider = StreamProvider<List<EpisodeRecord>>(
   (ref) => ref.watch(databaseProvider).watchQueue(),
 );
 
+final inboxUnreadCountProvider = StreamProvider<int>(
+  (ref) => ref.watch(databaseProvider).watchInboxUnreadCount(),
+);
+
 final playerControllerProvider = ChangeNotifierProvider<PlayerController>((
   ref,
 ) {

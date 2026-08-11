@@ -2188,6 +2188,802 @@ class QueueRowsCompanion extends UpdateCompanion<QueueRecord> {
   }
 }
 
+class $InboxRowsTable extends InboxRows
+    with TableInfo<$InboxRowsTable, InboxRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InboxRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _episodeIdMeta = const VerificationMeta(
+    'episodeId',
+  );
+  @override
+  late final GeneratedColumn<int> episodeId = GeneratedColumn<int>(
+    'episode_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES episode_rows (id)',
+    ),
+  );
+  static const VerificationMeta _discoveredAtMeta = const VerificationMeta(
+    'discoveredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> discoveredAt = GeneratedColumn<DateTime>(
+    'discovered_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _removedAtMeta = const VerificationMeta(
+    'removedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> removedAt = GeneratedColumn<DateTime>(
+    'removed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [episodeId, discoveredAt, removedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inbox_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InboxRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('episode_id')) {
+      context.handle(
+        _episodeIdMeta,
+        episodeId.isAcceptableOrUnknown(data['episode_id']!, _episodeIdMeta),
+      );
+    }
+    if (data.containsKey('discovered_at')) {
+      context.handle(
+        _discoveredAtMeta,
+        discoveredAt.isAcceptableOrUnknown(
+          data['discovered_at']!,
+          _discoveredAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_discoveredAtMeta);
+    }
+    if (data.containsKey('removed_at')) {
+      context.handle(
+        _removedAtMeta,
+        removedAt.isAcceptableOrUnknown(data['removed_at']!, _removedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {episodeId};
+  @override
+  InboxRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InboxRecord(
+      episodeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}episode_id'],
+      )!,
+      discoveredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}discovered_at'],
+      )!,
+      removedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}removed_at'],
+      ),
+    );
+  }
+
+  @override
+  $InboxRowsTable createAlias(String alias) {
+    return $InboxRowsTable(attachedDatabase, alias);
+  }
+}
+
+class InboxRecord extends DataClass implements Insertable<InboxRecord> {
+  final int episodeId;
+  final DateTime discoveredAt;
+  final DateTime? removedAt;
+  const InboxRecord({
+    required this.episodeId,
+    required this.discoveredAt,
+    this.removedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['episode_id'] = Variable<int>(episodeId);
+    map['discovered_at'] = Variable<DateTime>(discoveredAt);
+    if (!nullToAbsent || removedAt != null) {
+      map['removed_at'] = Variable<DateTime>(removedAt);
+    }
+    return map;
+  }
+
+  InboxRowsCompanion toCompanion(bool nullToAbsent) {
+    return InboxRowsCompanion(
+      episodeId: Value(episodeId),
+      discoveredAt: Value(discoveredAt),
+      removedAt: removedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(removedAt),
+    );
+  }
+
+  factory InboxRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InboxRecord(
+      episodeId: serializer.fromJson<int>(json['episodeId']),
+      discoveredAt: serializer.fromJson<DateTime>(json['discoveredAt']),
+      removedAt: serializer.fromJson<DateTime?>(json['removedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'episodeId': serializer.toJson<int>(episodeId),
+      'discoveredAt': serializer.toJson<DateTime>(discoveredAt),
+      'removedAt': serializer.toJson<DateTime?>(removedAt),
+    };
+  }
+
+  InboxRecord copyWith({
+    int? episodeId,
+    DateTime? discoveredAt,
+    Value<DateTime?> removedAt = const Value.absent(),
+  }) => InboxRecord(
+    episodeId: episodeId ?? this.episodeId,
+    discoveredAt: discoveredAt ?? this.discoveredAt,
+    removedAt: removedAt.present ? removedAt.value : this.removedAt,
+  );
+  InboxRecord copyWithCompanion(InboxRowsCompanion data) {
+    return InboxRecord(
+      episodeId: data.episodeId.present ? data.episodeId.value : this.episodeId,
+      discoveredAt: data.discoveredAt.present
+          ? data.discoveredAt.value
+          : this.discoveredAt,
+      removedAt: data.removedAt.present ? data.removedAt.value : this.removedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InboxRecord(')
+          ..write('episodeId: $episodeId, ')
+          ..write('discoveredAt: $discoveredAt, ')
+          ..write('removedAt: $removedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(episodeId, discoveredAt, removedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InboxRecord &&
+          other.episodeId == this.episodeId &&
+          other.discoveredAt == this.discoveredAt &&
+          other.removedAt == this.removedAt);
+}
+
+class InboxRowsCompanion extends UpdateCompanion<InboxRecord> {
+  final Value<int> episodeId;
+  final Value<DateTime> discoveredAt;
+  final Value<DateTime?> removedAt;
+  const InboxRowsCompanion({
+    this.episodeId = const Value.absent(),
+    this.discoveredAt = const Value.absent(),
+    this.removedAt = const Value.absent(),
+  });
+  InboxRowsCompanion.insert({
+    this.episodeId = const Value.absent(),
+    required DateTime discoveredAt,
+    this.removedAt = const Value.absent(),
+  }) : discoveredAt = Value(discoveredAt);
+  static Insertable<InboxRecord> custom({
+    Expression<int>? episodeId,
+    Expression<DateTime>? discoveredAt,
+    Expression<DateTime>? removedAt,
+  }) {
+    return RawValuesInsertable({
+      if (episodeId != null) 'episode_id': episodeId,
+      if (discoveredAt != null) 'discovered_at': discoveredAt,
+      if (removedAt != null) 'removed_at': removedAt,
+    });
+  }
+
+  InboxRowsCompanion copyWith({
+    Value<int>? episodeId,
+    Value<DateTime>? discoveredAt,
+    Value<DateTime?>? removedAt,
+  }) {
+    return InboxRowsCompanion(
+      episodeId: episodeId ?? this.episodeId,
+      discoveredAt: discoveredAt ?? this.discoveredAt,
+      removedAt: removedAt ?? this.removedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (episodeId.present) {
+      map['episode_id'] = Variable<int>(episodeId.value);
+    }
+    if (discoveredAt.present) {
+      map['discovered_at'] = Variable<DateTime>(discoveredAt.value);
+    }
+    if (removedAt.present) {
+      map['removed_at'] = Variable<DateTime>(removedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InboxRowsCompanion(')
+          ..write('episodeId: $episodeId, ')
+          ..write('discoveredAt: $discoveredAt, ')
+          ..write('removedAt: $removedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InboxPreferenceRowsTable extends InboxPreferenceRows
+    with TableInfo<$InboxPreferenceRowsTable, InboxPreferencesRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InboxPreferenceRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _leftActionMeta = const VerificationMeta(
+    'leftAction',
+  );
+  @override
+  late final GeneratedColumn<String> leftAction = GeneratedColumn<String>(
+    'left_action',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('remove'),
+  );
+  static const VerificationMeta _rightActionMeta = const VerificationMeta(
+    'rightAction',
+  );
+  @override
+  late final GeneratedColumn<String> rightAction = GeneratedColumn<String>(
+    'right_action',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('queue'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, leftAction, rightAction];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'inbox_preference_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InboxPreferencesRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('left_action')) {
+      context.handle(
+        _leftActionMeta,
+        leftAction.isAcceptableOrUnknown(data['left_action']!, _leftActionMeta),
+      );
+    }
+    if (data.containsKey('right_action')) {
+      context.handle(
+        _rightActionMeta,
+        rightAction.isAcceptableOrUnknown(
+          data['right_action']!,
+          _rightActionMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InboxPreferencesRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InboxPreferencesRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      leftAction: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}left_action'],
+      )!,
+      rightAction: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}right_action'],
+      )!,
+    );
+  }
+
+  @override
+  $InboxPreferenceRowsTable createAlias(String alias) {
+    return $InboxPreferenceRowsTable(attachedDatabase, alias);
+  }
+}
+
+class InboxPreferencesRecord extends DataClass
+    implements Insertable<InboxPreferencesRecord> {
+  final int id;
+  final String leftAction;
+  final String rightAction;
+  const InboxPreferencesRecord({
+    required this.id,
+    required this.leftAction,
+    required this.rightAction,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['left_action'] = Variable<String>(leftAction);
+    map['right_action'] = Variable<String>(rightAction);
+    return map;
+  }
+
+  InboxPreferenceRowsCompanion toCompanion(bool nullToAbsent) {
+    return InboxPreferenceRowsCompanion(
+      id: Value(id),
+      leftAction: Value(leftAction),
+      rightAction: Value(rightAction),
+    );
+  }
+
+  factory InboxPreferencesRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InboxPreferencesRecord(
+      id: serializer.fromJson<int>(json['id']),
+      leftAction: serializer.fromJson<String>(json['leftAction']),
+      rightAction: serializer.fromJson<String>(json['rightAction']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'leftAction': serializer.toJson<String>(leftAction),
+      'rightAction': serializer.toJson<String>(rightAction),
+    };
+  }
+
+  InboxPreferencesRecord copyWith({
+    int? id,
+    String? leftAction,
+    String? rightAction,
+  }) => InboxPreferencesRecord(
+    id: id ?? this.id,
+    leftAction: leftAction ?? this.leftAction,
+    rightAction: rightAction ?? this.rightAction,
+  );
+  InboxPreferencesRecord copyWithCompanion(InboxPreferenceRowsCompanion data) {
+    return InboxPreferencesRecord(
+      id: data.id.present ? data.id.value : this.id,
+      leftAction: data.leftAction.present
+          ? data.leftAction.value
+          : this.leftAction,
+      rightAction: data.rightAction.present
+          ? data.rightAction.value
+          : this.rightAction,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InboxPreferencesRecord(')
+          ..write('id: $id, ')
+          ..write('leftAction: $leftAction, ')
+          ..write('rightAction: $rightAction')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, leftAction, rightAction);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InboxPreferencesRecord &&
+          other.id == this.id &&
+          other.leftAction == this.leftAction &&
+          other.rightAction == this.rightAction);
+}
+
+class InboxPreferenceRowsCompanion
+    extends UpdateCompanion<InboxPreferencesRecord> {
+  final Value<int> id;
+  final Value<String> leftAction;
+  final Value<String> rightAction;
+  const InboxPreferenceRowsCompanion({
+    this.id = const Value.absent(),
+    this.leftAction = const Value.absent(),
+    this.rightAction = const Value.absent(),
+  });
+  InboxPreferenceRowsCompanion.insert({
+    this.id = const Value.absent(),
+    this.leftAction = const Value.absent(),
+    this.rightAction = const Value.absent(),
+  });
+  static Insertable<InboxPreferencesRecord> custom({
+    Expression<int>? id,
+    Expression<String>? leftAction,
+    Expression<String>? rightAction,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (leftAction != null) 'left_action': leftAction,
+      if (rightAction != null) 'right_action': rightAction,
+    });
+  }
+
+  InboxPreferenceRowsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? leftAction,
+    Value<String>? rightAction,
+  }) {
+    return InboxPreferenceRowsCompanion(
+      id: id ?? this.id,
+      leftAction: leftAction ?? this.leftAction,
+      rightAction: rightAction ?? this.rightAction,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (leftAction.present) {
+      map['left_action'] = Variable<String>(leftAction.value);
+    }
+    if (rightAction.present) {
+      map['right_action'] = Variable<String>(rightAction.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InboxPreferenceRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('leftAction: $leftAction, ')
+          ..write('rightAction: $rightAction')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PodcastInboxOverrideRowsTable extends PodcastInboxOverrideRows
+    with TableInfo<$PodcastInboxOverrideRowsTable, PodcastInboxOverrideRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PodcastInboxOverrideRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _podcastIdMeta = const VerificationMeta(
+    'podcastId',
+  );
+  @override
+  late final GeneratedColumn<int> podcastId = GeneratedColumn<int>(
+    'podcast_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES podcast_rows (id)',
+    ),
+  );
+  static const VerificationMeta _leftActionMeta = const VerificationMeta(
+    'leftAction',
+  );
+  @override
+  late final GeneratedColumn<String> leftAction = GeneratedColumn<String>(
+    'left_action',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rightActionMeta = const VerificationMeta(
+    'rightAction',
+  );
+  @override
+  late final GeneratedColumn<String> rightAction = GeneratedColumn<String>(
+    'right_action',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [podcastId, leftAction, rightAction];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'podcast_inbox_override_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PodcastInboxOverrideRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('podcast_id')) {
+      context.handle(
+        _podcastIdMeta,
+        podcastId.isAcceptableOrUnknown(data['podcast_id']!, _podcastIdMeta),
+      );
+    }
+    if (data.containsKey('left_action')) {
+      context.handle(
+        _leftActionMeta,
+        leftAction.isAcceptableOrUnknown(data['left_action']!, _leftActionMeta),
+      );
+    }
+    if (data.containsKey('right_action')) {
+      context.handle(
+        _rightActionMeta,
+        rightAction.isAcceptableOrUnknown(
+          data['right_action']!,
+          _rightActionMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {podcastId};
+  @override
+  PodcastInboxOverrideRecord map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PodcastInboxOverrideRecord(
+      podcastId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}podcast_id'],
+      )!,
+      leftAction: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}left_action'],
+      ),
+      rightAction: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}right_action'],
+      ),
+    );
+  }
+
+  @override
+  $PodcastInboxOverrideRowsTable createAlias(String alias) {
+    return $PodcastInboxOverrideRowsTable(attachedDatabase, alias);
+  }
+}
+
+class PodcastInboxOverrideRecord extends DataClass
+    implements Insertable<PodcastInboxOverrideRecord> {
+  final int podcastId;
+  final String? leftAction;
+  final String? rightAction;
+  const PodcastInboxOverrideRecord({
+    required this.podcastId,
+    this.leftAction,
+    this.rightAction,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['podcast_id'] = Variable<int>(podcastId);
+    if (!nullToAbsent || leftAction != null) {
+      map['left_action'] = Variable<String>(leftAction);
+    }
+    if (!nullToAbsent || rightAction != null) {
+      map['right_action'] = Variable<String>(rightAction);
+    }
+    return map;
+  }
+
+  PodcastInboxOverrideRowsCompanion toCompanion(bool nullToAbsent) {
+    return PodcastInboxOverrideRowsCompanion(
+      podcastId: Value(podcastId),
+      leftAction: leftAction == null && nullToAbsent
+          ? const Value.absent()
+          : Value(leftAction),
+      rightAction: rightAction == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rightAction),
+    );
+  }
+
+  factory PodcastInboxOverrideRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PodcastInboxOverrideRecord(
+      podcastId: serializer.fromJson<int>(json['podcastId']),
+      leftAction: serializer.fromJson<String?>(json['leftAction']),
+      rightAction: serializer.fromJson<String?>(json['rightAction']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'podcastId': serializer.toJson<int>(podcastId),
+      'leftAction': serializer.toJson<String?>(leftAction),
+      'rightAction': serializer.toJson<String?>(rightAction),
+    };
+  }
+
+  PodcastInboxOverrideRecord copyWith({
+    int? podcastId,
+    Value<String?> leftAction = const Value.absent(),
+    Value<String?> rightAction = const Value.absent(),
+  }) => PodcastInboxOverrideRecord(
+    podcastId: podcastId ?? this.podcastId,
+    leftAction: leftAction.present ? leftAction.value : this.leftAction,
+    rightAction: rightAction.present ? rightAction.value : this.rightAction,
+  );
+  PodcastInboxOverrideRecord copyWithCompanion(
+    PodcastInboxOverrideRowsCompanion data,
+  ) {
+    return PodcastInboxOverrideRecord(
+      podcastId: data.podcastId.present ? data.podcastId.value : this.podcastId,
+      leftAction: data.leftAction.present
+          ? data.leftAction.value
+          : this.leftAction,
+      rightAction: data.rightAction.present
+          ? data.rightAction.value
+          : this.rightAction,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PodcastInboxOverrideRecord(')
+          ..write('podcastId: $podcastId, ')
+          ..write('leftAction: $leftAction, ')
+          ..write('rightAction: $rightAction')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(podcastId, leftAction, rightAction);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PodcastInboxOverrideRecord &&
+          other.podcastId == this.podcastId &&
+          other.leftAction == this.leftAction &&
+          other.rightAction == this.rightAction);
+}
+
+class PodcastInboxOverrideRowsCompanion
+    extends UpdateCompanion<PodcastInboxOverrideRecord> {
+  final Value<int> podcastId;
+  final Value<String?> leftAction;
+  final Value<String?> rightAction;
+  const PodcastInboxOverrideRowsCompanion({
+    this.podcastId = const Value.absent(),
+    this.leftAction = const Value.absent(),
+    this.rightAction = const Value.absent(),
+  });
+  PodcastInboxOverrideRowsCompanion.insert({
+    this.podcastId = const Value.absent(),
+    this.leftAction = const Value.absent(),
+    this.rightAction = const Value.absent(),
+  });
+  static Insertable<PodcastInboxOverrideRecord> custom({
+    Expression<int>? podcastId,
+    Expression<String>? leftAction,
+    Expression<String>? rightAction,
+  }) {
+    return RawValuesInsertable({
+      if (podcastId != null) 'podcast_id': podcastId,
+      if (leftAction != null) 'left_action': leftAction,
+      if (rightAction != null) 'right_action': rightAction,
+    });
+  }
+
+  PodcastInboxOverrideRowsCompanion copyWith({
+    Value<int>? podcastId,
+    Value<String?>? leftAction,
+    Value<String?>? rightAction,
+  }) {
+    return PodcastInboxOverrideRowsCompanion(
+      podcastId: podcastId ?? this.podcastId,
+      leftAction: leftAction ?? this.leftAction,
+      rightAction: rightAction ?? this.rightAction,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (podcastId.present) {
+      map['podcast_id'] = Variable<int>(podcastId.value);
+    }
+    if (leftAction.present) {
+      map['left_action'] = Variable<String>(leftAction.value);
+    }
+    if (rightAction.present) {
+      map['right_action'] = Variable<String>(rightAction.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PodcastInboxOverrideRowsCompanion(')
+          ..write('podcastId: $podcastId, ')
+          ..write('leftAction: $leftAction, ')
+          ..write('rightAction: $rightAction')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncMutationsTable extends SyncMutations
     with TableInfo<$SyncMutationsTable, PendingMutation> {
   @override
@@ -3134,6 +3930,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $DiscoveryCacheRowsTable(this);
   late final $EpisodeRowsTable episodeRows = $EpisodeRowsTable(this);
   late final $QueueRowsTable queueRows = $QueueRowsTable(this);
+  late final $InboxRowsTable inboxRows = $InboxRowsTable(this);
+  late final $InboxPreferenceRowsTable inboxPreferenceRows =
+      $InboxPreferenceRowsTable(this);
+  late final $PodcastInboxOverrideRowsTable podcastInboxOverrideRows =
+      $PodcastInboxOverrideRowsTable(this);
   late final $SyncMutationsTable syncMutations = $SyncMutationsTable(this);
   late final $PlaybackPreferenceRowsTable playbackPreferenceRows =
       $PlaybackPreferenceRowsTable(this);
@@ -3148,6 +3949,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     discoveryCacheRows,
     episodeRows,
     queueRows,
+    inboxRows,
+    inboxPreferenceRows,
+    podcastInboxOverrideRows,
     syncMutations,
     playbackPreferenceRows,
     podcastPlaybackOverrideRows,
@@ -3200,6 +4004,31 @@ final class $$PodcastRowsTableReferences
     ).filter((f) => f.podcastId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_episodeRowsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $PodcastInboxOverrideRowsTable,
+    List<PodcastInboxOverrideRecord>
+  >
+  _podcastInboxOverrideRowsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.podcastInboxOverrideRows,
+        aliasName: 'podcast_rows__id__podcast_inbox_override_rows__podcast_id',
+      );
+
+  $$PodcastInboxOverrideRowsTableProcessedTableManager
+  get podcastInboxOverrideRowsRefs {
+    final manager = $$PodcastInboxOverrideRowsTableTableManager(
+      $_db,
+      $_db.podcastInboxOverrideRows,
+    ).filter((f) => f.podcastId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _podcastInboxOverrideRowsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -3318,6 +4147,33 @@ class $$PodcastRowsTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> podcastInboxOverrideRowsRefs(
+    Expression<bool> Function($$PodcastInboxOverrideRowsTableFilterComposer f)
+    f,
+  ) {
+    final $$PodcastInboxOverrideRowsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.podcastInboxOverrideRows,
+          getReferencedColumn: (t) => t.podcastId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PodcastInboxOverrideRowsTableFilterComposer(
+                $db: $db,
+                $table: $db.podcastInboxOverrideRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
@@ -3495,6 +4351,33 @@ class $$PodcastRowsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> podcastInboxOverrideRowsRefs<T extends Object>(
+    Expression<T> Function($$PodcastInboxOverrideRowsTableAnnotationComposer a)
+    f,
+  ) {
+    final $$PodcastInboxOverrideRowsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.podcastInboxOverrideRows,
+          getReferencedColumn: (t) => t.podcastId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PodcastInboxOverrideRowsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.podcastInboxOverrideRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
   Expression<T> podcastPlaybackOverrideRowsRefs<T extends Object>(
     Expression<T> Function(
       $$PodcastPlaybackOverrideRowsTableAnnotationComposer a,
@@ -3540,6 +4423,7 @@ class $$PodcastRowsTableTableManager
           PodcastRecord,
           PrefetchHooks Function({
             bool episodeRowsRefs,
+            bool podcastInboxOverrideRowsRefs,
             bool podcastPlaybackOverrideRowsRefs,
           })
         > {
@@ -3617,12 +4501,15 @@ class $$PodcastRowsTableTableManager
           prefetchHooksCallback:
               ({
                 episodeRowsRefs = false,
+                podcastInboxOverrideRowsRefs = false,
                 podcastPlaybackOverrideRowsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (episodeRowsRefs) db.episodeRows,
+                    if (podcastInboxOverrideRowsRefs)
+                      db.podcastInboxOverrideRows,
                     if (podcastPlaybackOverrideRowsRefs)
                       db.podcastPlaybackOverrideRows,
                   ],
@@ -3644,6 +4531,27 @@ class $$PodcastRowsTableTableManager
                                 table,
                                 p0,
                               ).episodeRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.podcastId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (podcastInboxOverrideRowsRefs)
+                        await $_getPrefetchedData<
+                          PodcastRecord,
+                          $PodcastRowsTable,
+                          PodcastInboxOverrideRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PodcastRowsTableReferences
+                              ._podcastInboxOverrideRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PodcastRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).podcastInboxOverrideRowsRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.podcastId == item.id,
@@ -3693,6 +4601,7 @@ typedef $$PodcastRowsTableProcessedTableManager =
       PodcastRecord,
       PrefetchHooks Function({
         bool episodeRowsRefs,
+        bool podcastInboxOverrideRowsRefs,
         bool podcastPlaybackOverrideRowsRefs,
       })
     >;
@@ -3990,6 +4899,24 @@ final class $$EpisodeRowsTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$InboxRowsTable, List<InboxRecord>>
+  _inboxRowsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.inboxRows,
+    aliasName: 'episode_rows__id__inbox_rows__episode_id',
+  );
+
+  $$InboxRowsTableProcessedTableManager get inboxRowsRefs {
+    final manager = $$InboxRowsTableTableManager(
+      $_db,
+      $_db.inboxRows,
+    ).filter((f) => f.episodeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_inboxRowsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$EpisodeRowsTableFilterComposer
@@ -4115,6 +5042,31 @@ class $$EpisodeRowsTableFilterComposer
           }) => $$QueueRowsTableFilterComposer(
             $db: $db,
             $table: $db.queueRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> inboxRowsRefs(
+    Expression<bool> Function($$InboxRowsTableFilterComposer f) f,
+  ) {
+    final $$InboxRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.inboxRows,
+      getReferencedColumn: (t) => t.episodeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$InboxRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.inboxRows,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4350,6 +5302,31 @@ class $$EpisodeRowsTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> inboxRowsRefs<T extends Object>(
+    Expression<T> Function($$InboxRowsTableAnnotationComposer a) f,
+  ) {
+    final $$InboxRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.inboxRows,
+      getReferencedColumn: (t) => t.episodeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$InboxRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.inboxRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$EpisodeRowsTableTableManager
@@ -4365,7 +5342,11 @@ class $$EpisodeRowsTableTableManager
           $$EpisodeRowsTableUpdateCompanionBuilder,
           (EpisodeRecord, $$EpisodeRowsTableReferences),
           EpisodeRecord,
-          PrefetchHooks Function({bool podcastId, bool queueRowsRefs})
+          PrefetchHooks Function({
+            bool podcastId,
+            bool queueRowsRefs,
+            bool inboxRowsRefs,
+          })
         > {
   $$EpisodeRowsTableTableManager(_$AppDatabase db, $EpisodeRowsTable table)
     : super(
@@ -4458,67 +5439,100 @@ class $$EpisodeRowsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({podcastId = false, queueRowsRefs = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [if (queueRowsRefs) db.queueRows],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (podcastId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.podcastId,
-                                referencedTable: $$EpisodeRowsTableReferences
-                                    ._podcastIdTable(db),
-                                referencedColumn: $$EpisodeRowsTableReferences
-                                    ._podcastIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({
+                podcastId = false,
+                queueRowsRefs = false,
+                inboxRowsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (queueRowsRefs) db.queueRows,
+                    if (inboxRowsRefs) db.inboxRows,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (podcastId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.podcastId,
+                                    referencedTable:
+                                        $$EpisodeRowsTableReferences
+                                            ._podcastIdTable(db),
+                                    referencedColumn:
+                                        $$EpisodeRowsTableReferences
+                                            ._podcastIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (queueRowsRefs)
+                        await $_getPrefetchedData<
+                          EpisodeRecord,
+                          $EpisodeRowsTable,
+                          QueueRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$EpisodeRowsTableReferences
+                              ._queueRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$EpisodeRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).queueRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.episodeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (inboxRowsRefs)
+                        await $_getPrefetchedData<
+                          EpisodeRecord,
+                          $EpisodeRowsTable,
+                          InboxRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$EpisodeRowsTableReferences
+                              ._inboxRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$EpisodeRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).inboxRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.episodeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [
-                  if (queueRowsRefs)
-                    await $_getPrefetchedData<
-                      EpisodeRecord,
-                      $EpisodeRowsTable,
-                      QueueRecord
-                    >(
-                      currentTable: table,
-                      referencedTable: $$EpisodeRowsTableReferences
-                          ._queueRowsRefsTable(db),
-                      managerFromTypedResult: (p0) =>
-                          $$EpisodeRowsTableReferences(
-                            db,
-                            table,
-                            p0,
-                          ).queueRowsRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where((e) => e.episodeId == item.id),
-                      typedResults: items,
-                    ),
-                ];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -4535,7 +5549,11 @@ typedef $$EpisodeRowsTableProcessedTableManager =
       $$EpisodeRowsTableUpdateCompanionBuilder,
       (EpisodeRecord, $$EpisodeRowsTableReferences),
       EpisodeRecord,
-      PrefetchHooks Function({bool podcastId, bool queueRowsRefs})
+      PrefetchHooks Function({
+        bool podcastId,
+        bool queueRowsRefs,
+        bool inboxRowsRefs,
+      })
     >;
 typedef $$QueueRowsTableCreateCompanionBuilder =
     QueueRowsCompanion Function({
@@ -4809,6 +5827,759 @@ typedef $$QueueRowsTableProcessedTableManager =
       (QueueRecord, $$QueueRowsTableReferences),
       QueueRecord,
       PrefetchHooks Function({bool episodeId})
+    >;
+typedef $$InboxRowsTableCreateCompanionBuilder =
+    InboxRowsCompanion Function({
+      Value<int> episodeId,
+      required DateTime discoveredAt,
+      Value<DateTime?> removedAt,
+    });
+typedef $$InboxRowsTableUpdateCompanionBuilder =
+    InboxRowsCompanion Function({
+      Value<int> episodeId,
+      Value<DateTime> discoveredAt,
+      Value<DateTime?> removedAt,
+    });
+
+final class $$InboxRowsTableReferences
+    extends BaseReferences<_$AppDatabase, $InboxRowsTable, InboxRecord> {
+  $$InboxRowsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $EpisodeRowsTable _episodeIdTable(_$AppDatabase db) =>
+      db.episodeRows.createAlias('inbox_rows__episode_id__episode_rows__id');
+
+  $$EpisodeRowsTableProcessedTableManager get episodeId {
+    final $_column = $_itemColumn<int>('episode_id')!;
+
+    final manager = $$EpisodeRowsTableTableManager(
+      $_db,
+      $_db.episodeRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_episodeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$InboxRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $InboxRowsTable> {
+  $$InboxRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get discoveredAt => $composableBuilder(
+    column: $table.discoveredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get removedAt => $composableBuilder(
+    column: $table.removedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$EpisodeRowsTableFilterComposer get episodeId {
+    final $$EpisodeRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.episodeId,
+      referencedTable: $db.episodeRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EpisodeRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.episodeRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$InboxRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InboxRowsTable> {
+  $$InboxRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get discoveredAt => $composableBuilder(
+    column: $table.discoveredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get removedAt => $composableBuilder(
+    column: $table.removedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$EpisodeRowsTableOrderingComposer get episodeId {
+    final $$EpisodeRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.episodeId,
+      referencedTable: $db.episodeRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EpisodeRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.episodeRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$InboxRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InboxRowsTable> {
+  $$InboxRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get discoveredAt => $composableBuilder(
+    column: $table.discoveredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get removedAt =>
+      $composableBuilder(column: $table.removedAt, builder: (column) => column);
+
+  $$EpisodeRowsTableAnnotationComposer get episodeId {
+    final $$EpisodeRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.episodeId,
+      referencedTable: $db.episodeRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EpisodeRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.episodeRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$InboxRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InboxRowsTable,
+          InboxRecord,
+          $$InboxRowsTableFilterComposer,
+          $$InboxRowsTableOrderingComposer,
+          $$InboxRowsTableAnnotationComposer,
+          $$InboxRowsTableCreateCompanionBuilder,
+          $$InboxRowsTableUpdateCompanionBuilder,
+          (InboxRecord, $$InboxRowsTableReferences),
+          InboxRecord,
+          PrefetchHooks Function({bool episodeId})
+        > {
+  $$InboxRowsTableTableManager(_$AppDatabase db, $InboxRowsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InboxRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InboxRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$InboxRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> episodeId = const Value.absent(),
+                Value<DateTime> discoveredAt = const Value.absent(),
+                Value<DateTime?> removedAt = const Value.absent(),
+              }) => InboxRowsCompanion(
+                episodeId: episodeId,
+                discoveredAt: discoveredAt,
+                removedAt: removedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> episodeId = const Value.absent(),
+                required DateTime discoveredAt,
+                Value<DateTime?> removedAt = const Value.absent(),
+              }) => InboxRowsCompanion.insert(
+                episodeId: episodeId,
+                discoveredAt: discoveredAt,
+                removedAt: removedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$InboxRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({episodeId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (episodeId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.episodeId,
+                                referencedTable: $$InboxRowsTableReferences
+                                    ._episodeIdTable(db),
+                                referencedColumn: $$InboxRowsTableReferences
+                                    ._episodeIdTable(db)
+                                    .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$InboxRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InboxRowsTable,
+      InboxRecord,
+      $$InboxRowsTableFilterComposer,
+      $$InboxRowsTableOrderingComposer,
+      $$InboxRowsTableAnnotationComposer,
+      $$InboxRowsTableCreateCompanionBuilder,
+      $$InboxRowsTableUpdateCompanionBuilder,
+      (InboxRecord, $$InboxRowsTableReferences),
+      InboxRecord,
+      PrefetchHooks Function({bool episodeId})
+    >;
+typedef $$InboxPreferenceRowsTableCreateCompanionBuilder =
+    InboxPreferenceRowsCompanion Function({
+      Value<int> id,
+      Value<String> leftAction,
+      Value<String> rightAction,
+    });
+typedef $$InboxPreferenceRowsTableUpdateCompanionBuilder =
+    InboxPreferenceRowsCompanion Function({
+      Value<int> id,
+      Value<String> leftAction,
+      Value<String> rightAction,
+    });
+
+class $$InboxPreferenceRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $InboxPreferenceRowsTable> {
+  $$InboxPreferenceRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get leftAction => $composableBuilder(
+    column: $table.leftAction,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rightAction => $composableBuilder(
+    column: $table.rightAction,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InboxPreferenceRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $InboxPreferenceRowsTable> {
+  $$InboxPreferenceRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get leftAction => $composableBuilder(
+    column: $table.leftAction,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rightAction => $composableBuilder(
+    column: $table.rightAction,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InboxPreferenceRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InboxPreferenceRowsTable> {
+  $$InboxPreferenceRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get leftAction => $composableBuilder(
+    column: $table.leftAction,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rightAction => $composableBuilder(
+    column: $table.rightAction,
+    builder: (column) => column,
+  );
+}
+
+class $$InboxPreferenceRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InboxPreferenceRowsTable,
+          InboxPreferencesRecord,
+          $$InboxPreferenceRowsTableFilterComposer,
+          $$InboxPreferenceRowsTableOrderingComposer,
+          $$InboxPreferenceRowsTableAnnotationComposer,
+          $$InboxPreferenceRowsTableCreateCompanionBuilder,
+          $$InboxPreferenceRowsTableUpdateCompanionBuilder,
+          (
+            InboxPreferencesRecord,
+            BaseReferences<
+              _$AppDatabase,
+              $InboxPreferenceRowsTable,
+              InboxPreferencesRecord
+            >,
+          ),
+          InboxPreferencesRecord,
+          PrefetchHooks Function()
+        > {
+  $$InboxPreferenceRowsTableTableManager(
+    _$AppDatabase db,
+    $InboxPreferenceRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$InboxPreferenceRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$InboxPreferenceRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$InboxPreferenceRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> leftAction = const Value.absent(),
+                Value<String> rightAction = const Value.absent(),
+              }) => InboxPreferenceRowsCompanion(
+                id: id,
+                leftAction: leftAction,
+                rightAction: rightAction,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> leftAction = const Value.absent(),
+                Value<String> rightAction = const Value.absent(),
+              }) => InboxPreferenceRowsCompanion.insert(
+                id: id,
+                leftAction: leftAction,
+                rightAction: rightAction,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InboxPreferenceRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InboxPreferenceRowsTable,
+      InboxPreferencesRecord,
+      $$InboxPreferenceRowsTableFilterComposer,
+      $$InboxPreferenceRowsTableOrderingComposer,
+      $$InboxPreferenceRowsTableAnnotationComposer,
+      $$InboxPreferenceRowsTableCreateCompanionBuilder,
+      $$InboxPreferenceRowsTableUpdateCompanionBuilder,
+      (
+        InboxPreferencesRecord,
+        BaseReferences<
+          _$AppDatabase,
+          $InboxPreferenceRowsTable,
+          InboxPreferencesRecord
+        >,
+      ),
+      InboxPreferencesRecord,
+      PrefetchHooks Function()
+    >;
+typedef $$PodcastInboxOverrideRowsTableCreateCompanionBuilder =
+    PodcastInboxOverrideRowsCompanion Function({
+      Value<int> podcastId,
+      Value<String?> leftAction,
+      Value<String?> rightAction,
+    });
+typedef $$PodcastInboxOverrideRowsTableUpdateCompanionBuilder =
+    PodcastInboxOverrideRowsCompanion Function({
+      Value<int> podcastId,
+      Value<String?> leftAction,
+      Value<String?> rightAction,
+    });
+
+final class $$PodcastInboxOverrideRowsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PodcastInboxOverrideRowsTable,
+          PodcastInboxOverrideRecord
+        > {
+  $$PodcastInboxOverrideRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PodcastRowsTable _podcastIdTable(_$AppDatabase db) => db.podcastRows
+      .createAlias('podcast_inbox_override_rows__podcast_id__podcast_rows__id');
+
+  $$PodcastRowsTableProcessedTableManager get podcastId {
+    final $_column = $_itemColumn<int>('podcast_id')!;
+
+    final manager = $$PodcastRowsTableTableManager(
+      $_db,
+      $_db.podcastRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_podcastIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PodcastInboxOverrideRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $PodcastInboxOverrideRowsTable> {
+  $$PodcastInboxOverrideRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get leftAction => $composableBuilder(
+    column: $table.leftAction,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rightAction => $composableBuilder(
+    column: $table.rightAction,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PodcastRowsTableFilterComposer get podcastId {
+    final $$PodcastRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PodcastInboxOverrideRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PodcastInboxOverrideRowsTable> {
+  $$PodcastInboxOverrideRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get leftAction => $composableBuilder(
+    column: $table.leftAction,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rightAction => $composableBuilder(
+    column: $table.rightAction,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PodcastRowsTableOrderingComposer get podcastId {
+    final $$PodcastRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PodcastInboxOverrideRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PodcastInboxOverrideRowsTable> {
+  $$PodcastInboxOverrideRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get leftAction => $composableBuilder(
+    column: $table.leftAction,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get rightAction => $composableBuilder(
+    column: $table.rightAction,
+    builder: (column) => column,
+  );
+
+  $$PodcastRowsTableAnnotationComposer get podcastId {
+    final $$PodcastRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PodcastInboxOverrideRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PodcastInboxOverrideRowsTable,
+          PodcastInboxOverrideRecord,
+          $$PodcastInboxOverrideRowsTableFilterComposer,
+          $$PodcastInboxOverrideRowsTableOrderingComposer,
+          $$PodcastInboxOverrideRowsTableAnnotationComposer,
+          $$PodcastInboxOverrideRowsTableCreateCompanionBuilder,
+          $$PodcastInboxOverrideRowsTableUpdateCompanionBuilder,
+          (
+            PodcastInboxOverrideRecord,
+            $$PodcastInboxOverrideRowsTableReferences,
+          ),
+          PodcastInboxOverrideRecord,
+          PrefetchHooks Function({bool podcastId})
+        > {
+  $$PodcastInboxOverrideRowsTableTableManager(
+    _$AppDatabase db,
+    $PodcastInboxOverrideRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PodcastInboxOverrideRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PodcastInboxOverrideRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PodcastInboxOverrideRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> podcastId = const Value.absent(),
+                Value<String?> leftAction = const Value.absent(),
+                Value<String?> rightAction = const Value.absent(),
+              }) => PodcastInboxOverrideRowsCompanion(
+                podcastId: podcastId,
+                leftAction: leftAction,
+                rightAction: rightAction,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> podcastId = const Value.absent(),
+                Value<String?> leftAction = const Value.absent(),
+                Value<String?> rightAction = const Value.absent(),
+              }) => PodcastInboxOverrideRowsCompanion.insert(
+                podcastId: podcastId,
+                leftAction: leftAction,
+                rightAction: rightAction,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PodcastInboxOverrideRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({podcastId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (podcastId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.podcastId,
+                                referencedTable:
+                                    $$PodcastInboxOverrideRowsTableReferences
+                                        ._podcastIdTable(db),
+                                referencedColumn:
+                                    $$PodcastInboxOverrideRowsTableReferences
+                                        ._podcastIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PodcastInboxOverrideRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PodcastInboxOverrideRowsTable,
+      PodcastInboxOverrideRecord,
+      $$PodcastInboxOverrideRowsTableFilterComposer,
+      $$PodcastInboxOverrideRowsTableOrderingComposer,
+      $$PodcastInboxOverrideRowsTableAnnotationComposer,
+      $$PodcastInboxOverrideRowsTableCreateCompanionBuilder,
+      $$PodcastInboxOverrideRowsTableUpdateCompanionBuilder,
+      (PodcastInboxOverrideRecord, $$PodcastInboxOverrideRowsTableReferences),
+      PodcastInboxOverrideRecord,
+      PrefetchHooks Function({bool podcastId})
     >;
 typedef $$SyncMutationsTableCreateCompanionBuilder =
     SyncMutationsCompanion Function({
@@ -5523,6 +7294,15 @@ class $AppDatabaseManager {
       $$EpisodeRowsTableTableManager(_db, _db.episodeRows);
   $$QueueRowsTableTableManager get queueRows =>
       $$QueueRowsTableTableManager(_db, _db.queueRows);
+  $$InboxRowsTableTableManager get inboxRows =>
+      $$InboxRowsTableTableManager(_db, _db.inboxRows);
+  $$InboxPreferenceRowsTableTableManager get inboxPreferenceRows =>
+      $$InboxPreferenceRowsTableTableManager(_db, _db.inboxPreferenceRows);
+  $$PodcastInboxOverrideRowsTableTableManager get podcastInboxOverrideRows =>
+      $$PodcastInboxOverrideRowsTableTableManager(
+        _db,
+        _db.podcastInboxOverrideRows,
+      );
   $$SyncMutationsTableTableManager get syncMutations =>
       $$SyncMutationsTableTableManager(_db, _db.syncMutations);
   $$PlaybackPreferenceRowsTableTableManager get playbackPreferenceRows =>

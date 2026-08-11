@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers.dart';
 import '../home/home_screen.dart';
+import '../inbox/inbox_screen.dart';
 import '../library/library_screen.dart';
 import '../player/player_bar.dart';
 import '../queue/queue_screen.dart';
@@ -20,6 +21,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   static const _pages = [
     HomeScreen(),
+    InboxScreen(),
     LibraryScreen(),
     QueueScreen(),
     SearchScreen(),
@@ -42,6 +44,11 @@ class _AppShellState extends ConsumerState<AppShell> {
                 icon: Icon(Icons.home_outlined),
                 selectedIcon: Icon(Icons.home_rounded),
                 label: 'Home',
+              ),
+              NavigationDestination(
+                icon: _InboxIcon(),
+                selectedIcon: _InboxIcon(selected: true),
+                label: 'Inbox',
               ),
               NavigationDestination(
                 icon: Icon(Icons.library_music_outlined),
@@ -74,6 +81,22 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
             )
           : null,
+    );
+  }
+}
+
+class _InboxIcon extends ConsumerWidget {
+  const _InboxIcon({this.selected = false});
+
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(inboxUnreadCountProvider).valueOrNull ?? 0;
+    return Badge(
+      isLabelVisible: count > 0,
+      label: Text(count > 99 ? '99+' : '$count'),
+      child: Icon(selected ? Icons.inbox_rounded : Icons.inbox_outlined),
     );
   }
 }
