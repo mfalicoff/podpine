@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -9,6 +11,122 @@ import 'package:podpine/core/database/app_database.dart';
 import 'package:podpine/core/storage/credential_store.dart';
 
 void main() {
+  test(
+    'saved podcast details merge cached and downloaded episodes offline',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertPodcast(
+        const PodcastRowsCompanion(
+          id: Value(7),
+          title: Value('Offline Cast'),
+          feedUrl: Value('https://example.test/offline.xml'),
+        ),
+      );
+      await database.cacheDiscovery(
+        feedUrl: 'https://example.test/offline.xml',
+        title: 'Offline Cast',
+        podcastJson: jsonEncode(_DetailsBackend.podcast.toJson()),
+        episodesJson: jsonEncode([_DetailsBackend.newEpisode.toJson()]),
+      );
+      await database
+          .into(database.episodeRows)
+          .insert(
+            EpisodeRowsCompanion.insert(
+              id: const Value(11),
+              podcastId: 7,
+              podcastTitle: 'Offline Cast',
+              title: 'Downloaded archive episode',
+              audioUrl: const Value('https://media.test/archive.mp3'),
+              publishedAt: DateTime.utc(2026, 8, 1),
+              downloaded: const Value(true),
+              updatedAt: DateTime.utc(2026, 8, 10),
+            ),
+          );
+      final controller = AppController(
+        database,
+        const CredentialStore(FlutterSecureStorage()),
+      );
+
+      final details = await controller.cachedPodcastDetails(
+        const RemotePodcast(
+          id: 7,
+          title: 'Offline Cast',
+          author: '',
+          artworkUrl: '',
+          description: '',
+          feedUrl: 'https://example.test/offline.xml',
+          episodeCount: 0,
+        ),
+      );
+
+      expect(details.podcast.description, 'Rich saved description');
+      expect(details.episodes.map((episode) => episode.id), [12, 11]);
+      expect(
+        details.episodes.singleWhere((episode) => episode.id == 11).downloaded,
+        isTrue,
+      );
+      expect(details.localEpisodes.keys, [11]);
+    },
+  );
+
+  test(
+    'detail refresh persists episodes and retains omitted downloads',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      await database.upsertPodcast(
+        const PodcastRowsCompanion(
+          id: Value(7),
+          title: Value('Offline Cast'),
+          feedUrl: Value('https://example.test/offline.xml'),
+        ),
+      );
+      await database
+          .into(database.episodeRows)
+          .insert(
+            EpisodeRowsCompanion.insert(
+              id: const Value(11),
+              podcastId: 7,
+              podcastTitle: 'Offline Cast',
+              title: 'Downloaded archive episode',
+              audioUrl: const Value('https://media.test/archive.mp3'),
+              publishedAt: DateTime.utc(2026, 8, 1),
+              positionSeconds: const Value(45),
+              downloaded: const Value(true),
+              updatedAt: DateTime.utc(2026, 8, 10),
+            ),
+          );
+      final controller =
+          AppController(database, const CredentialStore(FlutterSecureStorage()))
+            ..backend = const _DetailsBackend()
+            ..userId = 42;
+
+      final refreshed = await controller.refreshPodcastDetails(
+        _DetailsBackend.podcast,
+      );
+
+      expect(refreshed.episodes.map((episode) => episode.id), [12, 11]);
+      expect(refreshed.localEpisodes.keys, containsAll([11, 12]));
+      expect(
+        (await database.podcastById(7))!.description,
+        'Rich saved description',
+      );
+      expect((await database.episodeById(12))!.description, 'Saved show notes');
+      expect((await database.episodeById(11))!.downloaded, isTrue);
+      expect((await database.episodeById(11))!.positionSeconds, 45);
+
+      controller
+        ..backend = null
+        ..userId = null;
+      final offline = await controller.cachedPodcastDetails(
+        _DetailsBackend.podcast,
+      );
+      expect(offline.podcast.description, 'Rich saved description');
+      expect(offline.episodes.map((episode) => episode.id), [12, 11]);
+    },
+  );
+
   test(
     'subscribe and unsubscribe stay optimistic when Pinepods is offline',
     () async {
@@ -130,4 +248,57 @@ class _OfflineBackend implements PodcastBackend {
 
   @override
   Future<void> removeFromQueue(int userId, int episodeId) async => _offline();
+}
+
+class _DetailsBackend extends _OfflineBackend {
+  const _DetailsBackend();
+
+  static const podcast = RemotePodcast(
+    id: 7,
+    title: 'Offline Cast',
+    author: 'Podpine',
+    artworkUrl: 'https://images.test/offline.jpg',
+    description: 'Rich saved description',
+    feedUrl: 'https://example.test/offline.xml',
+    episodeCount: 2,
+    websiteUrl: 'https://example.test/offline',
+    categories: ['Technology'],
+  );
+
+  static final newEpisode = RemoteEpisode(
+    id: 12,
+    podcastId: 7,
+    podcastTitle: 'Offline Cast',
+    title: 'Newest episode',
+    description: 'Saved show notes',
+    artworkUrl: 'https://images.test/episode.jpg',
+    audioUrl: 'https://media.test/new.mp3',
+    publishedAt: DateTime.utc(2026, 8, 11),
+    durationSeconds: 1800,
+    positionSeconds: 0,
+    completed: false,
+    queued: false,
+    downloaded: false,
+    isYoutube: false,
+  );
+
+  @override
+  Future<RemotePodcast> getPodcastDetails(
+    int userId,
+    RemotePodcast podcast, {
+    required bool subscribed,
+  }) async {
+    expect(subscribed, isTrue);
+    return _DetailsBackend.podcast;
+  }
+
+  @override
+  Future<List<RemoteEpisode>> getPodcastEpisodes(
+    int userId,
+    RemotePodcast podcast, {
+    required bool subscribed,
+  }) async {
+    expect(subscribed, isTrue);
+    return [newEpisode];
+  }
 }

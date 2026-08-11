@@ -366,6 +366,12 @@ class AppDatabase extends _$AppDatabase {
   Future<void> upsertPodcast(PodcastRowsCompanion podcast) =>
       into(podcastRows).insertOnConflictUpdate(podcast);
 
+  Future<void> upsertEpisodes(Iterable<EpisodeRowsCompanion> episodes) async {
+    final rows = episodes.toList(growable: false);
+    if (rows.isEmpty) return;
+    await batch((batch) => batch.insertAllOnConflictUpdate(episodeRows, rows));
+  }
+
   Future<void> reconcilePodcastId({
     required int temporaryId,
     required PodcastRowsCompanion podcast,

@@ -241,7 +241,7 @@ class AppController extends ChangeNotifier {
     final localById = {for (final episode in records) episode.id: episode};
     return PodcastDetailBundle(
       podcast: _remotePodcast(localPodcast, fallback: podcast),
-      episodes: records.map(_remoteEpisode).toList(growable: false),
+      episodes: _mergeSavedEpisodes(cachedEpisodes, records),
       subscribed: true,
       localEpisodes: localById,
     );
@@ -270,8 +270,22 @@ class AppController extends ChangeNotifier {
     );
     await _cachePodcast(details, episodes: episodes);
     if (localPodcast != null) {
+      final existingEpisodes = await database.podcastEpisodes(localPodcast.id);
+      final existingById = {
+        for (final episode in existingEpisodes) episode.id: episode,
+      };
       await database.upsertPodcast(
         _podcastCompanion(details.copyWith(id: localPodcast.id)),
+      );
+      await database.upsertEpisodes(
+        episodes.map(
+          (episode) => _episodeCompanion(
+            episode,
+            podcastId: localPodcast.id,
+            podcastTitle: details.title,
+            existing: existingById[episode.id],
+          ),
+        ),
       );
     }
     final refreshedLocalEpisodes = localPodcast == null
@@ -279,7 +293,9 @@ class AppController extends ChangeNotifier {
         : await database.podcastEpisodes(localPodcast.id);
     return PodcastDetailBundle(
       podcast: details.copyWith(id: localPodcast?.id ?? details.id),
-      episodes: episodes,
+      episodes: localPodcast == null
+          ? episodes
+          : _mergeSavedEpisodes(episodes, refreshedLocalEpisodes),
       subscribed: subscribed,
       localEpisodes: {
         for (final episode in refreshedLocalEpisodes) episode.id: episode,
@@ -634,23 +650,110 @@ class AppController extends ChangeNotifier {
         : record.podcastIndexId,
   );
 
-  static RemoteEpisode _remoteEpisode(EpisodeRecord episode) => RemoteEpisode(
+  static EpisodeRowsCompanion _episodeCompanion(
+    RemoteEpisode episode, {
+    required int podcastId,
+    required String podcastTitle,
+    EpisodeRecord? existing,
+  }) => EpisodeRowsCompanion.insert(
+    id: Value(episode.id),
+    podcastId: podcastId,
+    podcastTitle: episode.podcastTitle.trim().isEmpty
+        ? existing?.podcastTitle ?? podcastTitle
+        : episode.podcastTitle,
+    title: episode.title.trim().isEmpty
+        ? existing?.title ?? 'Untitled episode'
+        : episode.title,
+    description: Value(
+      episode.description.trim().isEmpty
+          ? existing?.description ?? ''
+          : episode.description,
+    ),
+    artworkUrl: Value(
+      episode.artworkUrl.trim().isEmpty
+          ? existing?.artworkUrl ?? ''
+          : episode.artworkUrl,
+    ),
+    audioUrl: Value(
+      episode.audioUrl.trim().isEmpty
+          ? existing?.audioUrl ?? ''
+          : episode.audioUrl,
+    ),
+    publishedAt: episode.publishedAt.year <= 1971
+        ? existing?.publishedAt ?? episode.publishedAt
+        : episode.publishedAt,
+    durationSeconds: Value(
+      episode.durationSeconds == 0
+          ? existing?.durationSeconds ?? 0
+          : episode.durationSeconds,
+    ),
+    positionSeconds: Value(
+      existing?.positionSeconds ?? episode.positionSeconds,
+    ),
+    completed: Value(existing?.completed ?? episode.completed),
+    queued: Value(existing?.queued ?? episode.queued),
+    downloaded: Value(existing?.downloaded ?? false),
+    isYoutube: Value(existing?.isYoutube ?? episode.isYoutube),
+    chaptersJson: Value(
+      episode.chaptersJson == '[]'
+          ? existing?.chaptersJson ?? '[]'
+          : episode.chaptersJson,
+    ),
+    updatedAt: DateTime.now().toUtc(),
+  );
+
+  static RemoteEpisode _remoteEpisode(
+    EpisodeRecord episode, {
+    RemoteEpisode? fallback,
+  }) => RemoteEpisode(
     id: episode.id,
     podcastId: episode.podcastId,
-    podcastTitle: episode.podcastTitle,
-    title: episode.title,
-    description: episode.description,
-    artworkUrl: episode.artworkUrl,
-    audioUrl: episode.audioUrl,
-    publishedAt: episode.publishedAt,
-    durationSeconds: episode.durationSeconds,
+    podcastTitle: episode.podcastTitle.isEmpty
+        ? fallback?.podcastTitle ?? ''
+        : episode.podcastTitle,
+    title: episode.title.isEmpty
+        ? fallback?.title ?? 'Untitled episode'
+        : episode.title,
+    description: episode.description.isEmpty
+        ? fallback?.description ?? ''
+        : episode.description,
+    artworkUrl: episode.artworkUrl.isEmpty
+        ? fallback?.artworkUrl ?? ''
+        : episode.artworkUrl,
+    audioUrl: episode.audioUrl.isEmpty
+        ? fallback?.audioUrl ?? ''
+        : episode.audioUrl,
+    publishedAt: episode.publishedAt.year <= 1971
+        ? fallback?.publishedAt ?? episode.publishedAt
+        : episode.publishedAt,
+    durationSeconds: episode.durationSeconds == 0
+        ? fallback?.durationSeconds ?? 0
+        : episode.durationSeconds,
     positionSeconds: episode.positionSeconds,
     completed: episode.completed,
     queued: episode.queued,
     downloaded: episode.downloaded,
-    isYoutube: episode.isYoutube,
-    chaptersJson: episode.chaptersJson,
+    isYoutube: episode.isYoutube || (fallback?.isYoutube ?? false),
+    chaptersJson: episode.chaptersJson == '[]'
+        ? fallback?.chaptersJson ?? '[]'
+        : episode.chaptersJson,
   );
+
+  static List<RemoteEpisode> _mergeSavedEpisodes(
+    List<RemoteEpisode> cached,
+    List<EpisodeRecord> local,
+  ) {
+    final cachedById = {for (final episode in cached) episode.id: episode};
+    final localIds = local.map((episode) => episode.id).toSet();
+    final merged = [
+      for (final episode in local)
+        _remoteEpisode(episode, fallback: cachedById[episode.id]),
+      for (final episode in cached)
+        if (!localIds.contains(episode.id)) episode,
+    ];
+    merged.sort((left, right) => right.publishedAt.compareTo(left.publishedAt));
+    return merged;
+  }
 
   static List<String> _decodeCategories(String json) {
     try {
