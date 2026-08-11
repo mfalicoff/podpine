@@ -76,6 +76,32 @@ class _FakeBackend implements PodcastBackend {
   Future<List<RemoteEpisode>> getQueue(int userId) async => const [];
 
   @override
+  Future<List<RemotePodcast>> searchPodcasts(
+    String query, {
+    String provider = 'podcast_index',
+  }) async => const [];
+
+  @override
+  Future<RemotePodcast> getPodcastDetails(
+    int userId,
+    RemotePodcast podcast, {
+    required bool subscribed,
+  }) async => podcast;
+
+  @override
+  Future<List<RemoteEpisode>> getPodcastEpisodes(
+    int userId,
+    RemotePodcast podcast, {
+    required bool subscribed,
+  }) async => const [];
+
+  @override
+  Future<int> subscribe(int userId, RemotePodcast podcast) async => podcast.id;
+
+  @override
+  Future<void> unsubscribe(int userId, RemotePodcast podcast) async {}
+
+  @override
   Future<String> getChapters(int userId, int episodeId) async => '[]';
 
   @override

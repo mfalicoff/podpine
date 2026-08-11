@@ -85,6 +85,57 @@ class $PodcastRowsTable extends PodcastRows
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _websiteUrlMeta = const VerificationMeta(
+    'websiteUrl',
+  );
+  @override
+  late final GeneratedColumn<String> websiteUrl = GeneratedColumn<String>(
+    'website_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _categoriesJsonMeta = const VerificationMeta(
+    'categoriesJson',
+  );
+  @override
+  late final GeneratedColumn<String> categoriesJson = GeneratedColumn<String>(
+    'categories_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _explicitMeta = const VerificationMeta(
+    'explicit',
+  );
+  @override
+  late final GeneratedColumn<bool> explicit = GeneratedColumn<bool>(
+    'explicit',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("explicit" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _podcastIndexIdMeta = const VerificationMeta(
+    'podcastIndexId',
+  );
+  @override
+  late final GeneratedColumn<int> podcastIndexId = GeneratedColumn<int>(
+    'podcast_index_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -94,6 +145,10 @@ class $PodcastRowsTable extends PodcastRows
     description,
     feedUrl,
     episodeCount,
+    websiteUrl,
+    categoriesJson,
+    explicit,
+    podcastIndexId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -154,6 +209,36 @@ class $PodcastRowsTable extends PodcastRows
         ),
       );
     }
+    if (data.containsKey('website_url')) {
+      context.handle(
+        _websiteUrlMeta,
+        websiteUrl.isAcceptableOrUnknown(data['website_url']!, _websiteUrlMeta),
+      );
+    }
+    if (data.containsKey('categories_json')) {
+      context.handle(
+        _categoriesJsonMeta,
+        categoriesJson.isAcceptableOrUnknown(
+          data['categories_json']!,
+          _categoriesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('explicit')) {
+      context.handle(
+        _explicitMeta,
+        explicit.isAcceptableOrUnknown(data['explicit']!, _explicitMeta),
+      );
+    }
+    if (data.containsKey('podcast_index_id')) {
+      context.handle(
+        _podcastIndexIdMeta,
+        podcastIndexId.isAcceptableOrUnknown(
+          data['podcast_index_id']!,
+          _podcastIndexIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -191,6 +276,22 @@ class $PodcastRowsTable extends PodcastRows
         DriftSqlType.int,
         data['${effectivePrefix}episode_count'],
       )!,
+      websiteUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}website_url'],
+      )!,
+      categoriesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}categories_json'],
+      )!,
+      explicit: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}explicit'],
+      )!,
+      podcastIndexId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}podcast_index_id'],
+      )!,
     );
   }
 
@@ -208,6 +309,10 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
   final String description;
   final String feedUrl;
   final int episodeCount;
+  final String websiteUrl;
+  final String categoriesJson;
+  final bool explicit;
+  final int podcastIndexId;
   const PodcastRecord({
     required this.id,
     required this.title,
@@ -216,6 +321,10 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
     required this.description,
     required this.feedUrl,
     required this.episodeCount,
+    required this.websiteUrl,
+    required this.categoriesJson,
+    required this.explicit,
+    required this.podcastIndexId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -227,6 +336,10 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
     map['description'] = Variable<String>(description);
     map['feed_url'] = Variable<String>(feedUrl);
     map['episode_count'] = Variable<int>(episodeCount);
+    map['website_url'] = Variable<String>(websiteUrl);
+    map['categories_json'] = Variable<String>(categoriesJson);
+    map['explicit'] = Variable<bool>(explicit);
+    map['podcast_index_id'] = Variable<int>(podcastIndexId);
     return map;
   }
 
@@ -239,6 +352,10 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
       description: Value(description),
       feedUrl: Value(feedUrl),
       episodeCount: Value(episodeCount),
+      websiteUrl: Value(websiteUrl),
+      categoriesJson: Value(categoriesJson),
+      explicit: Value(explicit),
+      podcastIndexId: Value(podcastIndexId),
     );
   }
 
@@ -255,6 +372,10 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
       description: serializer.fromJson<String>(json['description']),
       feedUrl: serializer.fromJson<String>(json['feedUrl']),
       episodeCount: serializer.fromJson<int>(json['episodeCount']),
+      websiteUrl: serializer.fromJson<String>(json['websiteUrl']),
+      categoriesJson: serializer.fromJson<String>(json['categoriesJson']),
+      explicit: serializer.fromJson<bool>(json['explicit']),
+      podcastIndexId: serializer.fromJson<int>(json['podcastIndexId']),
     );
   }
   @override
@@ -268,6 +389,10 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
       'description': serializer.toJson<String>(description),
       'feedUrl': serializer.toJson<String>(feedUrl),
       'episodeCount': serializer.toJson<int>(episodeCount),
+      'websiteUrl': serializer.toJson<String>(websiteUrl),
+      'categoriesJson': serializer.toJson<String>(categoriesJson),
+      'explicit': serializer.toJson<bool>(explicit),
+      'podcastIndexId': serializer.toJson<int>(podcastIndexId),
     };
   }
 
@@ -279,6 +404,10 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
     String? description,
     String? feedUrl,
     int? episodeCount,
+    String? websiteUrl,
+    String? categoriesJson,
+    bool? explicit,
+    int? podcastIndexId,
   }) => PodcastRecord(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -287,6 +416,10 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
     description: description ?? this.description,
     feedUrl: feedUrl ?? this.feedUrl,
     episodeCount: episodeCount ?? this.episodeCount,
+    websiteUrl: websiteUrl ?? this.websiteUrl,
+    categoriesJson: categoriesJson ?? this.categoriesJson,
+    explicit: explicit ?? this.explicit,
+    podcastIndexId: podcastIndexId ?? this.podcastIndexId,
   );
   PodcastRecord copyWithCompanion(PodcastRowsCompanion data) {
     return PodcastRecord(
@@ -303,6 +436,16 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
       episodeCount: data.episodeCount.present
           ? data.episodeCount.value
           : this.episodeCount,
+      websiteUrl: data.websiteUrl.present
+          ? data.websiteUrl.value
+          : this.websiteUrl,
+      categoriesJson: data.categoriesJson.present
+          ? data.categoriesJson.value
+          : this.categoriesJson,
+      explicit: data.explicit.present ? data.explicit.value : this.explicit,
+      podcastIndexId: data.podcastIndexId.present
+          ? data.podcastIndexId.value
+          : this.podcastIndexId,
     );
   }
 
@@ -315,7 +458,11 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
           ..write('artworkUrl: $artworkUrl, ')
           ..write('description: $description, ')
           ..write('feedUrl: $feedUrl, ')
-          ..write('episodeCount: $episodeCount')
+          ..write('episodeCount: $episodeCount, ')
+          ..write('websiteUrl: $websiteUrl, ')
+          ..write('categoriesJson: $categoriesJson, ')
+          ..write('explicit: $explicit, ')
+          ..write('podcastIndexId: $podcastIndexId')
           ..write(')'))
         .toString();
   }
@@ -329,6 +476,10 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
     description,
     feedUrl,
     episodeCount,
+    websiteUrl,
+    categoriesJson,
+    explicit,
+    podcastIndexId,
   );
   @override
   bool operator ==(Object other) =>
@@ -340,7 +491,11 @@ class PodcastRecord extends DataClass implements Insertable<PodcastRecord> {
           other.artworkUrl == this.artworkUrl &&
           other.description == this.description &&
           other.feedUrl == this.feedUrl &&
-          other.episodeCount == this.episodeCount);
+          other.episodeCount == this.episodeCount &&
+          other.websiteUrl == this.websiteUrl &&
+          other.categoriesJson == this.categoriesJson &&
+          other.explicit == this.explicit &&
+          other.podcastIndexId == this.podcastIndexId);
 }
 
 class PodcastRowsCompanion extends UpdateCompanion<PodcastRecord> {
@@ -351,6 +506,10 @@ class PodcastRowsCompanion extends UpdateCompanion<PodcastRecord> {
   final Value<String> description;
   final Value<String> feedUrl;
   final Value<int> episodeCount;
+  final Value<String> websiteUrl;
+  final Value<String> categoriesJson;
+  final Value<bool> explicit;
+  final Value<int> podcastIndexId;
   const PodcastRowsCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -359,6 +518,10 @@ class PodcastRowsCompanion extends UpdateCompanion<PodcastRecord> {
     this.description = const Value.absent(),
     this.feedUrl = const Value.absent(),
     this.episodeCount = const Value.absent(),
+    this.websiteUrl = const Value.absent(),
+    this.categoriesJson = const Value.absent(),
+    this.explicit = const Value.absent(),
+    this.podcastIndexId = const Value.absent(),
   });
   PodcastRowsCompanion.insert({
     this.id = const Value.absent(),
@@ -368,6 +531,10 @@ class PodcastRowsCompanion extends UpdateCompanion<PodcastRecord> {
     this.description = const Value.absent(),
     this.feedUrl = const Value.absent(),
     this.episodeCount = const Value.absent(),
+    this.websiteUrl = const Value.absent(),
+    this.categoriesJson = const Value.absent(),
+    this.explicit = const Value.absent(),
+    this.podcastIndexId = const Value.absent(),
   }) : title = Value(title);
   static Insertable<PodcastRecord> custom({
     Expression<int>? id,
@@ -377,6 +544,10 @@ class PodcastRowsCompanion extends UpdateCompanion<PodcastRecord> {
     Expression<String>? description,
     Expression<String>? feedUrl,
     Expression<int>? episodeCount,
+    Expression<String>? websiteUrl,
+    Expression<String>? categoriesJson,
+    Expression<bool>? explicit,
+    Expression<int>? podcastIndexId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -386,6 +557,10 @@ class PodcastRowsCompanion extends UpdateCompanion<PodcastRecord> {
       if (description != null) 'description': description,
       if (feedUrl != null) 'feed_url': feedUrl,
       if (episodeCount != null) 'episode_count': episodeCount,
+      if (websiteUrl != null) 'website_url': websiteUrl,
+      if (categoriesJson != null) 'categories_json': categoriesJson,
+      if (explicit != null) 'explicit': explicit,
+      if (podcastIndexId != null) 'podcast_index_id': podcastIndexId,
     });
   }
 
@@ -397,6 +572,10 @@ class PodcastRowsCompanion extends UpdateCompanion<PodcastRecord> {
     Value<String>? description,
     Value<String>? feedUrl,
     Value<int>? episodeCount,
+    Value<String>? websiteUrl,
+    Value<String>? categoriesJson,
+    Value<bool>? explicit,
+    Value<int>? podcastIndexId,
   }) {
     return PodcastRowsCompanion(
       id: id ?? this.id,
@@ -406,6 +585,10 @@ class PodcastRowsCompanion extends UpdateCompanion<PodcastRecord> {
       description: description ?? this.description,
       feedUrl: feedUrl ?? this.feedUrl,
       episodeCount: episodeCount ?? this.episodeCount,
+      websiteUrl: websiteUrl ?? this.websiteUrl,
+      categoriesJson: categoriesJson ?? this.categoriesJson,
+      explicit: explicit ?? this.explicit,
+      podcastIndexId: podcastIndexId ?? this.podcastIndexId,
     );
   }
 
@@ -433,6 +616,18 @@ class PodcastRowsCompanion extends UpdateCompanion<PodcastRecord> {
     if (episodeCount.present) {
       map['episode_count'] = Variable<int>(episodeCount.value);
     }
+    if (websiteUrl.present) {
+      map['website_url'] = Variable<String>(websiteUrl.value);
+    }
+    if (categoriesJson.present) {
+      map['categories_json'] = Variable<String>(categoriesJson.value);
+    }
+    if (explicit.present) {
+      map['explicit'] = Variable<bool>(explicit.value);
+    }
+    if (podcastIndexId.present) {
+      map['podcast_index_id'] = Variable<int>(podcastIndexId.value);
+    }
     return map;
   }
 
@@ -445,7 +640,387 @@ class PodcastRowsCompanion extends UpdateCompanion<PodcastRecord> {
           ..write('artworkUrl: $artworkUrl, ')
           ..write('description: $description, ')
           ..write('feedUrl: $feedUrl, ')
-          ..write('episodeCount: $episodeCount')
+          ..write('episodeCount: $episodeCount, ')
+          ..write('websiteUrl: $websiteUrl, ')
+          ..write('categoriesJson: $categoriesJson, ')
+          ..write('explicit: $explicit, ')
+          ..write('podcastIndexId: $podcastIndexId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DiscoveryCacheRowsTable extends DiscoveryCacheRows
+    with TableInfo<$DiscoveryCacheRowsTable, DiscoveryCacheRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DiscoveryCacheRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _feedUrlMeta = const VerificationMeta(
+    'feedUrl',
+  );
+  @override
+  late final GeneratedColumn<String> feedUrl = GeneratedColumn<String>(
+    'feed_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _podcastJsonMeta = const VerificationMeta(
+    'podcastJson',
+  );
+  @override
+  late final GeneratedColumn<String> podcastJson = GeneratedColumn<String>(
+    'podcast_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _episodesJsonMeta = const VerificationMeta(
+    'episodesJson',
+  );
+  @override
+  late final GeneratedColumn<String> episodesJson = GeneratedColumn<String>(
+    'episodes_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    feedUrl,
+    title,
+    podcastJson,
+    episodesJson,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'discovery_cache_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DiscoveryCacheRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('feed_url')) {
+      context.handle(
+        _feedUrlMeta,
+        feedUrl.isAcceptableOrUnknown(data['feed_url']!, _feedUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_feedUrlMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('podcast_json')) {
+      context.handle(
+        _podcastJsonMeta,
+        podcastJson.isAcceptableOrUnknown(
+          data['podcast_json']!,
+          _podcastJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_podcastJsonMeta);
+    }
+    if (data.containsKey('episodes_json')) {
+      context.handle(
+        _episodesJsonMeta,
+        episodesJson.isAcceptableOrUnknown(
+          data['episodes_json']!,
+          _episodesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {feedUrl};
+  @override
+  DiscoveryCacheRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DiscoveryCacheRecord(
+      feedUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feed_url'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      podcastJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}podcast_json'],
+      )!,
+      episodesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}episodes_json'],
+      )!,
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DiscoveryCacheRowsTable createAlias(String alias) {
+    return $DiscoveryCacheRowsTable(attachedDatabase, alias);
+  }
+}
+
+class DiscoveryCacheRecord extends DataClass
+    implements Insertable<DiscoveryCacheRecord> {
+  final String feedUrl;
+  final String title;
+  final String podcastJson;
+  final String episodesJson;
+  final DateTime cachedAt;
+  const DiscoveryCacheRecord({
+    required this.feedUrl,
+    required this.title,
+    required this.podcastJson,
+    required this.episodesJson,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['feed_url'] = Variable<String>(feedUrl);
+    map['title'] = Variable<String>(title);
+    map['podcast_json'] = Variable<String>(podcastJson);
+    map['episodes_json'] = Variable<String>(episodesJson);
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  DiscoveryCacheRowsCompanion toCompanion(bool nullToAbsent) {
+    return DiscoveryCacheRowsCompanion(
+      feedUrl: Value(feedUrl),
+      title: Value(title),
+      podcastJson: Value(podcastJson),
+      episodesJson: Value(episodesJson),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory DiscoveryCacheRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DiscoveryCacheRecord(
+      feedUrl: serializer.fromJson<String>(json['feedUrl']),
+      title: serializer.fromJson<String>(json['title']),
+      podcastJson: serializer.fromJson<String>(json['podcastJson']),
+      episodesJson: serializer.fromJson<String>(json['episodesJson']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'feedUrl': serializer.toJson<String>(feedUrl),
+      'title': serializer.toJson<String>(title),
+      'podcastJson': serializer.toJson<String>(podcastJson),
+      'episodesJson': serializer.toJson<String>(episodesJson),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  DiscoveryCacheRecord copyWith({
+    String? feedUrl,
+    String? title,
+    String? podcastJson,
+    String? episodesJson,
+    DateTime? cachedAt,
+  }) => DiscoveryCacheRecord(
+    feedUrl: feedUrl ?? this.feedUrl,
+    title: title ?? this.title,
+    podcastJson: podcastJson ?? this.podcastJson,
+    episodesJson: episodesJson ?? this.episodesJson,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  DiscoveryCacheRecord copyWithCompanion(DiscoveryCacheRowsCompanion data) {
+    return DiscoveryCacheRecord(
+      feedUrl: data.feedUrl.present ? data.feedUrl.value : this.feedUrl,
+      title: data.title.present ? data.title.value : this.title,
+      podcastJson: data.podcastJson.present
+          ? data.podcastJson.value
+          : this.podcastJson,
+      episodesJson: data.episodesJson.present
+          ? data.episodesJson.value
+          : this.episodesJson,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DiscoveryCacheRecord(')
+          ..write('feedUrl: $feedUrl, ')
+          ..write('title: $title, ')
+          ..write('podcastJson: $podcastJson, ')
+          ..write('episodesJson: $episodesJson, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(feedUrl, title, podcastJson, episodesJson, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DiscoveryCacheRecord &&
+          other.feedUrl == this.feedUrl &&
+          other.title == this.title &&
+          other.podcastJson == this.podcastJson &&
+          other.episodesJson == this.episodesJson &&
+          other.cachedAt == this.cachedAt);
+}
+
+class DiscoveryCacheRowsCompanion
+    extends UpdateCompanion<DiscoveryCacheRecord> {
+  final Value<String> feedUrl;
+  final Value<String> title;
+  final Value<String> podcastJson;
+  final Value<String> episodesJson;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const DiscoveryCacheRowsCompanion({
+    this.feedUrl = const Value.absent(),
+    this.title = const Value.absent(),
+    this.podcastJson = const Value.absent(),
+    this.episodesJson = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DiscoveryCacheRowsCompanion.insert({
+    required String feedUrl,
+    required String title,
+    required String podcastJson,
+    this.episodesJson = const Value.absent(),
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : feedUrl = Value(feedUrl),
+       title = Value(title),
+       podcastJson = Value(podcastJson),
+       cachedAt = Value(cachedAt);
+  static Insertable<DiscoveryCacheRecord> custom({
+    Expression<String>? feedUrl,
+    Expression<String>? title,
+    Expression<String>? podcastJson,
+    Expression<String>? episodesJson,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (feedUrl != null) 'feed_url': feedUrl,
+      if (title != null) 'title': title,
+      if (podcastJson != null) 'podcast_json': podcastJson,
+      if (episodesJson != null) 'episodes_json': episodesJson,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DiscoveryCacheRowsCompanion copyWith({
+    Value<String>? feedUrl,
+    Value<String>? title,
+    Value<String>? podcastJson,
+    Value<String>? episodesJson,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return DiscoveryCacheRowsCompanion(
+      feedUrl: feedUrl ?? this.feedUrl,
+      title: title ?? this.title,
+      podcastJson: podcastJson ?? this.podcastJson,
+      episodesJson: episodesJson ?? this.episodesJson,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (feedUrl.present) {
+      map['feed_url'] = Variable<String>(feedUrl.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (podcastJson.present) {
+      map['podcast_json'] = Variable<String>(podcastJson.value);
+    }
+    if (episodesJson.present) {
+      map['episodes_json'] = Variable<String>(episodesJson.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DiscoveryCacheRowsCompanion(')
+          ..write('feedUrl: $feedUrl, ')
+          ..write('title: $title, ')
+          ..write('podcastJson: $podcastJson, ')
+          ..write('episodesJson: $episodesJson, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -2555,6 +3130,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $PodcastRowsTable podcastRows = $PodcastRowsTable(this);
+  late final $DiscoveryCacheRowsTable discoveryCacheRows =
+      $DiscoveryCacheRowsTable(this);
   late final $EpisodeRowsTable episodeRows = $EpisodeRowsTable(this);
   late final $QueueRowsTable queueRows = $QueueRowsTable(this);
   late final $SyncMutationsTable syncMutations = $SyncMutationsTable(this);
@@ -2568,6 +3145,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     podcastRows,
+    discoveryCacheRows,
     episodeRows,
     queueRows,
     syncMutations,
@@ -2585,6 +3163,10 @@ typedef $$PodcastRowsTableCreateCompanionBuilder =
       Value<String> description,
       Value<String> feedUrl,
       Value<int> episodeCount,
+      Value<String> websiteUrl,
+      Value<String> categoriesJson,
+      Value<bool> explicit,
+      Value<int> podcastIndexId,
     });
 typedef $$PodcastRowsTableUpdateCompanionBuilder =
     PodcastRowsCompanion Function({
@@ -2595,6 +3177,10 @@ typedef $$PodcastRowsTableUpdateCompanionBuilder =
       Value<String> description,
       Value<String> feedUrl,
       Value<int> episodeCount,
+      Value<String> websiteUrl,
+      Value<String> categoriesJson,
+      Value<bool> explicit,
+      Value<int> podcastIndexId,
     });
 
 final class $$PodcastRowsTableReferences
@@ -2687,6 +3273,26 @@ class $$PodcastRowsTableFilterComposer
 
   ColumnFilters<int> get episodeCount => $composableBuilder(
     column: $table.episodeCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get websiteUrl => $composableBuilder(
+    column: $table.websiteUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get categoriesJson => $composableBuilder(
+    column: $table.categoriesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get explicit => $composableBuilder(
+    column: $table.explicit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get podcastIndexId => $composableBuilder(
+    column: $table.podcastIndexId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2788,6 +3394,26 @@ class $$PodcastRowsTableOrderingComposer
     column: $table.episodeCount,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get websiteUrl => $composableBuilder(
+    column: $table.websiteUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get categoriesJson => $composableBuilder(
+    column: $table.categoriesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get explicit => $composableBuilder(
+    column: $table.explicit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get podcastIndexId => $composableBuilder(
+    column: $table.podcastIndexId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PodcastRowsTableAnnotationComposer
@@ -2823,6 +3449,24 @@ class $$PodcastRowsTableAnnotationComposer
 
   GeneratedColumn<int> get episodeCount => $composableBuilder(
     column: $table.episodeCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get websiteUrl => $composableBuilder(
+    column: $table.websiteUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get categoriesJson => $composableBuilder(
+    column: $table.categoriesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get explicit =>
+      $composableBuilder(column: $table.explicit, builder: (column) => column);
+
+  GeneratedColumn<int> get podcastIndexId => $composableBuilder(
+    column: $table.podcastIndexId,
     builder: (column) => column,
   );
 
@@ -2919,6 +3563,10 @@ class $$PodcastRowsTableTableManager
                 Value<String> description = const Value.absent(),
                 Value<String> feedUrl = const Value.absent(),
                 Value<int> episodeCount = const Value.absent(),
+                Value<String> websiteUrl = const Value.absent(),
+                Value<String> categoriesJson = const Value.absent(),
+                Value<bool> explicit = const Value.absent(),
+                Value<int> podcastIndexId = const Value.absent(),
               }) => PodcastRowsCompanion(
                 id: id,
                 title: title,
@@ -2927,6 +3575,10 @@ class $$PodcastRowsTableTableManager
                 description: description,
                 feedUrl: feedUrl,
                 episodeCount: episodeCount,
+                websiteUrl: websiteUrl,
+                categoriesJson: categoriesJson,
+                explicit: explicit,
+                podcastIndexId: podcastIndexId,
               ),
           createCompanionCallback:
               ({
@@ -2937,6 +3589,10 @@ class $$PodcastRowsTableTableManager
                 Value<String> description = const Value.absent(),
                 Value<String> feedUrl = const Value.absent(),
                 Value<int> episodeCount = const Value.absent(),
+                Value<String> websiteUrl = const Value.absent(),
+                Value<String> categoriesJson = const Value.absent(),
+                Value<bool> explicit = const Value.absent(),
+                Value<int> podcastIndexId = const Value.absent(),
               }) => PodcastRowsCompanion.insert(
                 id: id,
                 title: title,
@@ -2945,6 +3601,10 @@ class $$PodcastRowsTableTableManager
                 description: description,
                 feedUrl: feedUrl,
                 episodeCount: episodeCount,
+                websiteUrl: websiteUrl,
+                categoriesJson: categoriesJson,
+                explicit: explicit,
+                podcastIndexId: podcastIndexId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3035,6 +3695,223 @@ typedef $$PodcastRowsTableProcessedTableManager =
         bool episodeRowsRefs,
         bool podcastPlaybackOverrideRowsRefs,
       })
+    >;
+typedef $$DiscoveryCacheRowsTableCreateCompanionBuilder =
+    DiscoveryCacheRowsCompanion Function({
+      required String feedUrl,
+      required String title,
+      required String podcastJson,
+      Value<String> episodesJson,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$DiscoveryCacheRowsTableUpdateCompanionBuilder =
+    DiscoveryCacheRowsCompanion Function({
+      Value<String> feedUrl,
+      Value<String> title,
+      Value<String> podcastJson,
+      Value<String> episodesJson,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$DiscoveryCacheRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $DiscoveryCacheRowsTable> {
+  $$DiscoveryCacheRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get feedUrl => $composableBuilder(
+    column: $table.feedUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get podcastJson => $composableBuilder(
+    column: $table.podcastJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get episodesJson => $composableBuilder(
+    column: $table.episodesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DiscoveryCacheRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DiscoveryCacheRowsTable> {
+  $$DiscoveryCacheRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get feedUrl => $composableBuilder(
+    column: $table.feedUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get podcastJson => $composableBuilder(
+    column: $table.podcastJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get episodesJson => $composableBuilder(
+    column: $table.episodesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DiscoveryCacheRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DiscoveryCacheRowsTable> {
+  $$DiscoveryCacheRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get feedUrl =>
+      $composableBuilder(column: $table.feedUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get podcastJson => $composableBuilder(
+    column: $table.podcastJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get episodesJson => $composableBuilder(
+    column: $table.episodesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$DiscoveryCacheRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DiscoveryCacheRowsTable,
+          DiscoveryCacheRecord,
+          $$DiscoveryCacheRowsTableFilterComposer,
+          $$DiscoveryCacheRowsTableOrderingComposer,
+          $$DiscoveryCacheRowsTableAnnotationComposer,
+          $$DiscoveryCacheRowsTableCreateCompanionBuilder,
+          $$DiscoveryCacheRowsTableUpdateCompanionBuilder,
+          (
+            DiscoveryCacheRecord,
+            BaseReferences<
+              _$AppDatabase,
+              $DiscoveryCacheRowsTable,
+              DiscoveryCacheRecord
+            >,
+          ),
+          DiscoveryCacheRecord,
+          PrefetchHooks Function()
+        > {
+  $$DiscoveryCacheRowsTableTableManager(
+    _$AppDatabase db,
+    $DiscoveryCacheRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DiscoveryCacheRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DiscoveryCacheRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DiscoveryCacheRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> feedUrl = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> podcastJson = const Value.absent(),
+                Value<String> episodesJson = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DiscoveryCacheRowsCompanion(
+                feedUrl: feedUrl,
+                title: title,
+                podcastJson: podcastJson,
+                episodesJson: episodesJson,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String feedUrl,
+                required String title,
+                required String podcastJson,
+                Value<String> episodesJson = const Value.absent(),
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DiscoveryCacheRowsCompanion.insert(
+                feedUrl: feedUrl,
+                title: title,
+                podcastJson: podcastJson,
+                episodesJson: episodesJson,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DiscoveryCacheRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DiscoveryCacheRowsTable,
+      DiscoveryCacheRecord,
+      $$DiscoveryCacheRowsTableFilterComposer,
+      $$DiscoveryCacheRowsTableOrderingComposer,
+      $$DiscoveryCacheRowsTableAnnotationComposer,
+      $$DiscoveryCacheRowsTableCreateCompanionBuilder,
+      $$DiscoveryCacheRowsTableUpdateCompanionBuilder,
+      (
+        DiscoveryCacheRecord,
+        BaseReferences<
+          _$AppDatabase,
+          $DiscoveryCacheRowsTable,
+          DiscoveryCacheRecord
+        >,
+      ),
+      DiscoveryCacheRecord,
+      PrefetchHooks Function()
     >;
 typedef $$EpisodeRowsTableCreateCompanionBuilder =
     EpisodeRowsCompanion Function({
@@ -4640,6 +5517,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$PodcastRowsTableTableManager get podcastRows =>
       $$PodcastRowsTableTableManager(_db, _db.podcastRows);
+  $$DiscoveryCacheRowsTableTableManager get discoveryCacheRows =>
+      $$DiscoveryCacheRowsTableTableManager(_db, _db.discoveryCacheRows);
   $$EpisodeRowsTableTableManager get episodeRows =>
       $$EpisodeRowsTableTableManager(_db, _db.episodeRows);
   $$QueueRowsTableTableManager get queueRows =>

@@ -43,6 +43,10 @@ class SyncEngine {
             description: Value(podcast.description),
             feedUrl: Value(podcast.feedUrl),
             episodeCount: Value(podcast.episodeCount),
+            websiteUrl: Value(podcast.websiteUrl),
+            categoriesJson: Value(jsonEncode(podcast.categories)),
+            explicit: Value(podcast.explicit),
+            podcastIndexId: Value(podcast.podcastIndexId),
           ),
         )
         .toList();
@@ -110,12 +114,9 @@ class SyncEngine {
       try {
         final payload = jsonDecode(mutation.payload) as Map<String, dynamic>;
         final episodeId = mutation.episodeId;
-        if (episodeId == null) {
-          await database.removeMutation(mutation.id);
-          continue;
-        }
         switch (mutation.type) {
           case 'position':
+            if (episodeId == null) break;
             await backend.updatePlayback(
               userId,
               episodeId,
@@ -123,6 +124,7 @@ class SyncEngine {
             );
             break;
           case 'completed':
+            if (episodeId == null) break;
             await backend.markCompleted(
               userId,
               episodeId,
@@ -130,10 +132,25 @@ class SyncEngine {
             );
             break;
           case 'queue_add':
+            if (episodeId == null) break;
             await backend.addToQueue(userId, episodeId);
             break;
           case 'queue_remove':
+            if (episodeId == null) break;
             await backend.removeFromQueue(userId, episodeId);
+            break;
+          case 'podcast_subscribe':
+            final podcast = RemotePodcast.fromJson(payload);
+            final remoteId = await backend.subscribe(userId, podcast);
+            if (remoteId > 0) {
+              await database.reconcilePodcastId(
+                temporaryId: podcast.id,
+                podcast: _podcastCompanion(podcast.copyWith(id: remoteId)),
+              );
+            }
+            break;
+          case 'podcast_unsubscribe':
+            await backend.unsubscribe(userId, RemotePodcast.fromJson(payload));
             break;
         }
         await database.removeMutation(mutation.id);
@@ -143,4 +160,19 @@ class SyncEngine {
       }
     }
   }
+
+  static PodcastRowsCompanion _podcastCompanion(RemotePodcast podcast) =>
+      PodcastRowsCompanion.insert(
+        id: Value(podcast.id),
+        title: podcast.title,
+        author: Value(podcast.author),
+        artworkUrl: Value(podcast.artworkUrl),
+        description: Value(podcast.description),
+        feedUrl: Value(podcast.feedUrl),
+        episodeCount: Value(podcast.episodeCount),
+        websiteUrl: Value(podcast.websiteUrl),
+        categoriesJson: Value(jsonEncode(podcast.categories)),
+        explicit: Value(podcast.explicit),
+        podcastIndexId: Value(podcast.podcastIndexId),
+      );
 }

@@ -10,14 +10,17 @@ Podpine is an offline-first Flutter client for a self-hosted [Pinepods](https://
 - Subscription, episode, and queue pulls from Pinepods
 - SQLite-backed offline library with a durable mutation outbox
 - Played/unplayed and queue mutations with retry on the next refresh
-- Responsive Home, Library, Queue, and local Search views
+- Pinepods-backed discovery with Podcast Index and iTunes providers
+- Rich, cached podcast and episode detail views before and after subscription
+- Optimistic subscribe/unsubscribe with offline retry
+- Responsive Home, Library, Queue, and Search views
 - Persistent mini-player and full player with background audio
 - Lock-screen, notification, Bluetooth, and headset media controls
 - Seek, skip intervals, playback speed, and periodic position persistence
 - Secure credential storage
 - Demo library for development and product review
 
-The player integrates `just_audio` through `audio_service`, including queue-aware previous/next controls and active-episode artwork and metadata. Production downloads, automatic-download rules, Pinepods discovery/subscribe flows, queue reordering, and background refresh scheduling remain follow-up work. See [Architecture](docs/ARCHITECTURE.md) and [Background audio](docs/BACKGROUND_AUDIO.md).
+The player integrates `just_audio` through `audio_service`, including queue-aware previous/next controls and active-episode artwork and metadata. Production downloads, automatic-download rules, queue reordering, and background refresh scheduling remain follow-up work. See [Architecture](docs/ARCHITECTURE.md) and [Background audio](docs/BACKGROUND_AUDIO.md).
 
 ## Run it
 

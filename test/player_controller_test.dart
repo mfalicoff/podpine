@@ -405,6 +405,10 @@ const _podcast = PodcastRecord(
   description: '',
   feedUrl: 'https://example.test/feed.xml',
   episodeCount: 2,
+  websiteUrl: '',
+  categoriesJson: '[]',
+  explicit: false,
+  podcastIndexId: 0,
 );
 
 EpisodeRecord _episode(int id, {required String title}) => EpisodeRecord(

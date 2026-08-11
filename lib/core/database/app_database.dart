@@ -14,9 +14,25 @@ class PodcastRows extends Table {
   TextColumn get description => text().withDefault(const Constant(''))();
   TextColumn get feedUrl => text().withDefault(const Constant(''))();
   IntColumn get episodeCount => integer().withDefault(const Constant(0))();
+  TextColumn get websiteUrl => text().withDefault(const Constant(''))();
+  TextColumn get categoriesJson => text().withDefault(const Constant('[]'))();
+  BoolColumn get explicit => boolean().withDefault(const Constant(false))();
+  IntColumn get podcastIndexId => integer().withDefault(const Constant(0))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('DiscoveryCacheRecord')
+class DiscoveryCacheRows extends Table {
+  TextColumn get feedUrl => text()();
+  TextColumn get title => text()();
+  TextColumn get podcastJson => text()();
+  TextColumn get episodesJson => text().withDefault(const Constant('[]'))();
+  DateTimeColumn get cachedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {feedUrl};
 }
 
 @DataClassName('EpisodeRecord')
@@ -88,6 +104,7 @@ class PodcastPlaybackOverrideRows extends Table {
 @DriftDatabase(
   tables: [
     PodcastRows,
+    DiscoveryCacheRows,
     EpisodeRows,
     QueueRows,
     SyncMutations,
@@ -109,7 +126,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -119,6 +136,13 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(episodeRows, episodeRows.chaptersJson);
         await migrator.createTable(playbackPreferenceRows);
         await migrator.createTable(podcastPlaybackOverrideRows);
+      }
+      if (from < 3) {
+        await migrator.addColumn(podcastRows, podcastRows.websiteUrl);
+        await migrator.addColumn(podcastRows, podcastRows.categoriesJson);
+        await migrator.addColumn(podcastRows, podcastRows.explicit);
+        await migrator.addColumn(podcastRows, podcastRows.podcastIndexId);
+        await migrator.createTable(discoveryCacheRows);
       }
     },
   );
@@ -132,6 +156,111 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(e) => OrderingTerm.desc(e.publishedAt)])
             ..limit(100))
           .watch();
+
+  Stream<List<EpisodeRecord>> watchPodcastEpisodes(int podcastId) =>
+      (select(episodeRows)
+            ..where((episode) => episode.podcastId.equals(podcastId))
+            ..orderBy([(episode) => OrderingTerm.desc(episode.publishedAt)]))
+          .watch();
+
+  Future<PodcastRecord?> podcastById(int podcastId) => (select(
+    podcastRows,
+  )..where((row) => row.id.equals(podcastId))).getSingleOrNull();
+
+  Future<PodcastRecord?> podcastByFeedUrl(String feedUrl) => (select(
+    podcastRows,
+  )..where((row) => row.feedUrl.equals(feedUrl))).getSingleOrNull();
+
+  Future<List<EpisodeRecord>> podcastEpisodes(int podcastId) =>
+      (select(episodeRows)
+            ..where((episode) => episode.podcastId.equals(podcastId))
+            ..orderBy([(episode) => OrderingTerm.desc(episode.publishedAt)]))
+          .get();
+
+  Future<DiscoveryCacheRecord?> discoveryCache(String feedUrl) => (select(
+    discoveryCacheRows,
+  )..where((row) => row.feedUrl.equals(feedUrl))).getSingleOrNull();
+
+  Future<List<DiscoveryCacheRecord>> searchDiscoveryCache(String query) {
+    final pattern = '%${query.trim().toLowerCase()}%';
+    return (select(discoveryCacheRows)
+          ..where(
+            (row) =>
+                row.title.lower().like(pattern) |
+                row.podcastJson.lower().like(pattern),
+          )
+          ..orderBy([(row) => OrderingTerm.desc(row.cachedAt)]))
+        .get();
+  }
+
+  Future<void> cacheDiscovery({
+    required String feedUrl,
+    required String title,
+    required String podcastJson,
+    String? episodesJson,
+  }) async {
+    final existing = await discoveryCache(feedUrl);
+    await into(discoveryCacheRows).insertOnConflictUpdate(
+      DiscoveryCacheRowsCompanion.insert(
+        feedUrl: feedUrl,
+        title: title,
+        podcastJson: podcastJson,
+        episodesJson: Value(episodesJson ?? existing?.episodesJson ?? '[]'),
+        cachedAt: DateTime.now().toUtc(),
+      ),
+    );
+  }
+
+  Future<void> upsertPodcast(PodcastRowsCompanion podcast) =>
+      into(podcastRows).insertOnConflictUpdate(podcast);
+
+  Future<void> reconcilePodcastId({
+    required int temporaryId,
+    required PodcastRowsCompanion podcast,
+  }) async {
+    await transaction(() async {
+      await into(podcastRows).insertOnConflictUpdate(podcast);
+      if (temporaryId != podcast.id.value) {
+        await (delete(
+          podcastRows,
+        )..where((row) => row.id.equals(temporaryId))).go();
+      }
+    });
+  }
+
+  Future<void> removePodcastByFeedUrl(String feedUrl) async {
+    final podcasts = await (select(
+      podcastRows,
+    )..where((row) => row.feedUrl.equals(feedUrl))).get();
+    for (final podcast in podcasts) {
+      await removePodcastSafely(podcast.id);
+    }
+  }
+
+  Future<void> removePodcastSafely(int podcastId) async {
+    await transaction(() async {
+      final episodeIds =
+          await (selectOnly(episodeRows)
+                ..addColumns([episodeRows.id])
+                ..where(episodeRows.podcastId.equals(podcastId)))
+              .map((row) => row.read(episodeRows.id)!)
+              .get();
+      if (episodeIds.isNotEmpty) {
+        await (delete(
+          queueRows,
+        )..where((row) => row.episodeId.isIn(episodeIds))).go();
+      }
+      await (delete(
+        podcastPlaybackOverrideRows,
+      )..where((row) => row.podcastId.equals(podcastId))).go();
+      await (delete(
+        episodeRows,
+      )..where((row) => row.podcastId.equals(podcastId))).go();
+      await (delete(
+        podcastRows,
+      )..where((row) => row.id.equals(podcastId))).go();
+    });
+  }
 
   Stream<List<EpisodeRecord>> watchQueue() {
     final query = select(episodeRows).join([
@@ -226,6 +355,38 @@ class AppDatabase extends _$AppDatabase {
     required List<QueueRowsCompanion> queue,
   }) async {
     await transaction(() async {
+      final remotePodcastIds = podcasts
+          .map((podcast) => podcast.id.value)
+          .toSet();
+      final stalePodcasts =
+          await (select(podcastRows)..where(
+                (row) =>
+                    row.id.isBiggerThanValue(0) &
+                    row.id.isNotIn(remotePodcastIds),
+              ))
+              .get();
+      for (final podcast in stalePodcasts) {
+        final staleEpisodeIds =
+            await (selectOnly(episodeRows)
+                  ..addColumns([episodeRows.id])
+                  ..where(episodeRows.podcastId.equals(podcast.id)))
+                .map((row) => row.read(episodeRows.id)!)
+                .get();
+        if (staleEpisodeIds.isNotEmpty) {
+          await (delete(
+            queueRows,
+          )..where((row) => row.episodeId.isIn(staleEpisodeIds))).go();
+        }
+        await (delete(
+          episodeRows,
+        )..where((row) => row.podcastId.equals(podcast.id))).go();
+        await (delete(podcastPlaybackOverrideRows)
+              ..where((row) => row.podcastId.equals(podcast.id)))
+            .go();
+        await (delete(
+          podcastRows,
+        )..where((row) => row.id.equals(podcast.id))).go();
+      }
       await batch((batch) {
         batch.insertAllOnConflictUpdate(podcastRows, podcasts);
         batch.insertAllOnConflictUpdate(episodeRows, episodes);
@@ -366,6 +527,7 @@ class AppDatabase extends _$AppDatabase {
     await transaction(() async {
       await delete(queueRows).go();
       await delete(syncMutations).go();
+      await delete(discoveryCacheRows).go();
       await delete(podcastPlaybackOverrideRows).go();
       await delete(episodeRows).go();
       await delete(podcastRows).go();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import '../../core/metadata_sanitizer.dart';
 
 class Artwork extends StatelessWidget {
   const Artwork({
@@ -20,6 +21,7 @@ class Artwork extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final safeUrl = MetadataSanitizer.safeHttpUrl(url);
     final palette = [
       const [Color(0xFF173F35), Color(0xFF6EA58C)],
       const [Color(0xFF653C43), Color(0xFFE58B79)],
@@ -50,10 +52,10 @@ class Artwork extends StatelessWidget {
       child: SizedBox(
         width: size,
         height: size,
-        child: url.isEmpty
+        child: safeUrl.isEmpty
             ? placeholder
             : Image.network(
-                url,
+                safeUrl,
                 fit: BoxFit.cover,
                 errorBuilder: (_, _, _) => placeholder,
               ),

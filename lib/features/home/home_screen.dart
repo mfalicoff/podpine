@@ -56,7 +56,7 @@ class HomeScreen extends ConsumerWidget {
           child: EmptyState(
             icon: Icons.podcasts_rounded,
             title: 'Your library is ready',
-            body: 'Refresh after adding subscriptions in Pinepods.',
+            body: 'Use Discover to add your first subscription.',
           ),
         ),
       ];

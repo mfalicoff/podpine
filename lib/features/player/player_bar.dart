@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
+import '../../core/metadata_sanitizer.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
 import 'playback_options.dart';
@@ -152,6 +153,7 @@ class _FullPlayer extends ConsumerWidget {
         .toDouble()
         .clamp(1, double.infinity)
         .toDouble();
+    final showNotes = MetadataSanitizer.plainText(episode.description);
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(28, 18, 28, 26),
@@ -318,6 +320,29 @@ class _FullPlayer extends ConsumerWidget {
                   label: const Text('Timer'),
                 ),
               ],
+            ),
+            const SizedBox(height: 18),
+            const Divider(),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Show notes',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 9),
+                  if (showNotes.isEmpty)
+                    const Text(
+                      'No show notes were provided for this episode.',
+                      style: TextStyle(color: Colors.black54),
+                    )
+                  else
+                    SelectableText(showNotes),
+                ],
+              ),
             ),
           ],
         ),

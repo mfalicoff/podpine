@@ -1,7 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers.dart';
+import '../../core/backend/podcast_backend.dart';
+import '../../core/database/app_database.dart';
+import '../details/podcast_detail_screen.dart';
 import '../shared/artwork.dart';
 
 class LibraryScreen extends ConsumerWidget {
@@ -41,7 +46,7 @@ class LibraryScreen extends ConsumerWidget {
                         icon: Icons.library_music_outlined,
                         title: 'No subscriptions yet',
                         body:
-                            'Add a podcast in Pinepods, then refresh your library.',
+                            'Use Discover to find and subscribe to a podcast.',
                       ),
                     ),
                   ]
@@ -69,46 +74,56 @@ class LibraryScreen extends ConsumerWidget {
                               final podcast = items[index];
                               return Card(
                                 margin: EdgeInsets.zero,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: LayoutBuilder(
-                                          builder: (_, size) => Artwork(
-                                            id: podcast.id,
-                                            title: podcast.title,
-                                            url: podcast.artworkUrl,
-                                            size: size.maxWidth,
-                                            radius: 18,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => PodcastDetailScreen(
+                                        podcast: _remotePodcast(podcast),
+                                      ),
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: LayoutBuilder(
+                                            builder: (_, size) => Artwork(
+                                              id: podcast.id,
+                                              title: podcast.title,
+                                              url: podcast.artworkUrl,
+                                              size: size.maxWidth,
+                                              radius: 18,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 11),
-                                      Text(
-                                        podcast.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: Theme.of(
-                                          context,
-                                        ).textTheme.titleMedium,
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        podcast.author.isEmpty
-                                            ? '${podcast.episodeCount} episodes'
-                                            : podcast.author,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontFamily: 'sans-serif',
-                                          fontSize: 11,
-                                          color: Colors.black45,
+                                        const SizedBox(height: 11),
+                                        Text(
+                                          podcast.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleMedium,
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          podcast.author.isEmpty
+                                              ? '${podcast.episodeCount} episodes'
+                                              : podcast.author,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontFamily: 'sans-serif',
+                                            fontSize: 11,
+                                            color: Colors.black45,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );
@@ -135,6 +150,30 @@ class LibraryScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  static RemotePodcast _remotePodcast(PodcastRecord podcast) {
+    List<String> categories;
+    try {
+      categories = (jsonDecode(podcast.categoriesJson) as List)
+          .map((value) => '$value')
+          .toList(growable: false);
+    } catch (_) {
+      categories = const [];
+    }
+    return RemotePodcast(
+      id: podcast.id,
+      title: podcast.title,
+      author: podcast.author,
+      artworkUrl: podcast.artworkUrl,
+      description: podcast.description,
+      feedUrl: podcast.feedUrl,
+      episodeCount: podcast.episodeCount,
+      websiteUrl: podcast.websiteUrl,
+      categories: categories,
+      explicit: podcast.explicit,
+      podcastIndexId: podcast.podcastIndexId,
     );
   }
 }

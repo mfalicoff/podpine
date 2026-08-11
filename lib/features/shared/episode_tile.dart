@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/backend/podcast_backend.dart';
 import '../../providers.dart';
+import '../details/podcast_detail_screen.dart';
 import 'artwork.dart';
 
 class EpisodeTile extends ConsumerWidget {
@@ -20,7 +22,30 @@ class EpisodeTile extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => ref.read(playerControllerProvider).playEpisode(episode),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => EpisodeDetailScreen(
+              episode: RemoteEpisode(
+                id: episode.id,
+                podcastId: episode.podcastId,
+                podcastTitle: episode.podcastTitle,
+                title: episode.title,
+                description: episode.description,
+                artworkUrl: episode.artworkUrl,
+                audioUrl: episode.audioUrl,
+                publishedAt: episode.publishedAt,
+                durationSeconds: episode.durationSeconds,
+                positionSeconds: episode.positionSeconds,
+                completed: episode.completed,
+                queued: episode.queued,
+                downloaded: episode.downloaded,
+                isYoutube: episode.isYoutube,
+                chaptersJson: episode.chaptersJson,
+              ),
+              localEpisode: episode,
+            ),
+          ),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Row(
