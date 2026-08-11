@@ -143,3 +143,80 @@ class CellularDownloadConfirmationRequired extends DownloadException {
   const CellularDownloadConfirmationRequired()
     : super('Confirm this download to use your cellular connection.');
 }
+
+class DownloadStorageItem {
+  const DownloadStorageItem({required this.episode, required this.job});
+
+  final EpisodeRecord episode;
+  final DownloadJobRecord job;
+
+  int get sizeBytes => job.totalBytes ?? job.bytesDownloaded;
+  DateTime get downloadedAt => job.updatedAt;
+}
+
+class PodcastStorageUsage {
+  const PodcastStorageUsage({
+    required this.podcastId,
+    required this.title,
+    required this.episodeCount,
+    required this.sizeBytes,
+  });
+
+  final int podcastId;
+  final String title;
+  final int episodeCount;
+  final int sizeBytes;
+}
+
+class DownloadStorageSnapshot {
+  const DownloadStorageSnapshot({
+    required this.items,
+    required this.podcasts,
+    required this.totalBytes,
+    required this.storageFloorBytes,
+    this.availableBytes,
+  });
+
+  final List<DownloadStorageItem> items;
+  final List<PodcastStorageUsage> podcasts;
+  final int totalBytes;
+  final int? availableBytes;
+  final int storageFloorBytes;
+
+  bool get isLowStorage =>
+      availableBytes != null && availableBytes! < storageFloorBytes;
+}
+
+class DownloadCleanupFilter {
+  const DownloadCleanupFilter({
+    this.podcastId,
+    this.played,
+    this.downloadedBefore,
+  });
+
+  final int? podcastId;
+  final bool? played;
+  final DateTime? downloadedBefore;
+
+  bool matches(DownloadStorageItem item) {
+    if (podcastId != null && item.episode.podcastId != podcastId) return false;
+    if (played != null && item.episode.completed != played) return false;
+    if (downloadedBefore != null &&
+        !item.downloadedAt.isBefore(downloadedBefore!)) {
+      return false;
+    }
+    return true;
+  }
+}
+
+class DownloadCleanupResult {
+  const DownloadCleanupResult({
+    required this.deletedCount,
+    required this.reclaimedBytes,
+    required this.skippedUnsafeCount,
+  });
+
+  final int deletedCount;
+  final int reclaimedBytes;
+  final int skippedUnsafeCount;
+}

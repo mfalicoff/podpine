@@ -20,6 +20,8 @@ class DeviceStorageSpaceProbe implements StorageSpaceProbe {
       return null;
     } on MissingPluginException {
       return null;
+    } catch (_) {
+      return null;
     }
   }
 }
@@ -58,6 +60,8 @@ class DeviceChargingStateProbe implements ChargingStateProbe {
     } on PlatformException {
       return null;
     } on MissingPluginException {
+      return null;
+    } catch (_) {
       return null;
     }
   }

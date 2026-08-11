@@ -10,6 +10,21 @@ Future<void> startDownloadWithCellularConfirmation(
   WidgetRef ref,
   EpisodeRecord episode,
 ) async {
+  try {
+    await _startDownloadWithCellularConfirmation(context, ref, episode);
+  } on DownloadException catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(error.message)));
+  }
+}
+
+Future<void> _startDownloadWithCellularConfirmation(
+  BuildContext context,
+  WidgetRef ref,
+  EpisodeRecord episode,
+) async {
   final manager = ref.read(downloadManagerProvider);
   try {
     await manager.start(episode);

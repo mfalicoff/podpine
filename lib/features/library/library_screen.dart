@@ -8,6 +8,7 @@ import '../../core/backend/podcast_backend.dart';
 import '../../core/database/app_database.dart';
 import '../details/podcast_detail_screen.dart';
 import '../downloads/download_settings_screen.dart';
+import '../downloads/download_storage_screen.dart';
 import '../shared/artwork.dart';
 
 class LibraryScreen extends ConsumerWidget {
@@ -16,6 +17,7 @@ class LibraryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final podcasts = ref.watch(podcastsProvider);
+    final downloads = ref.watch(downloadManagerProvider);
     return SafeArea(
       child: CustomScrollView(
         slivers: [
@@ -49,6 +51,26 @@ class LibraryScreen extends ConsumerWidget {
                     'Your subscriptions, saved on this device.',
                     style: TextStyle(color: Colors.black54),
                   ),
+                  if (downloads.isLowStorage) ...[
+                    const SizedBox(height: 12),
+                    Card(
+                      margin: EdgeInsets.zero,
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      child: ListTile(
+                        leading: const Icon(Icons.warning_amber_rounded),
+                        title: const Text('Device storage is low'),
+                        subtitle: const Text(
+                          'Clean up downloads before saving more episodes.',
+                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const DownloadStorageScreen(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

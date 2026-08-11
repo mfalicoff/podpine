@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -202,6 +202,160 @@ void main() {
   );
 
   test(
+    'reports storage totals and groups completed media by podcast',
+    () async {
+      await database.upsertPodcast(
+        const PodcastRowsCompanion(id: Value(8), title: Value('Another Cast')),
+      );
+      await database
+          .into(database.episodeRows)
+          .insert(
+            EpisodeRowsCompanion.insert(
+              id: const Value(12),
+              podcastId: 8,
+              podcastTitle: 'Another Cast',
+              title: 'Second episode',
+              publishedAt: DateTime.utc(2026, 8, 9),
+              updatedAt: DateTime.utc(2026, 8, 9),
+            ),
+          );
+      await _insertJob(
+        database,
+        state: DownloadState.completed,
+        bytes: 4,
+        total: 4,
+        updatedAt: DateTime.utc(2026, 8, 10),
+      );
+      await _insertJob(
+        database,
+        episodeId: 12,
+        state: DownloadState.completed,
+        bytes: 6,
+        total: 6,
+        updatedAt: DateTime.utc(2026, 8, 11),
+      );
+      final manager = DownloadManager(
+        database,
+        files: files,
+        storage: const _StorageProbe(200),
+        storageReserveBytes: 0,
+      );
+      addTearDown(manager.dispose);
+
+      final snapshot = await manager.refreshStorageSnapshot();
+
+      expect(snapshot.totalBytes, 10);
+      expect(snapshot.items.map((item) => item.episode.id), [12, 11]);
+      expect(snapshot.podcasts, hasLength(2));
+      expect(
+        snapshot.podcasts.map((usage) => usage.title),
+        containsAll(['Test Cast', 'Another Cast']),
+      );
+      expect(snapshot.availableBytes, 200);
+      expect(snapshot.isLowStorage, isTrue);
+    },
+  );
+
+  test(
+    'bulk cleanup filters completed media and protects partial downloads',
+    () async {
+      await database
+          .into(database.episodeRows)
+          .insert(
+            EpisodeRowsCompanion.insert(
+              id: const Value(12),
+              podcastId: 7,
+              podcastTitle: 'Test Cast',
+              title: 'Unplayed episode',
+              publishedAt: DateTime.utc(2026, 6, 1),
+              updatedAt: DateTime.utc(2026, 6, 1),
+            ),
+          );
+      await database
+          .into(database.episodeRows)
+          .insert(
+            EpisodeRowsCompanion.insert(
+              id: const Value(13),
+              podcastId: 7,
+              podcastTitle: 'Test Cast',
+              title: 'Partial episode',
+              publishedAt: DateTime.utc(2026, 5, 1),
+              updatedAt: DateTime.utc(2026, 5, 1),
+            ),
+          );
+      await database.setCompleted(11, true);
+      await _insertJob(
+        database,
+        state: DownloadState.completed,
+        bytes: 4,
+        total: 4,
+        updatedAt: DateTime.utc(2026, 6, 1),
+      );
+      await _insertJob(
+        database,
+        episodeId: 12,
+        state: DownloadState.completed,
+        bytes: 6,
+        total: 6,
+        updatedAt: DateTime.utc(2026, 6, 1),
+      );
+      await _insertJob(
+        database,
+        episodeId: 13,
+        state: DownloadState.paused,
+        bytes: 2,
+        total: 8,
+        updatedAt: DateTime.utc(2026, 5, 1),
+      );
+      files.put('/downloads/episode-11.mp3', [1, 2, 3, 4]);
+      files.put('/downloads/episode-12.mp3', [1, 2, 3, 4, 5, 6]);
+      files.put('/downloads/episode-13.mp3.part', [1, 2]);
+      final manager = DownloadManager(
+        database,
+        files: files,
+        storageReserveBytes: 0,
+      );
+      addTearDown(manager.dispose);
+
+      final result = await manager.cleanupDownloads(
+        DownloadCleanupFilter(
+          podcastId: 7,
+          played: true,
+          downloadedBefore: DateTime.utc(2026, 7, 1),
+        ),
+      );
+
+      expect(result.deletedCount, 1);
+      expect(result.reclaimedBytes, 4);
+      expect(await database.downloadJob(11), isNull);
+      expect(await database.downloadJob(12), isNotNull);
+      expect(await database.downloadJob(13), isNotNull);
+      expect(await files.exists('/downloads/episode-13.mp3.part'), isTrue);
+    },
+  );
+
+  test(
+    'manual downloads fail preflight before creating partial state',
+    () async {
+      final manager = DownloadManager(
+        database,
+        files: files,
+        storage: const _StorageProbe(99),
+        storageReserveBytes: 100,
+      );
+      addTearDown(manager.dispose);
+
+      await expectLater(
+        manager.start((await database.episodeById(11))!),
+        throwsA(isA<LowStorageException>()),
+      );
+
+      expect(await database.downloadJob(11), isNull);
+      expect(manager.isLowStorage, isTrue);
+    },
+  );
+
+  test(
     'cancel removes partial state and delete removes completed media',
     () async {
       await _insertJob(
@@ -247,23 +401,25 @@ EpisodeRowsCompanion _episode() => EpisodeRowsCompanion.insert(
 
 Future<void> _insertJob(
   AppDatabase database, {
+  int episodeId = 11,
   required DownloadState state,
   int bytes = 0,
   int? total,
   String? etag,
   String sourceUrl = 'https://media.test/episode.mp3',
+  DateTime? updatedAt,
 }) => database.upsertDownloadJob(
   DownloadJobRowsCompanion.insert(
-    episodeId: const Value(11),
+    episodeId: Value(episodeId),
     sourceUrl: sourceUrl,
-    filePath: '/downloads/episode-11.mp3',
-    partialPath: '/downloads/episode-11.mp3.part',
+    filePath: '/downloads/episode-$episodeId.mp3',
+    partialPath: '/downloads/episode-$episodeId.mp3.part',
     state: state.name,
     bytesDownloaded: Value(bytes),
     totalBytes: Value(total),
     etag: Value(etag),
     createdAt: DateTime.utc(2026, 8, 10),
-    updatedAt: DateTime.utc(2026, 8, 10),
+    updatedAt: updatedAt ?? DateTime.utc(2026, 8, 10),
   ),
 );
 

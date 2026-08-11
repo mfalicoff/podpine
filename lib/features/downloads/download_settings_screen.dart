@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/downloads/download_models.dart';
 import '../../providers.dart';
+import 'download_storage_screen.dart';
 
 class DownloadSettingsScreen extends ConsumerStatefulWidget {
   const DownloadSettingsScreen({super.key, this.podcastId, this.podcastTitle});
@@ -38,6 +39,9 @@ class _DownloadSettingsScreenState
     final override = podcastId == null
         ? null
         : await database.podcastDownloadOverride(podcastId);
+    if (podcastId == null) {
+      await ref.read(downloadManagerProvider).refreshStorageSnapshot();
+    }
     if (!mounted) return;
     setState(() {
       _usePodcastOverride = override != null;
@@ -61,7 +65,9 @@ class _DownloadSettingsScreenState
       } else {
         await database.clearPodcastDownloadOverride(podcastId);
       }
-      await ref.read(downloadManagerProvider).evaluateRules();
+      final manager = ref.read(downloadManagerProvider);
+      await manager.evaluateRules();
+      await manager.refreshStorageSnapshot();
       if (mounted) Navigator.pop(context);
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -108,6 +114,13 @@ class _DownloadSettingsScreenState
                     value: _usePodcastOverride,
                     onChanged: (value) =>
                         setState(() => _usePodcastOverride = value),
+                  ),
+                  const Divider(height: 30),
+                ] else ...[
+                  _StorageSettingsTile(
+                    snapshot: ref
+                        .watch(downloadManagerProvider)
+                        .storageSnapshot,
                   ),
                   const Divider(height: 30),
                 ],
@@ -206,6 +219,34 @@ class _DownloadSettingsScreenState
             ),
     );
   }
+}
+
+class _StorageSettingsTile extends StatelessWidget {
+  const _StorageSettingsTile({required this.snapshot});
+
+  final DownloadStorageSnapshot? snapshot;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    margin: EdgeInsets.zero,
+    child: ListTile(
+      leading: Icon(
+        snapshot?.isLowStorage == true
+            ? Icons.warning_amber_rounded
+            : Icons.storage_rounded,
+      ),
+      title: const Text('Manage download storage'),
+      subtitle: Text(
+        snapshot == null
+            ? 'Calculating storage use…'
+            : '${formatBytes(snapshot!.totalBytes)} across ${snapshot!.items.length} downloaded episodes',
+      ),
+      trailing: const Icon(Icons.chevron_right_rounded),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => const DownloadStorageScreen()),
+      ),
+    ),
+  );
 }
 
 class _RuleDropdown<T> extends StatelessWidget {

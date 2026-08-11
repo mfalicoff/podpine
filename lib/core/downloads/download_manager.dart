@@ -47,8 +47,11 @@ class DownloadManager extends ChangeNotifier {
   bool _evaluationRequested = false;
 
   bool _disposed = false;
+  DownloadStorageSnapshot? _storageSnapshot;
 
   bool isActive(int episodeId) => _active.containsKey(episodeId);
+  DownloadStorageSnapshot? get storageSnapshot => _storageSnapshot;
+  bool get isLowStorage => _storageSnapshot?.isLowStorage ?? false;
 
   Future<void> initialize() async {
     for (final job in await database.downloadJobs()) {
@@ -107,6 +110,7 @@ class DownloadManager extends ChangeNotifier {
       (_) => unawaited(evaluateRules()),
     );
     await evaluateRules();
+    await refreshStorageSnapshot();
   }
 
   Future<bool> requiresCellularConfirmation() async {
@@ -130,6 +134,14 @@ class DownloadManager extends ChangeNotifier {
       throw const DownloadException(
         'This episode has no downloadable media URL.',
       );
+    }
+    final effectiveFloor = storageFloorBytes ?? storageReserveBytes;
+    final available = await storage.availableBytes();
+    if (available != null && available < effectiveFloor) {
+      await refreshStorageSnapshot(availableBytes: available);
+      if (!automatic) {
+        throw const LowStorageException();
+      }
     }
     final current = await database.downloadJob(episode.id);
     if (current?.downloadState == DownloadState.completed) return;
@@ -164,10 +176,7 @@ class DownloadManager extends ChangeNotifier {
     }
     await database.setDownloaded(episode.id, false);
 
-    final active = _ActiveDownload(
-      _clientFactory(),
-      storageFloorBytes ?? storageReserveBytes,
-    );
+    final active = _ActiveDownload(_clientFactory(), effectiveFloor);
     _active[episode.id] = active;
     notifyListeners();
     unawaited(_run(episode.id, active));
@@ -210,7 +219,95 @@ class DownloadManager extends ChangeNotifier {
     await database.deleteDownloadJob(episodeId);
     final episode = await database.episodeById(episodeId);
     if (episode != null) await _setDownloaded(episode, false);
+    await refreshStorageSnapshot();
     notifyListeners();
+  }
+
+  Future<DownloadStorageSnapshot> refreshStorageSnapshot({
+    int? availableBytes,
+  }) async {
+    final global =
+        (await database.downloadPreferences())?.settings ??
+        const DownloadRuleSettings();
+    final overrides = await database.podcastDownloadOverrides();
+    var floorBytes = global.storageFloorBytes;
+    for (final override in overrides.values) {
+      if (override.storageFloorBytes > floorBytes) {
+        floorBytes = override.storageFloorBytes;
+      }
+    }
+    if (storageReserveBytes > floorBytes) floorBytes = storageReserveBytes;
+
+    final episodes = {
+      for (final episode in await database.allEpisodes()) episode.id: episode,
+    };
+    final items = <DownloadStorageItem>[];
+    for (final job in await database.downloadJobs()) {
+      if (job.downloadState != DownloadState.completed) continue;
+      final episode = episodes[job.episodeId];
+      if (episode != null) {
+        items.add(DownloadStorageItem(episode: episode, job: job));
+      }
+    }
+    items.sort(
+      (left, right) => right.downloadedAt.compareTo(left.downloadedAt),
+    );
+
+    final usage = <int, List<DownloadStorageItem>>{};
+    for (final item in items) {
+      usage.putIfAbsent(item.episode.podcastId, () => []).add(item);
+    }
+    final podcasts =
+        usage.entries
+            .map(
+              (entry) => PodcastStorageUsage(
+                podcastId: entry.key,
+                title: entry.value.first.episode.podcastTitle,
+                episodeCount: entry.value.length,
+                sizeBytes: entry.value.fold(
+                  0,
+                  (sum, item) => sum + item.sizeBytes,
+                ),
+              ),
+            )
+            .toList()
+          ..sort((left, right) => right.sizeBytes.compareTo(left.sizeBytes));
+    final snapshot = DownloadStorageSnapshot(
+      items: List.unmodifiable(items),
+      podcasts: List.unmodifiable(podcasts),
+      totalBytes: items.fold(0, (sum, item) => sum + item.sizeBytes),
+      availableBytes: availableBytes ?? await storage.availableBytes(),
+      storageFloorBytes: floorBytes,
+    );
+    _storageSnapshot = snapshot;
+    if (!_disposed) notifyListeners();
+    return snapshot;
+  }
+
+  Future<DownloadCleanupResult> cleanupDownloads(
+    DownloadCleanupFilter filter,
+  ) async {
+    final snapshot = await refreshStorageSnapshot();
+    var deletedCount = 0;
+    var reclaimedBytes = 0;
+    var skippedUnsafeCount = 0;
+    for (final item in snapshot.items.where(filter.matches)) {
+      final current = await database.downloadJob(item.episode.id);
+      if (current?.downloadState != DownloadState.completed ||
+          isActive(item.episode.id)) {
+        skippedUnsafeCount++;
+        continue;
+      }
+      await _remove(item.episode.id);
+      deletedCount++;
+      reclaimedBytes += item.sizeBytes;
+    }
+    await refreshStorageSnapshot();
+    return DownloadCleanupResult(
+      deletedCount: deletedCount,
+      reclaimedBytes: reclaimedBytes,
+      skippedUnsafeCount: skippedUnsafeCount,
+    );
   }
 
   Future<void> _run(int episodeId, _ActiveDownload active) async {
@@ -440,6 +537,7 @@ class DownloadManager extends ChangeNotifier {
     );
     final episode = await database.episodeById(job.episodeId);
     if (episode != null) await _setDownloaded(episode, true);
+    await refreshStorageSnapshot();
   }
 
   Future<void> _setDownloaded(EpisodeRecord episode, bool value) async {
