@@ -465,8 +465,6 @@ class _OverrideDropdown extends StatelessWidget {
 extension on InboxFilter {
   String get label => switch (this) {
     InboxFilter.all => 'All',
-    InboxFilter.unplayed => 'Unplayed',
-    InboxFilter.queued => 'Queued',
     InboxFilter.downloaded => 'Downloaded',
   };
 }

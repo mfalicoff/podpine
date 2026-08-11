@@ -470,16 +470,17 @@ class AppDatabase extends _$AppDatabase {
     InboxFilter filter = InboxFilter.all,
     InboxSort sort = InboxSort.newest,
   }) {
-    final query = select(episodeRows).join([
-      innerJoin(inboxRows, inboxRows.episodeId.equalsExp(episodeRows.id)),
-    ])..where(inboxRows.removedAt.isNull());
+    final query =
+        select(episodeRows).join([
+          innerJoin(inboxRows, inboxRows.episodeId.equalsExp(episodeRows.id)),
+        ])..where(
+          inboxRows.removedAt.isNull() &
+              episodeRows.completed.equals(false) &
+              episodeRows.queued.equals(false),
+        );
     switch (filter) {
       case InboxFilter.all:
         break;
-      case InboxFilter.unplayed:
-        query.where(episodeRows.completed.equals(false));
-      case InboxFilter.queued:
-        query.where(episodeRows.queued.equals(true));
       case InboxFilter.downloaded:
         query.where(episodeRows.downloaded.equals(true));
     }
@@ -510,7 +511,9 @@ class AppDatabase extends _$AppDatabase {
           ])
           ..addColumns([count])
           ..where(
-            inboxRows.removedAt.isNull() & episodeRows.completed.equals(false),
+            inboxRows.removedAt.isNull() &
+                episodeRows.completed.equals(false) &
+                episodeRows.queued.equals(false),
           );
     return query.watchSingle().map((row) => row.read(count) ?? 0);
   }

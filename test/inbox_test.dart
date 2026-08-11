@@ -42,35 +42,32 @@ void main() {
       expect((await database.watchInbox().first).map((e) => e.id), [2]);
 
       await database.restoreToInbox(1);
-      await database.setCompleted(1, true);
-      await database.addToQueue(2);
       await database.setDownloaded(2, true);
 
       expect(
         (await database
-                .watchInbox(
-                  filter: InboxFilter.unplayed,
-                  sort: InboxSort.oldest,
-                )
+                .watchInbox(filter: InboxFilter.all, sort: InboxSort.oldest)
                 .first)
             .map((e) => e.id),
-        [2],
+        [1, 2],
       );
-      expect(
-        (await database.watchInbox(filter: InboxFilter.queued).first).single.id,
-        2,
-      );
+
+      await database.addToQueue(2);
+      expect((await database.watchInbox().first).map((episode) => episode.id), [
+        1,
+      ]);
+      expect(await database.watchInboxUnreadCount().first, 1);
+
+      await database.setCompleted(1, true);
+      expect(await database.watchInbox().first, isEmpty);
+      expect(await database.watchInboxUnreadCount().first, 0);
+
+      await database.removeFromQueue(2);
       expect(
         (await database.watchInbox(filter: InboxFilter.downloaded).first)
             .single
             .id,
         2,
-      );
-      expect(
-        (await database.watchInbox(sort: InboxSort.oldest).first).map(
-          (e) => e.id,
-        ),
-        [1, 2],
       );
       expect(await database.watchInboxUnreadCount().first, 1);
 

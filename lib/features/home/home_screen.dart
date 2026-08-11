@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app_controller.dart';
+import '../../core/backend/podcast_backend.dart';
 import '../../core/database/app_database.dart';
 import '../../core/theme.dart';
 import '../../providers.dart';
+import '../details/podcast_detail_screen.dart';
 import '../developer/background_sync_status_screen.dart';
 import '../shared/artwork.dart';
 import '../shared/episode_tile.dart';
@@ -246,63 +248,90 @@ class _ContinueCard extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       color: PodpineTheme.pine,
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Artwork(
-              id: episode.podcastId,
-              title: episode.podcastTitle,
-              url: episode.artworkUrl,
-              size: 86,
-              radius: 18,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => EpisodeDetailScreen(
+              episode: RemoteEpisode(
+                id: episode.id,
+                podcastId: episode.podcastId,
+                podcastTitle: episode.podcastTitle,
+                title: episode.title,
+                description: episode.description,
+                artworkUrl: episode.artworkUrl,
+                audioUrl: episode.audioUrl,
+                publishedAt: episode.publishedAt,
+                durationSeconds: episode.durationSeconds,
+                positionSeconds: episode.positionSeconds,
+                completed: episode.completed,
+                queued: episode.queued,
+                downloaded: episode.downloaded,
+                isYoutube: episode.isYoutube,
+                chaptersJson: episode.chaptersJson,
+              ),
+              localEpisode: episode,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    episode.podcastTitle.toUpperCase(),
-                    maxLines: 1,
-                    style: const TextStyle(
-                      fontFamily: 'sans-serif',
-                      fontSize: 10,
-                      letterSpacing: 1,
-                      color: Colors.white60,
-                      fontWeight: FontWeight.w800,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              Artwork(
+                id: episode.podcastId,
+                title: episode.podcastTitle,
+                url: episode.artworkUrl,
+                size: 86,
+                radius: 18,
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      episode.podcastTitle.toUpperCase(),
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontFamily: 'sans-serif',
+                        fontSize: 10,
+                        letterSpacing: 1,
+                        color: Colors.white60,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    episode.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleMedium?.copyWith(color: Colors.white),
-                  ),
-                  const SizedBox(height: 12),
-                  LinearProgressIndicator(
-                    value: progress.clamp(0, 1),
-                    minHeight: 3,
-                    color: const Color(0xFFF3C969),
-                    backgroundColor: Colors.white24,
-                  ),
-                ],
+                    const SizedBox(height: 5),
+                    Text(
+                      episode.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(color: Colors.white),
+                    ),
+                    const SizedBox(height: 12),
+                    LinearProgressIndicator(
+                      value: progress.clamp(0, 1),
+                      minHeight: 3,
+                      color: const Color(0xFFF3C969),
+                      backgroundColor: Colors.white24,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            IconButton.filled(
-              style: IconButton.styleFrom(
-                backgroundColor: const Color(0xFFF3C969),
-                foregroundColor: PodpineTheme.pine,
+              const SizedBox(width: 10),
+              IconButton.filled(
+                style: IconButton.styleFrom(
+                  backgroundColor: const Color(0xFFF3C969),
+                  foregroundColor: PodpineTheme.pine,
+                ),
+                onPressed: () =>
+                    ref.read(playerControllerProvider).playEpisode(episode),
+                icon: const Icon(Icons.play_arrow_rounded),
               ),
-              onPressed: () =>
-                  ref.read(playerControllerProvider).playEpisode(episode),
-              icon: const Icon(Icons.play_arrow_rounded),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

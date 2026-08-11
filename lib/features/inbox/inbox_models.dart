@@ -11,7 +11,7 @@ enum InboxSwipeAction {
   );
 }
 
-enum InboxFilter { all, unplayed, queued, downloaded }
+enum InboxFilter { all, downloaded }
 
 enum InboxSort { newest, oldest, podcast }
 
