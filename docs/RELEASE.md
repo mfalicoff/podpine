@@ -7,10 +7,11 @@ artifacts without putting credentials in the repository.
 
 The `Mobile CI` workflow is the release gate. Protect `main` and require its
 `Format, analyze, test, and Drift` check. Each push to `main` then compiles an
-Android release app bundle on Linux and an unsigned iOS release on macOS.
-Workflow artifacts are verification builds only: the Android job uses the
-debug keystore when production signing variables are absent, and the iOS job
-uses `--no-codesign`. Never upload either CI artifact to a store.
+Android release app bundle, an installable release APK on Linux, and an
+unsigned iOS release on macOS. Workflow artifacts are verification builds
+only: the Android job uses the debug keystore when production signing
+variables are absent, and the iOS job uses `--no-codesign`. Never upload these
+CI artifacts to a store.
 
 Run the same quality gate locally before tagging:
 
@@ -26,15 +27,20 @@ git diff --exit-code -- lib/core/database/app_database.g.dart
 
 1. Update `version` in `pubspec.yaml`. The suffix after `+` must increase for
    every store upload.
-2. Create the release in Sentry before building. Keep its DSN and auth token in
-   the CI secret store, never in source control.
+2. Add the project DSN to GitHub Actions as the `PODPINE_SENTRY_DSN`
+   repository secret. Keep it and any Sentry auth token out of source control.
 3. Pass these compile-time values to both platform builds:
 
 ```sh
 --dart-define=PODPINE_SENTRY_DSN="$PODPINE_SENTRY_DSN"
 --dart-define=PODPINE_ENVIRONMENT=production
---dart-define=PODPINE_RELEASE="app.podpine.podpine@1.0.0+1"
 ```
+
+The `Mobile CI` release jobs inject the DSN from the repository secret and
+fail before building when the secret is missing. Sentry Flutter derives the
+release directly from the built application's package identifier, version, and
+build number; Podpine does not define a separate release variable. Local and
+signed builds must pass the same DSN and environment values explicitly.
 
 An empty DSN disables uploads. Podpine does not set a Sentry user, collect HTTP
 request breadcrumbs or bodies, or attach arbitrary application data. Sync and
@@ -54,8 +60,7 @@ export PODPINE_ANDROID_KEY_ALIAS=...
 export PODPINE_ANDROID_KEY_PASSWORD=...
 flutter build appbundle --release \
   --dart-define=PODPINE_SENTRY_DSN="$PODPINE_SENTRY_DSN" \
-  --dart-define=PODPINE_ENVIRONMENT=production \
-  --dart-define=PODPINE_RELEASE="$PODPINE_RELEASE"
+  --dart-define=PODPINE_ENVIRONMENT=production
 ```
 
 Confirm Gradle reports the production `release` signing configuration, then
@@ -73,8 +78,7 @@ Build with the diagnostic defines above:
 ```sh
 flutter build ipa --release \
   --dart-define=PODPINE_SENTRY_DSN="$PODPINE_SENTRY_DSN" \
-  --dart-define=PODPINE_ENVIRONMENT=production \
-  --dart-define=PODPINE_RELEASE="$PODPINE_RELEASE"
+  --dart-define=PODPINE_ENVIRONMENT=production
 ```
 
 Validate the archive and IPA in Xcode Organizer before upload. Store API keys,

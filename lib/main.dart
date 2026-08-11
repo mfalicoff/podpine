@@ -14,13 +14,11 @@ Future<void> main() async {
     'PODPINE_ENVIRONMENT',
     defaultValue: 'production',
   );
-  const release = String.fromEnvironment('PODPINE_RELEASE');
   await SentryFlutter.init(
     (options) => configureProductionDiagnostics(
       options,
       dsn: dsn,
       environment: environment,
-      release: release.isEmpty ? null : release,
     ),
     appRunner: _runPodpine,
   );

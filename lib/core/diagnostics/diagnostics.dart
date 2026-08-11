@@ -149,12 +149,10 @@ void configureProductionDiagnostics(
   SentryFlutterOptions options, {
   required String dsn,
   String? environment,
-  String? release,
 }) {
   options
     ..dsn = dsn
     ..environment = environment
-    ..release = release
     ..sendDefaultPii = false
     ..captureFailedRequests = false
     ..recordHttpBreadcrumbs = false

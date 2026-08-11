@@ -3,6 +3,18 @@ import 'package:podpine/core/diagnostics/diagnostics.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 void main() {
+  test('production diagnostics leave release detection to Sentry', () {
+    final options = SentryFlutterOptions();
+
+    configureProductionDiagnostics(
+      options,
+      dsn: 'https://public@example.invalid/1',
+      environment: 'production',
+    );
+
+    expect(options.release, isNull);
+  });
+
   test('sync diagnostics keep only allowlisted non-identifying values', () {
     final sanitized = sanitizeDiagnosticData(DiagnosticArea.sync, {
       'outcome': 'succeeded',

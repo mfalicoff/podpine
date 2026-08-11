@@ -58,12 +58,29 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Build release app bundle (verification signing only)
-        run: flutter build appbundle --release
+      - name: Build release app bundle and APK (verification signing only)
+        env:
+          PODPINE_SENTRY_DSN: ${{ secrets.PODPINE_SENTRY_DSN }}
+        run: |
+          if [ -z "$PODPINE_SENTRY_DSN" ]; then
+            echo "::error::The PODPINE_SENTRY_DSN repository secret is not configured."
+            exit 1
+          fi
+          flutter build appbundle --release \
+            --dart-define=PODPINE_SENTRY_DSN="$PODPINE_SENTRY_DSN" \
+            --dart-define=PODPINE_ENVIRONMENT=production
+          flutter build apk --release \
+            --dart-define=PODPINE_SENTRY_DSN="$PODPINE_SENTRY_DSN" \
+            --dart-define=PODPINE_ENVIRONMENT=production
       - uses: actions/upload-artifact@v4
         with:
-          name: android-release-verification
+          name: android-aab-release-verification
           path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-release-verification
+          path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
 
   ios-release:
@@ -81,4 +98,13 @@ jobs:
           cache: true
       - run: flutter pub get
       - name: Build release app without signing
-        run: flutter build ios --release --no-codesign
+        env:
+          PODPINE_SENTRY_DSN: ${{ secrets.PODPINE_SENTRY_DSN }}
+        run: |
+          if [ -z "$PODPINE_SENTRY_DSN" ]; then
+            echo "::error::The PODPINE_SENTRY_DSN repository secret is not configured."
+            exit 1
+          fi
+          flutter build ios --release --no-codesign \
+            --dart-define=PODPINE_SENTRY_DSN="$PODPINE_SENTRY_DSN" \
+            --dart-define=PODPINE_ENVIRONMENT=production
