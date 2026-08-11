@@ -94,7 +94,7 @@ void main() {
     expect(await database.pendingMutations(), isEmpty);
   });
 
-  test('queue clear safely supersedes older queue operations', () async {
+  test('queue operations retain their causal order in the outbox', () async {
     final database = AppDatabase(NativeDatabase.memory());
     addTearDown(database.close);
     final backend = _FakeBackend();
@@ -122,9 +122,12 @@ void main() {
       await database.enqueueMutation(mutation);
     }
 
-    expect((await database.pendingMutations()).single.type, 'queue_clear');
+    expect(
+      (await database.pendingMutations()).map((mutation) => mutation.type),
+      ['queue_add', 'queue_reorder', 'queue_clear'],
+    );
     await SyncEngine(database, backend, 7).refresh();
-    expect(backend.calls.first, 'queue-clear:7');
+    expect(await database.pendingMutations(), isEmpty);
   });
 
   test(

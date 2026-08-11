@@ -4361,6 +4361,303 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
   }
 }
 
+class $QueueSyncStateRowsTable extends QueueSyncStateRows
+    with TableInfo<$QueueSyncStateRowsTable, QueueSyncStateRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $QueueSyncStateRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _revisionMeta = const VerificationMeta(
+    'revision',
+  );
+  @override
+  late final GeneratedColumn<String> revision = GeneratedColumn<String>(
+    'revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _orderJsonMeta = const VerificationMeta(
+    'orderJson',
+  );
+  @override
+  late final GeneratedColumn<String> orderJson = GeneratedColumn<String>(
+    'order_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, revision, orderJson, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'queue_sync_state_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<QueueSyncStateRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('revision')) {
+      context.handle(
+        _revisionMeta,
+        revision.isAcceptableOrUnknown(data['revision']!, _revisionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_revisionMeta);
+    }
+    if (data.containsKey('order_json')) {
+      context.handle(
+        _orderJsonMeta,
+        orderJson.isAcceptableOrUnknown(data['order_json']!, _orderJsonMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  QueueSyncStateRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return QueueSyncStateRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      revision: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}revision'],
+      )!,
+      orderJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}order_json'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $QueueSyncStateRowsTable createAlias(String alias) {
+    return $QueueSyncStateRowsTable(attachedDatabase, alias);
+  }
+}
+
+class QueueSyncStateRecord extends DataClass
+    implements Insertable<QueueSyncStateRecord> {
+  final int id;
+  final String revision;
+  final String orderJson;
+  final DateTime updatedAt;
+  const QueueSyncStateRecord({
+    required this.id,
+    required this.revision,
+    required this.orderJson,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['revision'] = Variable<String>(revision);
+    map['order_json'] = Variable<String>(orderJson);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  QueueSyncStateRowsCompanion toCompanion(bool nullToAbsent) {
+    return QueueSyncStateRowsCompanion(
+      id: Value(id),
+      revision: Value(revision),
+      orderJson: Value(orderJson),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory QueueSyncStateRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return QueueSyncStateRecord(
+      id: serializer.fromJson<int>(json['id']),
+      revision: serializer.fromJson<String>(json['revision']),
+      orderJson: serializer.fromJson<String>(json['orderJson']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'revision': serializer.toJson<String>(revision),
+      'orderJson': serializer.toJson<String>(orderJson),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  QueueSyncStateRecord copyWith({
+    int? id,
+    String? revision,
+    String? orderJson,
+    DateTime? updatedAt,
+  }) => QueueSyncStateRecord(
+    id: id ?? this.id,
+    revision: revision ?? this.revision,
+    orderJson: orderJson ?? this.orderJson,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  QueueSyncStateRecord copyWithCompanion(QueueSyncStateRowsCompanion data) {
+    return QueueSyncStateRecord(
+      id: data.id.present ? data.id.value : this.id,
+      revision: data.revision.present ? data.revision.value : this.revision,
+      orderJson: data.orderJson.present ? data.orderJson.value : this.orderJson,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QueueSyncStateRecord(')
+          ..write('id: $id, ')
+          ..write('revision: $revision, ')
+          ..write('orderJson: $orderJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, revision, orderJson, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is QueueSyncStateRecord &&
+          other.id == this.id &&
+          other.revision == this.revision &&
+          other.orderJson == this.orderJson &&
+          other.updatedAt == this.updatedAt);
+}
+
+class QueueSyncStateRowsCompanion
+    extends UpdateCompanion<QueueSyncStateRecord> {
+  final Value<int> id;
+  final Value<String> revision;
+  final Value<String> orderJson;
+  final Value<DateTime> updatedAt;
+  const QueueSyncStateRowsCompanion({
+    this.id = const Value.absent(),
+    this.revision = const Value.absent(),
+    this.orderJson = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  QueueSyncStateRowsCompanion.insert({
+    this.id = const Value.absent(),
+    required String revision,
+    this.orderJson = const Value.absent(),
+    required DateTime updatedAt,
+  }) : revision = Value(revision),
+       updatedAt = Value(updatedAt);
+  static Insertable<QueueSyncStateRecord> custom({
+    Expression<int>? id,
+    Expression<String>? revision,
+    Expression<String>? orderJson,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (revision != null) 'revision': revision,
+      if (orderJson != null) 'order_json': orderJson,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  QueueSyncStateRowsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? revision,
+    Value<String>? orderJson,
+    Value<DateTime>? updatedAt,
+  }) {
+    return QueueSyncStateRowsCompanion(
+      id: id ?? this.id,
+      revision: revision ?? this.revision,
+      orderJson: orderJson ?? this.orderJson,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (revision.present) {
+      map['revision'] = Variable<String>(revision.value);
+    }
+    if (orderJson.present) {
+      map['order_json'] = Variable<String>(orderJson.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('QueueSyncStateRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('revision: $revision, ')
+          ..write('orderJson: $orderJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PlaybackPreferenceRowsTable extends PlaybackPreferenceRows
     with TableInfo<$PlaybackPreferenceRowsTable, PlaybackPreferencesRecord> {
   @override
@@ -4911,6 +5208,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PodcastInboxOverrideRowsTable podcastInboxOverrideRows =
       $PodcastInboxOverrideRowsTable(this);
   late final $SyncMutationsTable syncMutations = $SyncMutationsTable(this);
+  late final $QueueSyncStateRowsTable queueSyncStateRows =
+      $QueueSyncStateRowsTable(this);
   late final $PlaybackPreferenceRowsTable playbackPreferenceRows =
       $PlaybackPreferenceRowsTable(this);
   late final $PodcastPlaybackOverrideRowsTable podcastPlaybackOverrideRows =
@@ -4929,6 +5228,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     inboxPreferenceRows,
     podcastInboxOverrideRows,
     syncMutations,
+    queueSyncStateRows,
     playbackPreferenceRows,
     podcastPlaybackOverrideRows,
   ];
@@ -8435,6 +8735,194 @@ typedef $$SyncMutationsTableProcessedTableManager =
       PendingMutation,
       PrefetchHooks Function()
     >;
+typedef $$QueueSyncStateRowsTableCreateCompanionBuilder =
+    QueueSyncStateRowsCompanion Function({
+      Value<int> id,
+      required String revision,
+      Value<String> orderJson,
+      required DateTime updatedAt,
+    });
+typedef $$QueueSyncStateRowsTableUpdateCompanionBuilder =
+    QueueSyncStateRowsCompanion Function({
+      Value<int> id,
+      Value<String> revision,
+      Value<String> orderJson,
+      Value<DateTime> updatedAt,
+    });
+
+class $$QueueSyncStateRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $QueueSyncStateRowsTable> {
+  $$QueueSyncStateRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get orderJson => $composableBuilder(
+    column: $table.orderJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$QueueSyncStateRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $QueueSyncStateRowsTable> {
+  $$QueueSyncStateRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get revision => $composableBuilder(
+    column: $table.revision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get orderJson => $composableBuilder(
+    column: $table.orderJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$QueueSyncStateRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $QueueSyncStateRowsTable> {
+  $$QueueSyncStateRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get revision =>
+      $composableBuilder(column: $table.revision, builder: (column) => column);
+
+  GeneratedColumn<String> get orderJson =>
+      $composableBuilder(column: $table.orderJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$QueueSyncStateRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $QueueSyncStateRowsTable,
+          QueueSyncStateRecord,
+          $$QueueSyncStateRowsTableFilterComposer,
+          $$QueueSyncStateRowsTableOrderingComposer,
+          $$QueueSyncStateRowsTableAnnotationComposer,
+          $$QueueSyncStateRowsTableCreateCompanionBuilder,
+          $$QueueSyncStateRowsTableUpdateCompanionBuilder,
+          (
+            QueueSyncStateRecord,
+            BaseReferences<
+              _$AppDatabase,
+              $QueueSyncStateRowsTable,
+              QueueSyncStateRecord
+            >,
+          ),
+          QueueSyncStateRecord,
+          PrefetchHooks Function()
+        > {
+  $$QueueSyncStateRowsTableTableManager(
+    _$AppDatabase db,
+    $QueueSyncStateRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$QueueSyncStateRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$QueueSyncStateRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$QueueSyncStateRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> revision = const Value.absent(),
+                Value<String> orderJson = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => QueueSyncStateRowsCompanion(
+                id: id,
+                revision: revision,
+                orderJson: orderJson,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String revision,
+                Value<String> orderJson = const Value.absent(),
+                required DateTime updatedAt,
+              }) => QueueSyncStateRowsCompanion.insert(
+                id: id,
+                revision: revision,
+                orderJson: orderJson,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$QueueSyncStateRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $QueueSyncStateRowsTable,
+      QueueSyncStateRecord,
+      $$QueueSyncStateRowsTableFilterComposer,
+      $$QueueSyncStateRowsTableOrderingComposer,
+      $$QueueSyncStateRowsTableAnnotationComposer,
+      $$QueueSyncStateRowsTableCreateCompanionBuilder,
+      $$QueueSyncStateRowsTableUpdateCompanionBuilder,
+      (
+        QueueSyncStateRecord,
+        BaseReferences<
+          _$AppDatabase,
+          $QueueSyncStateRowsTable,
+          QueueSyncStateRecord
+        >,
+      ),
+      QueueSyncStateRecord,
+      PrefetchHooks Function()
+    >;
 typedef $$PlaybackPreferenceRowsTableCreateCompanionBuilder =
     PlaybackPreferenceRowsCompanion Function({
       Value<int> id,
@@ -8942,6 +9430,8 @@ class $AppDatabaseManager {
       );
   $$SyncMutationsTableTableManager get syncMutations =>
       $$SyncMutationsTableTableManager(_db, _db.syncMutations);
+  $$QueueSyncStateRowsTableTableManager get queueSyncStateRows =>
+      $$QueueSyncStateRowsTableTableManager(_db, _db.queueSyncStateRows);
   $$PlaybackPreferenceRowsTableTableManager get playbackPreferenceRows =>
       $$PlaybackPreferenceRowsTableTableManager(
         _db,

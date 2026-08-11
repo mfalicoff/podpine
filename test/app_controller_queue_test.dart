@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,8 @@ import 'package:podpine/app_controller.dart';
 import 'package:podpine/core/backend/podcast_backend.dart';
 import 'package:podpine/core/database/app_database.dart';
 import 'package:podpine/core/storage/credential_store.dart';
+import 'package:podpine/core/sync/queue_sync.dart';
+import 'package:podpine/core/sync/sync_engine.dart';
 
 void main() {
   test('play next persists after the active episode and reconciles', () async {
@@ -20,7 +24,7 @@ void main() {
 
     await controller.addToQueue(_episode(3), next: true);
 
-    expect(backend.calls, ['add:3', 'reorder:1,3,2', 'get']);
+    expect(backend.calls, ['get', 'add:3', 'reorder:1,3,2']);
     expect(await database.queueEpisodeIds(), [1, 3, 2]);
     expect(await database.pendingMutations(), isEmpty);
   });
@@ -41,7 +45,50 @@ void main() {
     expect(await database.queueEpisodeIds(), [1, 3, 2]);
     final mutation = (await database.pendingMutations()).single;
     expect(mutation.type, 'queue_add');
-    expect(mutation.payload, '{"order":[1,3,2]}');
+    final payload = jsonDecode(mutation.payload) as Map<String, dynamic>;
+    expect(payload['operationId'], mutation.id);
+    expect(payload['baseRevision'], queueRevision([1, 2]));
+    expect(payload['baseOrder'], [1, 2]);
+    expect(payload['order'], [1, 3, 2]);
+
+    backend.failReorder = false;
+    await SyncEngine(
+      database,
+      backend,
+      7,
+    ).flushPendingMutations(ignoreBackoff: true);
+    expect(backend.serverOrder, [1, 3, 2]);
+    expect(await database.pendingMutations(), isEmpty);
+  });
+
+  test('every offline queue edit keeps a stable operation ID', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    await _seed(database);
+    final controller = AppController(
+      database,
+      const CredentialStore(FlutterSecureStorage()),
+    );
+
+    await controller.addToQueue(_episode(3));
+    await controller.reorderQueue([_episode(3), _episode(1), _episode(2)]);
+    await controller.removeFromQueue(_episode(2));
+    await controller.clearQueue();
+
+    final mutations = await database.pendingMutations();
+    expect(mutations.map((mutation) => mutation.type), [
+      'queue_add',
+      'queue_reorder',
+      'queue_remove',
+      'queue_clear',
+    ]);
+    for (final mutation in mutations) {
+      final payload = jsonDecode(mutation.payload) as Map<String, dynamic>;
+      expect(payload['operationId'], mutation.id);
+      expect(payload['baseRevision'], isNotEmpty);
+      expect(payload['baseOrder'], isA<List<dynamic>>());
+      expect(payload['order'], isA<List<dynamic>>());
+    }
   });
 }
 

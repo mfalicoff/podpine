@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../features/player/playback_options.dart';
 import '../../features/inbox/inbox_models.dart';
+import '../sync/queue_sync.dart';
 
 part 'app_database.g.dart';
 
@@ -136,6 +139,17 @@ class SyncMutations extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+@DataClassName('QueueSyncStateRecord')
+class QueueSyncStateRows extends Table {
+  IntColumn get id => integer().withDefault(const Constant(0))();
+  TextColumn get revision => text()();
+  TextColumn get orderJson => text().withDefault(const Constant('[]'))();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DataClassName('PlaybackPreferencesRecord')
 class PlaybackPreferenceRows extends Table {
   IntColumn get id => integer().withDefault(const Constant(0))();
@@ -167,6 +181,7 @@ class PodcastPlaybackOverrideRows extends Table {
     InboxPreferenceRows,
     PodcastInboxOverrideRows,
     SyncMutations,
+    QueueSyncStateRows,
     PlaybackPreferenceRows,
     PodcastPlaybackOverrideRows,
   ],
@@ -185,7 +200,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -233,6 +248,9 @@ class AppDatabase extends _$AppDatabase {
         await migrator.addColumn(syncMutations, syncMutations.lastAttemptAt);
         await migrator.addColumn(syncMutations, syncMutations.lastError);
         await migrator.addColumn(syncMutations, syncMutations.failedAt);
+      }
+      if (from < 7) {
+        await migrator.createTable(queueSyncStateRows);
       }
     },
   );
@@ -535,6 +553,10 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
           .get();
 
+  Future<PendingMutation?> mutationById(String id) => (select(
+    syncMutations,
+  )..where((row) => row.id.equals(id))).getSingleOrNull();
+
   Future<List<PendingMutation>> readyMutations(
     DateTime now, {
     bool ignoreBackoff = false,
@@ -573,28 +595,6 @@ class AppDatabase extends _$AppDatabase {
         await (delete(
           syncMutations,
         )..where((row) => row.type.equals(type) & sameEpisode(row))).go();
-      } else if (type == 'queue_clear') {
-        await (delete(
-          syncMutations,
-        )..where((row) => row.type.like('queue_%'))).go();
-      } else if (type == 'queue_reorder') {
-        await (delete(
-          syncMutations,
-        )..where((row) => row.type.equals('queue_reorder'))).go();
-      } else if (type == 'queue_add' || type == 'queue_remove') {
-        await (delete(syncMutations)..where(
-              (row) =>
-                  row.type.isIn(['queue_add', 'queue_remove']) &
-                  sameEpisode(row),
-            ))
-            .go();
-        if (type == 'queue_add') {
-          // queue_add carries the complete desired order, so an older reorder
-          // can no longer contribute to the final queue state.
-          await (delete(
-            syncMutations,
-          )..where((row) => row.type.equals('queue_reorder'))).go();
-        }
       }
       await into(syncMutations).insert(mutation);
     });
@@ -633,6 +633,29 @@ class AppDatabase extends _$AppDatabase {
       failedAt: Value(failedAt),
     ),
   );
+
+  Future<String?> acknowledgedQueueRevision() async =>
+      (await select(queueSyncStateRows).getSingleOrNull())?.revision;
+
+  Future<List<int>> acknowledgedQueueOrder() async {
+    final row = await select(queueSyncStateRows).getSingleOrNull();
+    if (row == null) return const [];
+    final decoded = jsonDecode(row.orderJson);
+    return (decoded as List? ?? const [])
+        .map((id) => id is int ? id : int.tryParse('$id'))
+        .whereType<int>()
+        .toList(growable: false);
+  }
+
+  Future<void> acknowledgeQueue(List<int> orderedEpisodeIds) =>
+      into(queueSyncStateRows).insertOnConflictUpdate(
+        QueueSyncStateRowsCompanion.insert(
+          id: const Value(0),
+          revision: queueRevision(orderedEpisodeIds),
+          orderJson: Value(jsonEncode(orderedEpisodeIds)),
+          updatedAt: DateTime.now().toUtc(),
+        ),
+      );
 
   Future<PlaybackPreferences> playbackPreferences() async {
     final row = await select(playbackPreferenceRows).getSingleOrNull();
@@ -782,6 +805,13 @@ class AppDatabase extends _$AppDatabase {
       }
       await delete(queueRows).go();
       await batch((batch) => batch.insertAll(queueRows, queue));
+      final acknowledgedOrder = queue.toList()
+        ..sort(
+          (left, right) => left.sortKey.value.compareTo(right.sortKey.value),
+        );
+      await acknowledgeQueue(
+        acknowledgedOrder.map((row) => row.episodeId.value).toList(),
+      );
     });
   }
 

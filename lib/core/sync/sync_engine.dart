@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import '../backend/pinepods_backend.dart';
 import '../backend/podcast_backend.dart';
 import '../database/app_database.dart';
+import 'queue_sync.dart';
 
 class SyncEngine {
   SyncEngine(
@@ -157,49 +158,19 @@ class SyncEngine {
             );
             break;
           case 'queue_add':
-            if (episodeId == null) {
-              throw const FormatException('Queue add mutation has no episode.');
-            }
-            await backend.addToQueue(userId, episodeId);
-            var addOrder = _episodeIds(payload['order']);
-            if (addOrder.isEmpty && payload['next'] == true) {
-              addOrder = await database.queueEpisodeIds();
-            }
-            if (addOrder.isNotEmpty && backend is QueueReorderBackend) {
-              await (backend as QueueReorderBackend).reorderQueue(
-                userId,
-                addOrder,
-              );
-            }
-            break;
           case 'queue_remove':
-            if (episodeId == null) {
-              throw const FormatException(
-                'Queue remove mutation has no episode.',
-              );
-            }
-            await backend.removeFromQueue(userId, episodeId);
-            break;
           case 'queue_reorder':
-            final reorderBackend = backend is QueueReorderBackend
-                ? backend as QueueReorderBackend
-                : null;
-            if (reorderBackend == null) {
-              throw UnsupportedError('Queue reordering is unavailable.');
-            }
-            await reorderBackend.reorderQueue(
-              userId,
-              _episodeIds(payload['order']),
-            );
-            break;
           case 'queue_clear':
-            if (backend is QueueControlBackend) {
-              await (backend as QueueControlBackend).clearQueue(userId);
-            } else {
-              for (final id in _episodeIds(payload['episodeIds'])) {
-                await backend.removeFromQueue(userId, id);
-              }
-            }
+            final result = await QueueSyncCoordinator(backend, userId).apply(
+              QueueSyncOperation.fromPayload(
+                id: mutation.id,
+                type: mutation.type,
+                episodeId: episodeId,
+                payload: payload,
+              ),
+            );
+            await database.replaceQueueOrder(result.order);
+            await database.acknowledgeQueue(result.order);
             break;
           case 'downloaded':
             if (episodeId == null) {
@@ -293,12 +264,6 @@ class SyncEngine {
   }
 
   static DateTime _utcNow() => DateTime.now().toUtc();
-
-  static List<int> _episodeIds(Object? value) => (value as List? ?? const [])
-      .map((id) => id is int ? id : int.tryParse('$id'))
-      .whereType<int>()
-      .where((id) => id > 0)
-      .toList(growable: false);
 
   static PodcastRowsCompanion _podcastCompanion(RemotePodcast podcast) =>
       PodcastRowsCompanion.insert(

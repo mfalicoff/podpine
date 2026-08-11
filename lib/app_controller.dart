@@ -10,6 +10,7 @@ import 'core/backend/pinepods_backend.dart';
 import 'core/backend/podcast_backend.dart';
 import 'core/database/app_database.dart';
 import 'core/storage/credential_store.dart';
+import 'core/sync/queue_sync.dart';
 import 'core/sync/sync_engine.dart';
 
 class AppController extends ChangeNotifier {
@@ -389,133 +390,89 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> addToQueue(EpisodeRecord episode, {bool next = false}) async {
+    final baseOrder = await database.queueEpisodeIds();
     final afterEpisodeId = next ? activeEpisodeId?.call() : null;
     await database.addToQueue(episode.id, afterEpisodeId: afterEpisodeId);
     final order = await database.queueEpisodeIds();
-    final currentBackend = backend;
-    final currentUserId = userId;
-    if (currentBackend == null || currentUserId == null || episode.id <= 0) {
-      if (episode.id > 0) {
-        await _enqueueMutation('queue_add', episode.id, {'order': order});
-      }
-      return;
-    }
-    try {
-      await currentBackend.addToQueue(currentUserId, episode.id);
-      if (next) {
-        final reorderBackend = currentBackend is QueueReorderBackend
-            ? currentBackend as QueueReorderBackend
-            : null;
-        if (reorderBackend == null) {
-          throw UnsupportedError('Queue reordering is unavailable.');
-        }
-        await reorderBackend.reorderQueue(currentUserId, order);
-      }
-    } catch (_) {
-      await _enqueueMutation('queue_add', episode.id, {'order': order});
-      error = 'Queue changed offline.';
-      notifyListeners();
-      return;
-    }
-    await _reconcileQueue(currentBackend, currentUserId);
+    if (episode.id <= 0) return;
+    await _submitQueueOperation(
+      type: 'queue_add',
+      episodeId: episode.id,
+      baseOrder: baseOrder,
+      desiredOrder: order,
+      offlineMessage: 'Queue changed offline.',
+    );
   }
 
   Future<void> removeFromQueue(EpisodeRecord episode) async {
+    final baseOrder = await database.queueEpisodeIds();
     await database.removeFromQueue(episode.id);
-    final currentBackend = backend;
-    final currentUserId = userId;
-    if (currentBackend == null || currentUserId == null || episode.id <= 0) {
-      if (episode.id > 0) {
-        await _enqueueMutation('queue_remove', episode.id, const {});
-      }
-      return;
-    }
-    try {
-      await currentBackend.removeFromQueue(currentUserId, episode.id);
-    } catch (_) {
-      await _enqueueMutation('queue_remove', episode.id, const {});
-      error = 'Queue changed offline.';
-      notifyListeners();
-      return;
-    }
-    await _reconcileQueue(currentBackend, currentUserId);
+    if (episode.id <= 0) return;
+    await _submitQueueOperation(
+      type: 'queue_remove',
+      episodeId: episode.id,
+      baseOrder: baseOrder,
+      desiredOrder: await database.queueEpisodeIds(),
+      offlineMessage: 'Queue changed offline.',
+    );
   }
 
   Future<void> reorderQueue(List<EpisodeRecord> episodes) async {
+    final baseOrder = await database.queueEpisodeIds();
     final order = episodes.map((episode) => episode.id).toList(growable: false);
     await database.reorderQueue(order);
-    final currentBackend = backend;
-    final currentUserId = userId;
-    final reorderBackend = currentBackend is QueueReorderBackend
-        ? currentBackend as QueueReorderBackend
-        : null;
-    if (reorderBackend == null || currentUserId == null) {
-      if (order.any((id) => id > 0)) {
-        await _enqueueMutation('queue_reorder', null, {'order': order});
-      }
-      return;
-    }
-    try {
-      await reorderBackend.reorderQueue(currentUserId, order);
-    } catch (_) {
-      await _enqueueMutation('queue_reorder', null, {'order': order});
-      error = 'Queue order saved offline.';
-      notifyListeners();
-      return;
-    }
-    await _reconcileQueue(currentBackend!, currentUserId);
+    final desiredOrder = await database.queueEpisodeIds();
+    if (!desiredOrder.any((id) => id > 0)) return;
+    await _submitQueueOperation(
+      type: 'queue_reorder',
+      baseOrder: baseOrder,
+      desiredOrder: desiredOrder,
+      offlineMessage: 'Queue order saved offline.',
+    );
   }
 
   Future<void> clearQueue() async {
     final removedIds = await database.queueEpisodeIds();
     if (removedIds.isEmpty) return;
     await database.clearQueue();
-    final currentBackend = backend;
-    final currentUserId = userId;
-    if (currentBackend == null || currentUserId == null) {
-      if (removedIds.any((id) => id > 0)) {
-        await _enqueueMutation('queue_clear', null, {'episodeIds': removedIds});
-      }
-      return;
-    }
-    try {
-      if (currentBackend is QueueControlBackend) {
-        await (currentBackend as QueueControlBackend).clearQueue(currentUserId);
-      } else {
-        for (final episodeId in removedIds.where((id) => id > 0)) {
-          await currentBackend.removeFromQueue(currentUserId, episodeId);
-        }
-      }
-    } catch (_) {
-      await _enqueueMutation('queue_clear', null, {'episodeIds': removedIds});
-      error = 'Queue clear saved offline.';
-      notifyListeners();
-      return;
-    }
-    await _reconcileQueue(currentBackend, currentUserId);
+    if (!removedIds.any((id) => id > 0)) return;
+    await _submitQueueOperation(
+      type: 'queue_clear',
+      baseOrder: removedIds,
+      desiredOrder: const [],
+      offlineMessage: 'Queue clear saved offline.',
+    );
   }
 
-  Future<void> _reconcileQueue(
-    PodcastBackend currentBackend,
-    int currentUserId,
-  ) async {
-    try {
-      final remote = await currentBackend.getQueue(currentUserId);
-      final indexed = remote.indexed.toList()
-        ..sort((left, right) {
-          final leftPosition = left.$2.queuePosition ?? left.$1;
-          final rightPosition = right.$2.queuePosition ?? right.$1;
-          return leftPosition.compareTo(rightPosition);
-        });
-      await database.replaceQueueOrder(
-        indexed.map((entry) => entry.$2.id).toList(growable: false),
-      );
+  Future<void> _submitQueueOperation({
+    required String type,
+    required List<int> baseOrder,
+    required List<int> desiredOrder,
+    required String offlineMessage,
+    int? episodeId,
+  }) async {
+    final baseRevision =
+        await database.acknowledgedQueueRevision() ?? queueRevision(baseOrder);
+    final operationId = await _enqueueMutation(type, episodeId, {
+      'baseRevision': baseRevision,
+      'baseOrder': baseOrder,
+      'order': desiredOrder,
+    });
+    final currentBackend = backend;
+    final currentUserId = userId;
+    if (currentBackend == null || currentUserId == null) return;
+
+    await SyncEngine(
+      database,
+      currentBackend,
+      currentUserId,
+    ).flushPendingMutations(ignoreBackoff: true);
+    if (await database.mutationById(operationId) != null) {
+      error = offlineMessage;
+    } else {
       error = null;
-      notifyListeners();
-    } catch (_) {
-      // The server mutation already succeeded. Keep the optimistic order; the
-      // next regular refresh will reconcile it without duplicating the write.
     }
+    notifyListeners();
   }
 
   Future<void> removeFromInbox(EpisodeRecord episode) =>
@@ -601,19 +558,25 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> _enqueueMutation(
+  Future<String> _enqueueMutation(
     String type,
     int? episodeId,
     Map<String, Object?> payload,
-  ) => database.enqueueMutation(
-    SyncMutationsCompanion.insert(
-      id: _uuid.v4(),
-      type: type,
-      episodeId: Value(episodeId),
-      payload: Value(jsonEncode(payload)),
-      createdAt: DateTime.now().toUtc(),
-    ),
-  );
+  ) async {
+    final id = _uuid.v4();
+    final encodedPayload = Map<String, Object?>.of(payload);
+    if (type.startsWith('queue_')) encodedPayload['operationId'] = id;
+    await database.enqueueMutation(
+      SyncMutationsCompanion.insert(
+        id: id,
+        type: type,
+        episodeId: Value(episodeId),
+        payload: Value(jsonEncode(encodedPayload)),
+        createdAt: DateTime.now().toUtc(),
+      ),
+    );
+    return id;
+  }
 
   Future<void> _cachePodcast(
     RemotePodcast podcast, {
