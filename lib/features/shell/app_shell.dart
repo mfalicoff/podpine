@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,7 +18,8 @@ class AppShell extends ConsumerStatefulWidget {
   ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends ConsumerState<AppShell> {
+class _AppShellState extends ConsumerState<AppShell>
+    with WidgetsBindingObserver {
   int _index = 0;
 
   static const _pages = [
@@ -26,6 +29,30 @@ class _AppShellState extends ConsumerState<AppShell> {
     QueueScreen(),
     SearchScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final app = ref.read(appControllerProvider);
+    final lastSync = app.lastSyncedAt;
+    if (lastSync != null &&
+        DateTime.now().difference(lastSync) < const Duration(minutes: 1)) {
+      return;
+    }
+    unawaited(app.refresh(silent: true));
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -5,6 +5,7 @@ import '../../app_controller.dart';
 import '../../core/database/app_database.dart';
 import '../../core/theme.dart';
 import '../../providers.dart';
+import '../developer/background_sync_status_screen.dart';
 import '../shared/artwork.dart';
 import '../shared/episode_tile.dart';
 
@@ -197,12 +198,29 @@ class _Header extends StatelessWidget {
             child: Icon(Icons.person_outline_rounded, color: PodpineTheme.pine),
           ),
           onSelected: (value) {
-            if (value == 'disconnect') app.disconnect();
+            if (value == 'background-sync') {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const BackgroundSyncStatusScreen(),
+                ),
+              );
+            } else if (value == 'disconnect') {
+              app.disconnect();
+            }
           },
           itemBuilder: (_) => [
             PopupMenuItem(
               enabled: false,
               child: Text(app.serverUrl ?? 'Pinepods'),
+            ),
+            const PopupMenuDivider(),
+            const PopupMenuItem(
+              value: 'background-sync',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.developer_mode_rounded),
+                title: Text('Background sync status'),
+              ),
             ),
             const PopupMenuDivider(),
             PopupMenuItem(

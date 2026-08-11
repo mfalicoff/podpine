@@ -28,6 +28,7 @@ class AppController extends ChangeNotifier {
   PodcastBackend? backend;
   int? Function()? activeEpisodeId;
   String? _apiKey;
+  Future<void>? _refreshInFlight;
   static const _uuid = Uuid();
 
   Future<void> initialize() async {
@@ -104,6 +105,21 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> refresh({bool silent = false}) async {
+    final current = _refreshInFlight;
+    if (current != null) {
+      await current;
+      return;
+    }
+    final operation = _performRefresh(silent: silent);
+    _refreshInFlight = operation;
+    try {
+      await operation;
+    } finally {
+      if (identical(_refreshInFlight, operation)) _refreshInFlight = null;
+    }
+  }
+
+  Future<void> _performRefresh({required bool silent}) async {
     if (backend == null || userId == null) return;
     if (!silent) {
       busy = true;
