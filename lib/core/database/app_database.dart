@@ -113,6 +113,8 @@ class InboxPreferenceRows extends Table {
   IntColumn get id => integer().withDefault(const Constant(0))();
   TextColumn get leftAction => text().withDefault(const Constant('remove'))();
   TextColumn get rightAction => text().withDefault(const Constant('queue'))();
+  BoolColumn get markRemovedAsPlayed =>
+      boolean().withDefault(const Constant(true))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -218,7 +220,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -279,6 +281,12 @@ class AppDatabase extends _$AppDatabase {
           episodeRows.playbackMediaIdentity,
         );
         await migrator.createTable(syncDeviceRows);
+      }
+      if (from < 9) {
+        await migrator.addColumn(
+          inboxPreferenceRows,
+          inboxPreferenceRows.markRemovedAsPlayed,
+        );
       }
     },
   );
@@ -533,6 +541,7 @@ class AppDatabase extends _$AppDatabase {
       right: row == null
           ? InboxSwipeAction.queue
           : InboxSwipeAction.parse(row.rightAction),
+      markRemovedAsPlayed: row?.markRemovedAsPlayed ?? true,
     );
   }
 
@@ -542,6 +551,7 @@ class AppDatabase extends _$AppDatabase {
           id: const Value(0),
           leftAction: Value(preferences.left.name),
           rightAction: Value(preferences.right.name),
+          markRemovedAsPlayed: Value(preferences.markRemovedAsPlayed),
         ),
       );
 

@@ -50,7 +50,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Swipe settings',
+                      tooltip: 'Inbox settings',
                       onPressed: _editGlobalSwipeSettings,
                       icon: const Icon(Icons.swipe_rounded),
                     ),
@@ -164,6 +164,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
             child: EpisodeTile(
               episode: episode,
               onLongPress: () => _showEpisodeActions(episode),
+              onRemoveFromInbox: () => _performAction(
+                episode,
+                InboxSwipeAction.remove,
+                markRemovedAsPlayed: false,
+              ),
             ),
           );
         },
@@ -213,19 +218,24 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
 
   Future<void> _performAction(
     EpisodeRecord episode,
-    InboxSwipeAction action,
-  ) async {
+    InboxSwipeAction action, {
+    bool? markRemovedAsPlayed,
+  }) async {
     final app = ref.read(appControllerProvider);
     final wasQueued = episode.queued;
     final wasCompleted = episode.completed;
     final wasDownloaded = episode.downloaded;
+    var markedPlayedOnRemove = false;
     switch (action) {
       case InboxSwipeAction.queue:
         wasQueued
             ? await app.removeFromQueue(episode)
             : await app.addToQueue(episode);
       case InboxSwipeAction.remove:
-        await app.removeFromInbox(episode);
+        markedPlayedOnRemove = await app.removeFromInbox(
+          episode,
+          markAsPlayed: markRemovedAsPlayed,
+        );
       case InboxSwipeAction.togglePlayed:
         await app.setCompleted(episode, !wasCompleted);
       case InboxSwipeAction.download:
@@ -240,7 +250,13 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(action.feedbackLabel(episode)),
+          duration: const Duration(seconds: 5),
+          persist: false,
+          content: Text(
+            action == InboxSwipeAction.remove && markedPlayedOnRemove
+                ? 'Removed from Inbox and marked played'
+                : action.feedbackLabel(episode),
+          ),
           action: SnackBarAction(
             label: 'Undo',
             onPressed: () async {
@@ -250,7 +266,10 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                       ? await app.addToQueue(episode)
                       : await app.removeFromQueue(episode);
                 case InboxSwipeAction.remove:
-                  await app.restoreToInbox(episode);
+                  await app.restoreToInbox(
+                    episode,
+                    restoreAsUnplayed: markedPlayedOnRemove,
+                  );
                 case InboxSwipeAction.togglePlayed:
                   await app.setCompleted(episode, wasCompleted);
                 case InboxSwipeAction.download:
@@ -276,11 +295,12 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     if (!mounted) return;
     var left = current.left;
     var right = current.right;
+    var markRemovedAsPlayed = current.markRemovedAsPlayed;
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Inbox swipe actions'),
+          title: const Text('Inbox settings'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -294,6 +314,17 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                 label: 'Swipe right',
                 value: right,
                 onChanged: (value) => setDialogState(() => right = value),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Mark removed episodes as played'),
+                subtitle: const Text(
+                  'App-wide behavior whenever Remove from Inbox is used.',
+                ),
+                value: markRemovedAsPlayed,
+                onChanged: (value) =>
+                    setDialogState(() => markRemovedAsPlayed = value),
               ),
             ],
           ),
@@ -312,7 +343,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     );
     if (saved == true) {
       await database.setInboxSwipePreferences(
-        InboxSwipePreferences(left: left, right: right),
+        InboxSwipePreferences(
+          left: left,
+          right: right,
+          markRemovedAsPlayed: markRemovedAsPlayed,
+        ),
       );
       if (mounted) setState(() {});
     }

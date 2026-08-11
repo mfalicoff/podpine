@@ -75,6 +75,7 @@ void main() {
         const InboxSwipePreferences(
           left: InboxSwipeAction.download,
           right: InboxSwipeAction.playNext,
+          markRemovedAsPlayed: false,
         ),
       );
       await database.setPodcastInboxOverride(
@@ -84,6 +85,7 @@ void main() {
       final preferences = await database.resolvedInboxSwipePreferences(7);
       expect(preferences.left, InboxSwipeAction.remove);
       expect(preferences.right, InboxSwipeAction.playNext);
+      expect(preferences.markRemovedAsPlayed, isFalse);
     },
   );
 }

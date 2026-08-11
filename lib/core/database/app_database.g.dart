@@ -3425,8 +3425,27 @@ class $InboxPreferenceRowsTable extends InboxPreferenceRows
     requiredDuringInsert: false,
     defaultValue: const Constant('queue'),
   );
+  static const VerificationMeta _markRemovedAsPlayedMeta =
+      const VerificationMeta('markRemovedAsPlayed');
   @override
-  List<GeneratedColumn> get $columns => [id, leftAction, rightAction];
+  late final GeneratedColumn<bool> markRemovedAsPlayed = GeneratedColumn<bool>(
+    'mark_removed_as_played',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("mark_removed_as_played" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    leftAction,
+    rightAction,
+    markRemovedAsPlayed,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3457,6 +3476,15 @@ class $InboxPreferenceRowsTable extends InboxPreferenceRows
         ),
       );
     }
+    if (data.containsKey('mark_removed_as_played')) {
+      context.handle(
+        _markRemovedAsPlayedMeta,
+        markRemovedAsPlayed.isAcceptableOrUnknown(
+          data['mark_removed_as_played']!,
+          _markRemovedAsPlayedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -3478,6 +3506,10 @@ class $InboxPreferenceRowsTable extends InboxPreferenceRows
         DriftSqlType.string,
         data['${effectivePrefix}right_action'],
       )!,
+      markRemovedAsPlayed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}mark_removed_as_played'],
+      )!,
     );
   }
 
@@ -3492,10 +3524,12 @@ class InboxPreferencesRecord extends DataClass
   final int id;
   final String leftAction;
   final String rightAction;
+  final bool markRemovedAsPlayed;
   const InboxPreferencesRecord({
     required this.id,
     required this.leftAction,
     required this.rightAction,
+    required this.markRemovedAsPlayed,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3503,6 +3537,7 @@ class InboxPreferencesRecord extends DataClass
     map['id'] = Variable<int>(id);
     map['left_action'] = Variable<String>(leftAction);
     map['right_action'] = Variable<String>(rightAction);
+    map['mark_removed_as_played'] = Variable<bool>(markRemovedAsPlayed);
     return map;
   }
 
@@ -3511,6 +3546,7 @@ class InboxPreferencesRecord extends DataClass
       id: Value(id),
       leftAction: Value(leftAction),
       rightAction: Value(rightAction),
+      markRemovedAsPlayed: Value(markRemovedAsPlayed),
     );
   }
 
@@ -3523,6 +3559,9 @@ class InboxPreferencesRecord extends DataClass
       id: serializer.fromJson<int>(json['id']),
       leftAction: serializer.fromJson<String>(json['leftAction']),
       rightAction: serializer.fromJson<String>(json['rightAction']),
+      markRemovedAsPlayed: serializer.fromJson<bool>(
+        json['markRemovedAsPlayed'],
+      ),
     );
   }
   @override
@@ -3532,6 +3571,7 @@ class InboxPreferencesRecord extends DataClass
       'id': serializer.toJson<int>(id),
       'leftAction': serializer.toJson<String>(leftAction),
       'rightAction': serializer.toJson<String>(rightAction),
+      'markRemovedAsPlayed': serializer.toJson<bool>(markRemovedAsPlayed),
     };
   }
 
@@ -3539,10 +3579,12 @@ class InboxPreferencesRecord extends DataClass
     int? id,
     String? leftAction,
     String? rightAction,
+    bool? markRemovedAsPlayed,
   }) => InboxPreferencesRecord(
     id: id ?? this.id,
     leftAction: leftAction ?? this.leftAction,
     rightAction: rightAction ?? this.rightAction,
+    markRemovedAsPlayed: markRemovedAsPlayed ?? this.markRemovedAsPlayed,
   );
   InboxPreferencesRecord copyWithCompanion(InboxPreferenceRowsCompanion data) {
     return InboxPreferencesRecord(
@@ -3553,6 +3595,9 @@ class InboxPreferencesRecord extends DataClass
       rightAction: data.rightAction.present
           ? data.rightAction.value
           : this.rightAction,
+      markRemovedAsPlayed: data.markRemovedAsPlayed.present
+          ? data.markRemovedAsPlayed.value
+          : this.markRemovedAsPlayed,
     );
   }
 
@@ -3561,20 +3606,23 @@ class InboxPreferencesRecord extends DataClass
     return (StringBuffer('InboxPreferencesRecord(')
           ..write('id: $id, ')
           ..write('leftAction: $leftAction, ')
-          ..write('rightAction: $rightAction')
+          ..write('rightAction: $rightAction, ')
+          ..write('markRemovedAsPlayed: $markRemovedAsPlayed')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, leftAction, rightAction);
+  int get hashCode =>
+      Object.hash(id, leftAction, rightAction, markRemovedAsPlayed);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is InboxPreferencesRecord &&
           other.id == this.id &&
           other.leftAction == this.leftAction &&
-          other.rightAction == this.rightAction);
+          other.rightAction == this.rightAction &&
+          other.markRemovedAsPlayed == this.markRemovedAsPlayed);
 }
 
 class InboxPreferenceRowsCompanion
@@ -3582,25 +3630,31 @@ class InboxPreferenceRowsCompanion
   final Value<int> id;
   final Value<String> leftAction;
   final Value<String> rightAction;
+  final Value<bool> markRemovedAsPlayed;
   const InboxPreferenceRowsCompanion({
     this.id = const Value.absent(),
     this.leftAction = const Value.absent(),
     this.rightAction = const Value.absent(),
+    this.markRemovedAsPlayed = const Value.absent(),
   });
   InboxPreferenceRowsCompanion.insert({
     this.id = const Value.absent(),
     this.leftAction = const Value.absent(),
     this.rightAction = const Value.absent(),
+    this.markRemovedAsPlayed = const Value.absent(),
   });
   static Insertable<InboxPreferencesRecord> custom({
     Expression<int>? id,
     Expression<String>? leftAction,
     Expression<String>? rightAction,
+    Expression<bool>? markRemovedAsPlayed,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (leftAction != null) 'left_action': leftAction,
       if (rightAction != null) 'right_action': rightAction,
+      if (markRemovedAsPlayed != null)
+        'mark_removed_as_played': markRemovedAsPlayed,
     });
   }
 
@@ -3608,11 +3662,13 @@ class InboxPreferenceRowsCompanion
     Value<int>? id,
     Value<String>? leftAction,
     Value<String>? rightAction,
+    Value<bool>? markRemovedAsPlayed,
   }) {
     return InboxPreferenceRowsCompanion(
       id: id ?? this.id,
       leftAction: leftAction ?? this.leftAction,
       rightAction: rightAction ?? this.rightAction,
+      markRemovedAsPlayed: markRemovedAsPlayed ?? this.markRemovedAsPlayed,
     );
   }
 
@@ -3628,6 +3684,9 @@ class InboxPreferenceRowsCompanion
     if (rightAction.present) {
       map['right_action'] = Variable<String>(rightAction.value);
     }
+    if (markRemovedAsPlayed.present) {
+      map['mark_removed_as_played'] = Variable<bool>(markRemovedAsPlayed.value);
+    }
     return map;
   }
 
@@ -3636,7 +3695,8 @@ class InboxPreferenceRowsCompanion
     return (StringBuffer('InboxPreferenceRowsCompanion(')
           ..write('id: $id, ')
           ..write('leftAction: $leftAction, ')
-          ..write('rightAction: $rightAction')
+          ..write('rightAction: $rightAction, ')
+          ..write('markRemovedAsPlayed: $markRemovedAsPlayed')
           ..write(')'))
         .toString();
   }
@@ -8502,12 +8562,14 @@ typedef $$InboxPreferenceRowsTableCreateCompanionBuilder =
       Value<int> id,
       Value<String> leftAction,
       Value<String> rightAction,
+      Value<bool> markRemovedAsPlayed,
     });
 typedef $$InboxPreferenceRowsTableUpdateCompanionBuilder =
     InboxPreferenceRowsCompanion Function({
       Value<int> id,
       Value<String> leftAction,
       Value<String> rightAction,
+      Value<bool> markRemovedAsPlayed,
     });
 
 class $$InboxPreferenceRowsTableFilterComposer
@@ -8531,6 +8593,11 @@ class $$InboxPreferenceRowsTableFilterComposer
 
   ColumnFilters<String> get rightAction => $composableBuilder(
     column: $table.rightAction,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get markRemovedAsPlayed => $composableBuilder(
+    column: $table.markRemovedAsPlayed,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8558,6 +8625,11 @@ class $$InboxPreferenceRowsTableOrderingComposer
     column: $table.rightAction,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get markRemovedAsPlayed => $composableBuilder(
+    column: $table.markRemovedAsPlayed,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$InboxPreferenceRowsTableAnnotationComposer
@@ -8579,6 +8651,11 @@ class $$InboxPreferenceRowsTableAnnotationComposer
 
   GeneratedColumn<String> get rightAction => $composableBuilder(
     column: $table.rightAction,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get markRemovedAsPlayed => $composableBuilder(
+    column: $table.markRemovedAsPlayed,
     builder: (column) => column,
   );
 }
@@ -8629,20 +8706,24 @@ class $$InboxPreferenceRowsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<String> leftAction = const Value.absent(),
                 Value<String> rightAction = const Value.absent(),
+                Value<bool> markRemovedAsPlayed = const Value.absent(),
               }) => InboxPreferenceRowsCompanion(
                 id: id,
                 leftAction: leftAction,
                 rightAction: rightAction,
+                markRemovedAsPlayed: markRemovedAsPlayed,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> leftAction = const Value.absent(),
                 Value<String> rightAction = const Value.absent(),
+                Value<bool> markRemovedAsPlayed = const Value.absent(),
               }) => InboxPreferenceRowsCompanion.insert(
                 id: id,
                 leftAction: leftAction,
                 rightAction: rightAction,
+                markRemovedAsPlayed: markRemovedAsPlayed,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

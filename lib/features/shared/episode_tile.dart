@@ -15,10 +15,12 @@ class EpisodeTile extends ConsumerWidget {
     required this.episode,
     this.compact = false,
     this.onLongPress,
+    this.onRemoveFromInbox,
   });
   final EpisodeRecord episode;
   final bool compact;
   final VoidCallback? onLongPress;
+  final Future<void> Function()? onRemoveFromInbox;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -172,6 +174,13 @@ class EpisodeTile extends ConsumerWidget {
                       child: Text('Play next'),
                     ),
                   ..._downloadMenuItems(download),
+                  if (onRemoveFromInbox != null) ...[
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'remove-inbox',
+                      child: Text('Remove from Inbox (keep unplayed)'),
+                    ),
+                  ],
                 ],
                 icon: const Icon(Icons.more_horiz_rounded),
               ),
@@ -210,6 +219,8 @@ class EpisodeTile extends ConsumerWidget {
           await ref.read(downloadManagerProvider).cancel(episode.id);
         case 'delete-download':
           await ref.read(downloadManagerProvider).delete(episode.id);
+        case 'remove-inbox':
+          await onRemoveFromInbox?.call();
       }
     } catch (error) {
       if (context.mounted) {

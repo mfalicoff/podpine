@@ -545,11 +545,26 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> removeFromInbox(EpisodeRecord episode) =>
-      database.removeFromInbox(episode.id);
+  Future<bool> removeFromInbox(
+    EpisodeRecord episode, {
+    bool? markAsPlayed,
+  }) async {
+    final shouldMarkAsPlayed =
+        markAsPlayed ??
+        (await database.inboxSwipePreferences()).markRemovedAsPlayed;
+    await database.removeFromInbox(episode.id);
+    if (episode.completed || !shouldMarkAsPlayed) return false;
+    await setCompleted(episode, true);
+    return true;
+  }
 
-  Future<void> restoreToInbox(EpisodeRecord episode) =>
-      database.restoreToInbox(episode.id);
+  Future<void> restoreToInbox(
+    EpisodeRecord episode, {
+    bool restoreAsUnplayed = false,
+  }) async {
+    await database.restoreToInbox(episode.id);
+    if (restoreAsUnplayed) await setCompleted(episode, false);
+  }
 
   Future<void> setDownloaded(EpisodeRecord episode, bool downloaded) async {
     await database.setDownloaded(episode.id, downloaded);

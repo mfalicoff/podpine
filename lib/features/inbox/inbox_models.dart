@@ -19,10 +19,12 @@ class InboxSwipePreferences {
   const InboxSwipePreferences({
     this.left = InboxSwipeAction.remove,
     this.right = InboxSwipeAction.queue,
+    this.markRemovedAsPlayed = true,
   });
 
   final InboxSwipeAction left;
   final InboxSwipeAction right;
+  final bool markRemovedAsPlayed;
 }
 
 class PodcastInboxOverride {
@@ -37,5 +39,6 @@ class PodcastInboxOverride {
       InboxSwipePreferences(
         left: left ?? fallback.left,
         right: right ?? fallback.right,
+        markRemovedAsPlayed: fallback.markRemovedAsPlayed,
       );
 }
