@@ -7,6 +7,7 @@ import '../../providers.dart';
 import '../../core/backend/podcast_backend.dart';
 import '../../core/database/app_database.dart';
 import '../details/podcast_detail_screen.dart';
+import '../downloads/download_settings_screen.dart';
 import '../shared/artwork.dart';
 
 class LibraryScreen extends ConsumerWidget {
@@ -24,9 +25,24 @@ class LibraryScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Library',
-                    style: Theme.of(context).textTheme.headlineLarge,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Library',
+                          style: Theme.of(context).textTheme.headlineLarge,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Automatic download settings',
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const DownloadSettingsScreen(),
+                          ),
+                        ),
+                        icon: const Icon(Icons.download_for_offline_outlined),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 5),
                   const Text(

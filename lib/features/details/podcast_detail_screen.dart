@@ -9,9 +9,11 @@ import '../../app_controller.dart';
 import '../../core/backend/podcast_backend.dart';
 import '../../core/database/app_database.dart';
 import '../../core/downloads/download_models.dart';
+import '../../core/downloads/download_actions.dart';
 import '../../core/metadata_sanitizer.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
+import '../downloads/download_settings_screen.dart';
 
 class PodcastDetailScreen extends ConsumerStatefulWidget {
   const PodcastDetailScreen({super.key, required this.podcast});
@@ -119,6 +121,20 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
       appBar: AppBar(
         title: const Text('Podcast'),
         actions: [
+          IconButton(
+            tooltip: 'Podcast download settings',
+            onPressed: podcast.id == 0
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => DownloadSettingsScreen(
+                        podcastId: podcast.id,
+                        podcastTitle: podcast.title,
+                      ),
+                    ),
+                  ),
+            icon: const Icon(Icons.download_for_offline_outlined),
+          ),
           IconButton(
             tooltip: 'Refresh details',
             onPressed: _refreshing ? null : _refresh,
@@ -509,7 +525,7 @@ class _DownloadControls extends ConsumerWidget {
       null => (
         Icons.download_rounded,
         'Download',
-        () => ref.read(downloadManagerProvider).start(episode),
+        () => startDownloadWithCellularConfirmation(context, ref, episode),
       ),
       DownloadState.queued || DownloadState.downloading => (
         Icons.pause_rounded,
@@ -519,12 +535,12 @@ class _DownloadControls extends ConsumerWidget {
       DownloadState.paused => (
         Icons.download_rounded,
         'Resume download',
-        () => ref.read(downloadManagerProvider).resume(episode.id),
+        () => startDownloadWithCellularConfirmation(context, ref, episode),
       ),
       DownloadState.failed => (
         Icons.refresh_rounded,
         'Retry download',
-        () => ref.read(downloadManagerProvider).retry(episode.id),
+        () => startDownloadWithCellularConfirmation(context, ref, episode),
       ),
       DownloadState.completed => (
         Icons.delete_outline_rounded,

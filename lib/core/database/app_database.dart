@@ -81,11 +81,47 @@ class DownloadJobRows extends Table {
   TextColumn get etag => text().nullable()();
   TextColumn get lastModified => text().nullable()();
   TextColumn get error => text().nullable()();
+  BoolColumn get automatic => boolean().withDefault(const Constant(false))();
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  DateTimeColumn get nextAttemptAt => dateTime().nullable()();
+  DateTimeColumn get playedAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override
   Set<Column<Object>> get primaryKey => {episodeId};
+}
+
+@DataClassName('DownloadPreferenceRecord')
+class DownloadPreferenceRows extends Table {
+  IntColumn get id => integer().withDefault(const Constant(0))();
+  BoolColumn get automatic => boolean().withDefault(const Constant(false))();
+  IntColumn get episodeLimit => integer().withDefault(const Constant(3))();
+  BoolColumn get wifiOnly => boolean().withDefault(const Constant(true))();
+  BoolColumn get chargingOnly => boolean().withDefault(const Constant(false))();
+  IntColumn get storageFloorBytes =>
+      integer().withDefault(const Constant(500 * 1024 * 1024))();
+  TextColumn get retention => text().withDefault(const Constant('never'))();
+  IntColumn get retentionDelayHours =>
+      integer().withDefault(const Constant(24))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('PodcastDownloadOverrideRecord')
+class PodcastDownloadOverrideRows extends Table {
+  IntColumn get podcastId => integer().references(PodcastRows, #id)();
+  BoolColumn get automatic => boolean()();
+  IntColumn get episodeLimit => integer()();
+  BoolColumn get wifiOnly => boolean()();
+  BoolColumn get chargingOnly => boolean()();
+  IntColumn get storageFloorBytes => integer()();
+  TextColumn get retention => text()();
+  IntColumn get retentionDelayHours => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {podcastId};
 }
 
 @DataClassName('QueueRecord')
@@ -195,6 +231,8 @@ class PodcastPlaybackOverrideRows extends Table {
     DiscoveryCacheRows,
     EpisodeRows,
     DownloadJobRows,
+    DownloadPreferenceRows,
+    PodcastDownloadOverrideRows,
     QueueRows,
     InboxRows,
     InboxPreferenceRows,
@@ -220,7 +258,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -288,6 +326,17 @@ class AppDatabase extends _$AppDatabase {
           inboxPreferenceRows.markRemovedAsPlayed,
         );
       }
+      if (from < 10) {
+        await migrator.addColumn(downloadJobRows, downloadJobRows.automatic);
+        await migrator.addColumn(downloadJobRows, downloadJobRows.attempts);
+        await migrator.addColumn(
+          downloadJobRows,
+          downloadJobRows.nextAttemptAt,
+        );
+        await migrator.addColumn(downloadJobRows, downloadJobRows.playedAt);
+        await migrator.createTable(downloadPreferenceRows);
+        await migrator.createTable(podcastDownloadOverrideRows);
+      }
     },
   );
 
@@ -304,6 +353,10 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<EpisodeRecord>> watchAllEpisodes() => (select(
     episodeRows,
   )..orderBy([(episode) => OrderingTerm.desc(episode.publishedAt)])).watch();
+
+  Future<List<EpisodeRecord>> allEpisodes() => (select(
+    episodeRows,
+  )..orderBy([(episode) => OrderingTerm.desc(episode.publishedAt)])).get();
 
   Future<EpisodeRecord?> episodeById(int episodeId) => (select(
     episodeRows,
@@ -331,6 +384,43 @@ class AppDatabase extends _$AppDatabase {
   Future<void> deleteDownloadJob(int episodeId) => (delete(
     downloadJobRows,
   )..where((row) => row.episodeId.equals(episodeId))).go();
+
+  Stream<DownloadPreferenceRecord?> watchDownloadPreferences() => (select(
+    downloadPreferenceRows,
+  )..where((row) => row.id.equals(0))).watchSingleOrNull();
+
+  Future<DownloadPreferenceRecord?> downloadPreferences() => (select(
+    downloadPreferenceRows,
+  )..where((row) => row.id.equals(0))).getSingleOrNull();
+
+  Future<void> setDownloadPreferences(DownloadPreferenceRowsCompanion value) =>
+      into(downloadPreferenceRows).insertOnConflictUpdate(value);
+
+  Stream<PodcastDownloadOverrideRecord?> watchPodcastDownloadOverride(
+    int podcastId,
+  ) => (select(
+    podcastDownloadOverrideRows,
+  )..where((row) => row.podcastId.equals(podcastId))).watchSingleOrNull();
+
+  Future<PodcastDownloadOverrideRecord?> podcastDownloadOverride(
+    int podcastId,
+  ) => (select(
+    podcastDownloadOverrideRows,
+  )..where((row) => row.podcastId.equals(podcastId))).getSingleOrNull();
+
+  Future<Map<int, PodcastDownloadOverrideRecord>>
+  podcastDownloadOverrides() async {
+    final rows = await select(podcastDownloadOverrideRows).get();
+    return {for (final row in rows) row.podcastId: row};
+  }
+
+  Future<void> setPodcastDownloadOverride(
+    PodcastDownloadOverrideRowsCompanion value,
+  ) => into(podcastDownloadOverrideRows).insertOnConflictUpdate(value);
+
+  Future<void> clearPodcastDownloadOverride(int podcastId) => (delete(
+    podcastDownloadOverrideRows,
+  )..where((row) => row.podcastId.equals(podcastId))).go();
 
   Future<Map<int, String>> completedDownloadPaths(
     Iterable<int> episodeIds,
@@ -455,6 +545,9 @@ class AppDatabase extends _$AppDatabase {
       )..where((row) => row.podcastId.equals(podcastId))).go();
       await (delete(
         podcastPlaybackOverrideRows,
+      )..where((row) => row.podcastId.equals(podcastId))).go();
+      await (delete(
+        podcastDownloadOverrideRows,
       )..where((row) => row.podcastId.equals(podcastId))).go();
       await (delete(
         episodeRows,
@@ -831,6 +924,9 @@ class AppDatabase extends _$AppDatabase {
           podcastInboxOverrideRows,
         )..where((row) => row.podcastId.equals(podcast.id))).go();
         await (delete(
+          podcastDownloadOverrideRows,
+        )..where((row) => row.podcastId.equals(podcast.id))).go();
+        await (delete(
           podcastRows,
         )..where((row) => row.id.equals(podcast.id))).go();
       }
@@ -1165,6 +1261,8 @@ class AppDatabase extends _$AppDatabase {
       await delete(podcastInboxOverrideRows).go();
       await delete(inboxPreferenceRows).go();
       await delete(podcastPlaybackOverrideRows).go();
+      await delete(podcastDownloadOverrideRows).go();
+      await delete(downloadPreferenceRows).go();
       await delete(episodeRows).go();
       await delete(podcastRows).go();
     });

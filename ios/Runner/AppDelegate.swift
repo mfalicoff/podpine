@@ -31,6 +31,12 @@ import workmanager_apple
       binaryMessenger: registrar.messenger()
     )
     channel.setMethodCallHandler { call, result in
+      if call.method == "isCharging" {
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        let state = UIDevice.current.batteryState
+        result(state == .charging || state == .full)
+        return
+      }
       guard call.method == "availableBytes" else {
         result(FlutterMethodNotImplemented)
         return

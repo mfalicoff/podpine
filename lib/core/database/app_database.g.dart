@@ -2270,6 +2270,56 @@ class $DownloadJobRowsTable extends DownloadJobRows
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _automaticMeta = const VerificationMeta(
+    'automatic',
+  );
+  @override
+  late final GeneratedColumn<bool> automatic = GeneratedColumn<bool>(
+    'automatic',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("automatic" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _attemptsMeta = const VerificationMeta(
+    'attempts',
+  );
+  @override
+  late final GeneratedColumn<int> attempts = GeneratedColumn<int>(
+    'attempts',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _nextAttemptAtMeta = const VerificationMeta(
+    'nextAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> nextAttemptAt =
+      GeneratedColumn<DateTime>(
+        'next_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _playedAtMeta = const VerificationMeta(
+    'playedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> playedAt = GeneratedColumn<DateTime>(
+    'played_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2304,6 +2354,10 @@ class $DownloadJobRowsTable extends DownloadJobRows
     etag,
     lastModified,
     error,
+    automatic,
+    attempts,
+    nextAttemptAt,
+    playedAt,
     createdAt,
     updatedAt,
   ];
@@ -2396,6 +2450,33 @@ class $DownloadJobRowsTable extends DownloadJobRows
         error.isAcceptableOrUnknown(data['error']!, _errorMeta),
       );
     }
+    if (data.containsKey('automatic')) {
+      context.handle(
+        _automaticMeta,
+        automatic.isAcceptableOrUnknown(data['automatic']!, _automaticMeta),
+      );
+    }
+    if (data.containsKey('attempts')) {
+      context.handle(
+        _attemptsMeta,
+        attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
+      );
+    }
+    if (data.containsKey('next_attempt_at')) {
+      context.handle(
+        _nextAttemptAtMeta,
+        nextAttemptAt.isAcceptableOrUnknown(
+          data['next_attempt_at']!,
+          _nextAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('played_at')) {
+      context.handle(
+        _playedAtMeta,
+        playedAt.isAcceptableOrUnknown(data['played_at']!, _playedAtMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2461,6 +2542,22 @@ class $DownloadJobRowsTable extends DownloadJobRows
         DriftSqlType.string,
         data['${effectivePrefix}error'],
       ),
+      automatic: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}automatic'],
+      )!,
+      attempts: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempts'],
+      )!,
+      nextAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}next_attempt_at'],
+      ),
+      playedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}played_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2490,6 +2587,10 @@ class DownloadJobRecord extends DataClass
   final String? etag;
   final String? lastModified;
   final String? error;
+  final bool automatic;
+  final int attempts;
+  final DateTime? nextAttemptAt;
+  final DateTime? playedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   const DownloadJobRecord({
@@ -2503,6 +2604,10 @@ class DownloadJobRecord extends DataClass
     this.etag,
     this.lastModified,
     this.error,
+    required this.automatic,
+    required this.attempts,
+    this.nextAttemptAt,
+    this.playedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2527,6 +2632,14 @@ class DownloadJobRecord extends DataClass
     if (!nullToAbsent || error != null) {
       map['error'] = Variable<String>(error);
     }
+    map['automatic'] = Variable<bool>(automatic);
+    map['attempts'] = Variable<int>(attempts);
+    if (!nullToAbsent || nextAttemptAt != null) {
+      map['next_attempt_at'] = Variable<DateTime>(nextAttemptAt);
+    }
+    if (!nullToAbsent || playedAt != null) {
+      map['played_at'] = Variable<DateTime>(playedAt);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -2550,6 +2663,14 @@ class DownloadJobRecord extends DataClass
       error: error == null && nullToAbsent
           ? const Value.absent()
           : Value(error),
+      automatic: Value(automatic),
+      attempts: Value(attempts),
+      nextAttemptAt: nextAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextAttemptAt),
+      playedAt: playedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(playedAt),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2571,6 +2692,10 @@ class DownloadJobRecord extends DataClass
       etag: serializer.fromJson<String?>(json['etag']),
       lastModified: serializer.fromJson<String?>(json['lastModified']),
       error: serializer.fromJson<String?>(json['error']),
+      automatic: serializer.fromJson<bool>(json['automatic']),
+      attempts: serializer.fromJson<int>(json['attempts']),
+      nextAttemptAt: serializer.fromJson<DateTime?>(json['nextAttemptAt']),
+      playedAt: serializer.fromJson<DateTime?>(json['playedAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2589,6 +2714,10 @@ class DownloadJobRecord extends DataClass
       'etag': serializer.toJson<String?>(etag),
       'lastModified': serializer.toJson<String?>(lastModified),
       'error': serializer.toJson<String?>(error),
+      'automatic': serializer.toJson<bool>(automatic),
+      'attempts': serializer.toJson<int>(attempts),
+      'nextAttemptAt': serializer.toJson<DateTime?>(nextAttemptAt),
+      'playedAt': serializer.toJson<DateTime?>(playedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2605,6 +2734,10 @@ class DownloadJobRecord extends DataClass
     Value<String?> etag = const Value.absent(),
     Value<String?> lastModified = const Value.absent(),
     Value<String?> error = const Value.absent(),
+    bool? automatic,
+    int? attempts,
+    Value<DateTime?> nextAttemptAt = const Value.absent(),
+    Value<DateTime?> playedAt = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => DownloadJobRecord(
@@ -2618,6 +2751,12 @@ class DownloadJobRecord extends DataClass
     etag: etag.present ? etag.value : this.etag,
     lastModified: lastModified.present ? lastModified.value : this.lastModified,
     error: error.present ? error.value : this.error,
+    automatic: automatic ?? this.automatic,
+    attempts: attempts ?? this.attempts,
+    nextAttemptAt: nextAttemptAt.present
+        ? nextAttemptAt.value
+        : this.nextAttemptAt,
+    playedAt: playedAt.present ? playedAt.value : this.playedAt,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2641,6 +2780,12 @@ class DownloadJobRecord extends DataClass
           ? data.lastModified.value
           : this.lastModified,
       error: data.error.present ? data.error.value : this.error,
+      automatic: data.automatic.present ? data.automatic.value : this.automatic,
+      attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      nextAttemptAt: data.nextAttemptAt.present
+          ? data.nextAttemptAt.value
+          : this.nextAttemptAt,
+      playedAt: data.playedAt.present ? data.playedAt.value : this.playedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2659,6 +2804,10 @@ class DownloadJobRecord extends DataClass
           ..write('etag: $etag, ')
           ..write('lastModified: $lastModified, ')
           ..write('error: $error, ')
+          ..write('automatic: $automatic, ')
+          ..write('attempts: $attempts, ')
+          ..write('nextAttemptAt: $nextAttemptAt, ')
+          ..write('playedAt: $playedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2677,6 +2826,10 @@ class DownloadJobRecord extends DataClass
     etag,
     lastModified,
     error,
+    automatic,
+    attempts,
+    nextAttemptAt,
+    playedAt,
     createdAt,
     updatedAt,
   );
@@ -2694,6 +2847,10 @@ class DownloadJobRecord extends DataClass
           other.etag == this.etag &&
           other.lastModified == this.lastModified &&
           other.error == this.error &&
+          other.automatic == this.automatic &&
+          other.attempts == this.attempts &&
+          other.nextAttemptAt == this.nextAttemptAt &&
+          other.playedAt == this.playedAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2709,6 +2866,10 @@ class DownloadJobRowsCompanion extends UpdateCompanion<DownloadJobRecord> {
   final Value<String?> etag;
   final Value<String?> lastModified;
   final Value<String?> error;
+  final Value<bool> automatic;
+  final Value<int> attempts;
+  final Value<DateTime?> nextAttemptAt;
+  final Value<DateTime?> playedAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const DownloadJobRowsCompanion({
@@ -2722,6 +2883,10 @@ class DownloadJobRowsCompanion extends UpdateCompanion<DownloadJobRecord> {
     this.etag = const Value.absent(),
     this.lastModified = const Value.absent(),
     this.error = const Value.absent(),
+    this.automatic = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.nextAttemptAt = const Value.absent(),
+    this.playedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -2736,6 +2901,10 @@ class DownloadJobRowsCompanion extends UpdateCompanion<DownloadJobRecord> {
     this.etag = const Value.absent(),
     this.lastModified = const Value.absent(),
     this.error = const Value.absent(),
+    this.automatic = const Value.absent(),
+    this.attempts = const Value.absent(),
+    this.nextAttemptAt = const Value.absent(),
+    this.playedAt = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : sourceUrl = Value(sourceUrl),
@@ -2755,6 +2924,10 @@ class DownloadJobRowsCompanion extends UpdateCompanion<DownloadJobRecord> {
     Expression<String>? etag,
     Expression<String>? lastModified,
     Expression<String>? error,
+    Expression<bool>? automatic,
+    Expression<int>? attempts,
+    Expression<DateTime>? nextAttemptAt,
+    Expression<DateTime>? playedAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -2769,6 +2942,10 @@ class DownloadJobRowsCompanion extends UpdateCompanion<DownloadJobRecord> {
       if (etag != null) 'etag': etag,
       if (lastModified != null) 'last_modified': lastModified,
       if (error != null) 'error': error,
+      if (automatic != null) 'automatic': automatic,
+      if (attempts != null) 'attempts': attempts,
+      if (nextAttemptAt != null) 'next_attempt_at': nextAttemptAt,
+      if (playedAt != null) 'played_at': playedAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -2785,6 +2962,10 @@ class DownloadJobRowsCompanion extends UpdateCompanion<DownloadJobRecord> {
     Value<String?>? etag,
     Value<String?>? lastModified,
     Value<String?>? error,
+    Value<bool>? automatic,
+    Value<int>? attempts,
+    Value<DateTime?>? nextAttemptAt,
+    Value<DateTime?>? playedAt,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -2799,6 +2980,10 @@ class DownloadJobRowsCompanion extends UpdateCompanion<DownloadJobRecord> {
       etag: etag ?? this.etag,
       lastModified: lastModified ?? this.lastModified,
       error: error ?? this.error,
+      automatic: automatic ?? this.automatic,
+      attempts: attempts ?? this.attempts,
+      nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
+      playedAt: playedAt ?? this.playedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -2837,6 +3022,18 @@ class DownloadJobRowsCompanion extends UpdateCompanion<DownloadJobRecord> {
     if (error.present) {
       map['error'] = Variable<String>(error.value);
     }
+    if (automatic.present) {
+      map['automatic'] = Variable<bool>(automatic.value);
+    }
+    if (attempts.present) {
+      map['attempts'] = Variable<int>(attempts.value);
+    }
+    if (nextAttemptAt.present) {
+      map['next_attempt_at'] = Variable<DateTime>(nextAttemptAt.value);
+    }
+    if (playedAt.present) {
+      map['played_at'] = Variable<DateTime>(playedAt.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2859,8 +3056,1084 @@ class DownloadJobRowsCompanion extends UpdateCompanion<DownloadJobRecord> {
           ..write('etag: $etag, ')
           ..write('lastModified: $lastModified, ')
           ..write('error: $error, ')
+          ..write('automatic: $automatic, ')
+          ..write('attempts: $attempts, ')
+          ..write('nextAttemptAt: $nextAttemptAt, ')
+          ..write('playedAt: $playedAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DownloadPreferenceRowsTable extends DownloadPreferenceRows
+    with TableInfo<$DownloadPreferenceRowsTable, DownloadPreferenceRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadPreferenceRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _automaticMeta = const VerificationMeta(
+    'automatic',
+  );
+  @override
+  late final GeneratedColumn<bool> automatic = GeneratedColumn<bool>(
+    'automatic',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("automatic" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _episodeLimitMeta = const VerificationMeta(
+    'episodeLimit',
+  );
+  @override
+  late final GeneratedColumn<int> episodeLimit = GeneratedColumn<int>(
+    'episode_limit',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(3),
+  );
+  static const VerificationMeta _wifiOnlyMeta = const VerificationMeta(
+    'wifiOnly',
+  );
+  @override
+  late final GeneratedColumn<bool> wifiOnly = GeneratedColumn<bool>(
+    'wifi_only',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("wifi_only" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _chargingOnlyMeta = const VerificationMeta(
+    'chargingOnly',
+  );
+  @override
+  late final GeneratedColumn<bool> chargingOnly = GeneratedColumn<bool>(
+    'charging_only',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("charging_only" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _storageFloorBytesMeta = const VerificationMeta(
+    'storageFloorBytes',
+  );
+  @override
+  late final GeneratedColumn<int> storageFloorBytes = GeneratedColumn<int>(
+    'storage_floor_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(500 * 1024 * 1024),
+  );
+  static const VerificationMeta _retentionMeta = const VerificationMeta(
+    'retention',
+  );
+  @override
+  late final GeneratedColumn<String> retention = GeneratedColumn<String>(
+    'retention',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('never'),
+  );
+  static const VerificationMeta _retentionDelayHoursMeta =
+      const VerificationMeta('retentionDelayHours');
+  @override
+  late final GeneratedColumn<int> retentionDelayHours = GeneratedColumn<int>(
+    'retention_delay_hours',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(24),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    automatic,
+    episodeLimit,
+    wifiOnly,
+    chargingOnly,
+    storageFloorBytes,
+    retention,
+    retentionDelayHours,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'download_preference_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DownloadPreferenceRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('automatic')) {
+      context.handle(
+        _automaticMeta,
+        automatic.isAcceptableOrUnknown(data['automatic']!, _automaticMeta),
+      );
+    }
+    if (data.containsKey('episode_limit')) {
+      context.handle(
+        _episodeLimitMeta,
+        episodeLimit.isAcceptableOrUnknown(
+          data['episode_limit']!,
+          _episodeLimitMeta,
+        ),
+      );
+    }
+    if (data.containsKey('wifi_only')) {
+      context.handle(
+        _wifiOnlyMeta,
+        wifiOnly.isAcceptableOrUnknown(data['wifi_only']!, _wifiOnlyMeta),
+      );
+    }
+    if (data.containsKey('charging_only')) {
+      context.handle(
+        _chargingOnlyMeta,
+        chargingOnly.isAcceptableOrUnknown(
+          data['charging_only']!,
+          _chargingOnlyMeta,
+        ),
+      );
+    }
+    if (data.containsKey('storage_floor_bytes')) {
+      context.handle(
+        _storageFloorBytesMeta,
+        storageFloorBytes.isAcceptableOrUnknown(
+          data['storage_floor_bytes']!,
+          _storageFloorBytesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('retention')) {
+      context.handle(
+        _retentionMeta,
+        retention.isAcceptableOrUnknown(data['retention']!, _retentionMeta),
+      );
+    }
+    if (data.containsKey('retention_delay_hours')) {
+      context.handle(
+        _retentionDelayHoursMeta,
+        retentionDelayHours.isAcceptableOrUnknown(
+          data['retention_delay_hours']!,
+          _retentionDelayHoursMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DownloadPreferenceRecord map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadPreferenceRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      automatic: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}automatic'],
+      )!,
+      episodeLimit: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}episode_limit'],
+      )!,
+      wifiOnly: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}wifi_only'],
+      )!,
+      chargingOnly: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}charging_only'],
+      )!,
+      storageFloorBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}storage_floor_bytes'],
+      )!,
+      retention: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}retention'],
+      )!,
+      retentionDelayHours: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retention_delay_hours'],
+      )!,
+    );
+  }
+
+  @override
+  $DownloadPreferenceRowsTable createAlias(String alias) {
+    return $DownloadPreferenceRowsTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadPreferenceRecord extends DataClass
+    implements Insertable<DownloadPreferenceRecord> {
+  final int id;
+  final bool automatic;
+  final int episodeLimit;
+  final bool wifiOnly;
+  final bool chargingOnly;
+  final int storageFloorBytes;
+  final String retention;
+  final int retentionDelayHours;
+  const DownloadPreferenceRecord({
+    required this.id,
+    required this.automatic,
+    required this.episodeLimit,
+    required this.wifiOnly,
+    required this.chargingOnly,
+    required this.storageFloorBytes,
+    required this.retention,
+    required this.retentionDelayHours,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['automatic'] = Variable<bool>(automatic);
+    map['episode_limit'] = Variable<int>(episodeLimit);
+    map['wifi_only'] = Variable<bool>(wifiOnly);
+    map['charging_only'] = Variable<bool>(chargingOnly);
+    map['storage_floor_bytes'] = Variable<int>(storageFloorBytes);
+    map['retention'] = Variable<String>(retention);
+    map['retention_delay_hours'] = Variable<int>(retentionDelayHours);
+    return map;
+  }
+
+  DownloadPreferenceRowsCompanion toCompanion(bool nullToAbsent) {
+    return DownloadPreferenceRowsCompanion(
+      id: Value(id),
+      automatic: Value(automatic),
+      episodeLimit: Value(episodeLimit),
+      wifiOnly: Value(wifiOnly),
+      chargingOnly: Value(chargingOnly),
+      storageFloorBytes: Value(storageFloorBytes),
+      retention: Value(retention),
+      retentionDelayHours: Value(retentionDelayHours),
+    );
+  }
+
+  factory DownloadPreferenceRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadPreferenceRecord(
+      id: serializer.fromJson<int>(json['id']),
+      automatic: serializer.fromJson<bool>(json['automatic']),
+      episodeLimit: serializer.fromJson<int>(json['episodeLimit']),
+      wifiOnly: serializer.fromJson<bool>(json['wifiOnly']),
+      chargingOnly: serializer.fromJson<bool>(json['chargingOnly']),
+      storageFloorBytes: serializer.fromJson<int>(json['storageFloorBytes']),
+      retention: serializer.fromJson<String>(json['retention']),
+      retentionDelayHours: serializer.fromJson<int>(
+        json['retentionDelayHours'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'automatic': serializer.toJson<bool>(automatic),
+      'episodeLimit': serializer.toJson<int>(episodeLimit),
+      'wifiOnly': serializer.toJson<bool>(wifiOnly),
+      'chargingOnly': serializer.toJson<bool>(chargingOnly),
+      'storageFloorBytes': serializer.toJson<int>(storageFloorBytes),
+      'retention': serializer.toJson<String>(retention),
+      'retentionDelayHours': serializer.toJson<int>(retentionDelayHours),
+    };
+  }
+
+  DownloadPreferenceRecord copyWith({
+    int? id,
+    bool? automatic,
+    int? episodeLimit,
+    bool? wifiOnly,
+    bool? chargingOnly,
+    int? storageFloorBytes,
+    String? retention,
+    int? retentionDelayHours,
+  }) => DownloadPreferenceRecord(
+    id: id ?? this.id,
+    automatic: automatic ?? this.automatic,
+    episodeLimit: episodeLimit ?? this.episodeLimit,
+    wifiOnly: wifiOnly ?? this.wifiOnly,
+    chargingOnly: chargingOnly ?? this.chargingOnly,
+    storageFloorBytes: storageFloorBytes ?? this.storageFloorBytes,
+    retention: retention ?? this.retention,
+    retentionDelayHours: retentionDelayHours ?? this.retentionDelayHours,
+  );
+  DownloadPreferenceRecord copyWithCompanion(
+    DownloadPreferenceRowsCompanion data,
+  ) {
+    return DownloadPreferenceRecord(
+      id: data.id.present ? data.id.value : this.id,
+      automatic: data.automatic.present ? data.automatic.value : this.automatic,
+      episodeLimit: data.episodeLimit.present
+          ? data.episodeLimit.value
+          : this.episodeLimit,
+      wifiOnly: data.wifiOnly.present ? data.wifiOnly.value : this.wifiOnly,
+      chargingOnly: data.chargingOnly.present
+          ? data.chargingOnly.value
+          : this.chargingOnly,
+      storageFloorBytes: data.storageFloorBytes.present
+          ? data.storageFloorBytes.value
+          : this.storageFloorBytes,
+      retention: data.retention.present ? data.retention.value : this.retention,
+      retentionDelayHours: data.retentionDelayHours.present
+          ? data.retentionDelayHours.value
+          : this.retentionDelayHours,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadPreferenceRecord(')
+          ..write('id: $id, ')
+          ..write('automatic: $automatic, ')
+          ..write('episodeLimit: $episodeLimit, ')
+          ..write('wifiOnly: $wifiOnly, ')
+          ..write('chargingOnly: $chargingOnly, ')
+          ..write('storageFloorBytes: $storageFloorBytes, ')
+          ..write('retention: $retention, ')
+          ..write('retentionDelayHours: $retentionDelayHours')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    automatic,
+    episodeLimit,
+    wifiOnly,
+    chargingOnly,
+    storageFloorBytes,
+    retention,
+    retentionDelayHours,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadPreferenceRecord &&
+          other.id == this.id &&
+          other.automatic == this.automatic &&
+          other.episodeLimit == this.episodeLimit &&
+          other.wifiOnly == this.wifiOnly &&
+          other.chargingOnly == this.chargingOnly &&
+          other.storageFloorBytes == this.storageFloorBytes &&
+          other.retention == this.retention &&
+          other.retentionDelayHours == this.retentionDelayHours);
+}
+
+class DownloadPreferenceRowsCompanion
+    extends UpdateCompanion<DownloadPreferenceRecord> {
+  final Value<int> id;
+  final Value<bool> automatic;
+  final Value<int> episodeLimit;
+  final Value<bool> wifiOnly;
+  final Value<bool> chargingOnly;
+  final Value<int> storageFloorBytes;
+  final Value<String> retention;
+  final Value<int> retentionDelayHours;
+  const DownloadPreferenceRowsCompanion({
+    this.id = const Value.absent(),
+    this.automatic = const Value.absent(),
+    this.episodeLimit = const Value.absent(),
+    this.wifiOnly = const Value.absent(),
+    this.chargingOnly = const Value.absent(),
+    this.storageFloorBytes = const Value.absent(),
+    this.retention = const Value.absent(),
+    this.retentionDelayHours = const Value.absent(),
+  });
+  DownloadPreferenceRowsCompanion.insert({
+    this.id = const Value.absent(),
+    this.automatic = const Value.absent(),
+    this.episodeLimit = const Value.absent(),
+    this.wifiOnly = const Value.absent(),
+    this.chargingOnly = const Value.absent(),
+    this.storageFloorBytes = const Value.absent(),
+    this.retention = const Value.absent(),
+    this.retentionDelayHours = const Value.absent(),
+  });
+  static Insertable<DownloadPreferenceRecord> custom({
+    Expression<int>? id,
+    Expression<bool>? automatic,
+    Expression<int>? episodeLimit,
+    Expression<bool>? wifiOnly,
+    Expression<bool>? chargingOnly,
+    Expression<int>? storageFloorBytes,
+    Expression<String>? retention,
+    Expression<int>? retentionDelayHours,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (automatic != null) 'automatic': automatic,
+      if (episodeLimit != null) 'episode_limit': episodeLimit,
+      if (wifiOnly != null) 'wifi_only': wifiOnly,
+      if (chargingOnly != null) 'charging_only': chargingOnly,
+      if (storageFloorBytes != null) 'storage_floor_bytes': storageFloorBytes,
+      if (retention != null) 'retention': retention,
+      if (retentionDelayHours != null)
+        'retention_delay_hours': retentionDelayHours,
+    });
+  }
+
+  DownloadPreferenceRowsCompanion copyWith({
+    Value<int>? id,
+    Value<bool>? automatic,
+    Value<int>? episodeLimit,
+    Value<bool>? wifiOnly,
+    Value<bool>? chargingOnly,
+    Value<int>? storageFloorBytes,
+    Value<String>? retention,
+    Value<int>? retentionDelayHours,
+  }) {
+    return DownloadPreferenceRowsCompanion(
+      id: id ?? this.id,
+      automatic: automatic ?? this.automatic,
+      episodeLimit: episodeLimit ?? this.episodeLimit,
+      wifiOnly: wifiOnly ?? this.wifiOnly,
+      chargingOnly: chargingOnly ?? this.chargingOnly,
+      storageFloorBytes: storageFloorBytes ?? this.storageFloorBytes,
+      retention: retention ?? this.retention,
+      retentionDelayHours: retentionDelayHours ?? this.retentionDelayHours,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (automatic.present) {
+      map['automatic'] = Variable<bool>(automatic.value);
+    }
+    if (episodeLimit.present) {
+      map['episode_limit'] = Variable<int>(episodeLimit.value);
+    }
+    if (wifiOnly.present) {
+      map['wifi_only'] = Variable<bool>(wifiOnly.value);
+    }
+    if (chargingOnly.present) {
+      map['charging_only'] = Variable<bool>(chargingOnly.value);
+    }
+    if (storageFloorBytes.present) {
+      map['storage_floor_bytes'] = Variable<int>(storageFloorBytes.value);
+    }
+    if (retention.present) {
+      map['retention'] = Variable<String>(retention.value);
+    }
+    if (retentionDelayHours.present) {
+      map['retention_delay_hours'] = Variable<int>(retentionDelayHours.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadPreferenceRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('automatic: $automatic, ')
+          ..write('episodeLimit: $episodeLimit, ')
+          ..write('wifiOnly: $wifiOnly, ')
+          ..write('chargingOnly: $chargingOnly, ')
+          ..write('storageFloorBytes: $storageFloorBytes, ')
+          ..write('retention: $retention, ')
+          ..write('retentionDelayHours: $retentionDelayHours')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PodcastDownloadOverrideRowsTable extends PodcastDownloadOverrideRows
+    with
+        TableInfo<
+          $PodcastDownloadOverrideRowsTable,
+          PodcastDownloadOverrideRecord
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PodcastDownloadOverrideRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _podcastIdMeta = const VerificationMeta(
+    'podcastId',
+  );
+  @override
+  late final GeneratedColumn<int> podcastId = GeneratedColumn<int>(
+    'podcast_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES podcast_rows (id)',
+    ),
+  );
+  static const VerificationMeta _automaticMeta = const VerificationMeta(
+    'automatic',
+  );
+  @override
+  late final GeneratedColumn<bool> automatic = GeneratedColumn<bool>(
+    'automatic',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("automatic" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _episodeLimitMeta = const VerificationMeta(
+    'episodeLimit',
+  );
+  @override
+  late final GeneratedColumn<int> episodeLimit = GeneratedColumn<int>(
+    'episode_limit',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _wifiOnlyMeta = const VerificationMeta(
+    'wifiOnly',
+  );
+  @override
+  late final GeneratedColumn<bool> wifiOnly = GeneratedColumn<bool>(
+    'wifi_only',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("wifi_only" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _chargingOnlyMeta = const VerificationMeta(
+    'chargingOnly',
+  );
+  @override
+  late final GeneratedColumn<bool> chargingOnly = GeneratedColumn<bool>(
+    'charging_only',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("charging_only" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _storageFloorBytesMeta = const VerificationMeta(
+    'storageFloorBytes',
+  );
+  @override
+  late final GeneratedColumn<int> storageFloorBytes = GeneratedColumn<int>(
+    'storage_floor_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _retentionMeta = const VerificationMeta(
+    'retention',
+  );
+  @override
+  late final GeneratedColumn<String> retention = GeneratedColumn<String>(
+    'retention',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _retentionDelayHoursMeta =
+      const VerificationMeta('retentionDelayHours');
+  @override
+  late final GeneratedColumn<int> retentionDelayHours = GeneratedColumn<int>(
+    'retention_delay_hours',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    podcastId,
+    automatic,
+    episodeLimit,
+    wifiOnly,
+    chargingOnly,
+    storageFloorBytes,
+    retention,
+    retentionDelayHours,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'podcast_download_override_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PodcastDownloadOverrideRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('podcast_id')) {
+      context.handle(
+        _podcastIdMeta,
+        podcastId.isAcceptableOrUnknown(data['podcast_id']!, _podcastIdMeta),
+      );
+    }
+    if (data.containsKey('automatic')) {
+      context.handle(
+        _automaticMeta,
+        automatic.isAcceptableOrUnknown(data['automatic']!, _automaticMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_automaticMeta);
+    }
+    if (data.containsKey('episode_limit')) {
+      context.handle(
+        _episodeLimitMeta,
+        episodeLimit.isAcceptableOrUnknown(
+          data['episode_limit']!,
+          _episodeLimitMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_episodeLimitMeta);
+    }
+    if (data.containsKey('wifi_only')) {
+      context.handle(
+        _wifiOnlyMeta,
+        wifiOnly.isAcceptableOrUnknown(data['wifi_only']!, _wifiOnlyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wifiOnlyMeta);
+    }
+    if (data.containsKey('charging_only')) {
+      context.handle(
+        _chargingOnlyMeta,
+        chargingOnly.isAcceptableOrUnknown(
+          data['charging_only']!,
+          _chargingOnlyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_chargingOnlyMeta);
+    }
+    if (data.containsKey('storage_floor_bytes')) {
+      context.handle(
+        _storageFloorBytesMeta,
+        storageFloorBytes.isAcceptableOrUnknown(
+          data['storage_floor_bytes']!,
+          _storageFloorBytesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_storageFloorBytesMeta);
+    }
+    if (data.containsKey('retention')) {
+      context.handle(
+        _retentionMeta,
+        retention.isAcceptableOrUnknown(data['retention']!, _retentionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_retentionMeta);
+    }
+    if (data.containsKey('retention_delay_hours')) {
+      context.handle(
+        _retentionDelayHoursMeta,
+        retentionDelayHours.isAcceptableOrUnknown(
+          data['retention_delay_hours']!,
+          _retentionDelayHoursMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_retentionDelayHoursMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {podcastId};
+  @override
+  PodcastDownloadOverrideRecord map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PodcastDownloadOverrideRecord(
+      podcastId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}podcast_id'],
+      )!,
+      automatic: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}automatic'],
+      )!,
+      episodeLimit: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}episode_limit'],
+      )!,
+      wifiOnly: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}wifi_only'],
+      )!,
+      chargingOnly: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}charging_only'],
+      )!,
+      storageFloorBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}storage_floor_bytes'],
+      )!,
+      retention: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}retention'],
+      )!,
+      retentionDelayHours: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retention_delay_hours'],
+      )!,
+    );
+  }
+
+  @override
+  $PodcastDownloadOverrideRowsTable createAlias(String alias) {
+    return $PodcastDownloadOverrideRowsTable(attachedDatabase, alias);
+  }
+}
+
+class PodcastDownloadOverrideRecord extends DataClass
+    implements Insertable<PodcastDownloadOverrideRecord> {
+  final int podcastId;
+  final bool automatic;
+  final int episodeLimit;
+  final bool wifiOnly;
+  final bool chargingOnly;
+  final int storageFloorBytes;
+  final String retention;
+  final int retentionDelayHours;
+  const PodcastDownloadOverrideRecord({
+    required this.podcastId,
+    required this.automatic,
+    required this.episodeLimit,
+    required this.wifiOnly,
+    required this.chargingOnly,
+    required this.storageFloorBytes,
+    required this.retention,
+    required this.retentionDelayHours,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['podcast_id'] = Variable<int>(podcastId);
+    map['automatic'] = Variable<bool>(automatic);
+    map['episode_limit'] = Variable<int>(episodeLimit);
+    map['wifi_only'] = Variable<bool>(wifiOnly);
+    map['charging_only'] = Variable<bool>(chargingOnly);
+    map['storage_floor_bytes'] = Variable<int>(storageFloorBytes);
+    map['retention'] = Variable<String>(retention);
+    map['retention_delay_hours'] = Variable<int>(retentionDelayHours);
+    return map;
+  }
+
+  PodcastDownloadOverrideRowsCompanion toCompanion(bool nullToAbsent) {
+    return PodcastDownloadOverrideRowsCompanion(
+      podcastId: Value(podcastId),
+      automatic: Value(automatic),
+      episodeLimit: Value(episodeLimit),
+      wifiOnly: Value(wifiOnly),
+      chargingOnly: Value(chargingOnly),
+      storageFloorBytes: Value(storageFloorBytes),
+      retention: Value(retention),
+      retentionDelayHours: Value(retentionDelayHours),
+    );
+  }
+
+  factory PodcastDownloadOverrideRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PodcastDownloadOverrideRecord(
+      podcastId: serializer.fromJson<int>(json['podcastId']),
+      automatic: serializer.fromJson<bool>(json['automatic']),
+      episodeLimit: serializer.fromJson<int>(json['episodeLimit']),
+      wifiOnly: serializer.fromJson<bool>(json['wifiOnly']),
+      chargingOnly: serializer.fromJson<bool>(json['chargingOnly']),
+      storageFloorBytes: serializer.fromJson<int>(json['storageFloorBytes']),
+      retention: serializer.fromJson<String>(json['retention']),
+      retentionDelayHours: serializer.fromJson<int>(
+        json['retentionDelayHours'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'podcastId': serializer.toJson<int>(podcastId),
+      'automatic': serializer.toJson<bool>(automatic),
+      'episodeLimit': serializer.toJson<int>(episodeLimit),
+      'wifiOnly': serializer.toJson<bool>(wifiOnly),
+      'chargingOnly': serializer.toJson<bool>(chargingOnly),
+      'storageFloorBytes': serializer.toJson<int>(storageFloorBytes),
+      'retention': serializer.toJson<String>(retention),
+      'retentionDelayHours': serializer.toJson<int>(retentionDelayHours),
+    };
+  }
+
+  PodcastDownloadOverrideRecord copyWith({
+    int? podcastId,
+    bool? automatic,
+    int? episodeLimit,
+    bool? wifiOnly,
+    bool? chargingOnly,
+    int? storageFloorBytes,
+    String? retention,
+    int? retentionDelayHours,
+  }) => PodcastDownloadOverrideRecord(
+    podcastId: podcastId ?? this.podcastId,
+    automatic: automatic ?? this.automatic,
+    episodeLimit: episodeLimit ?? this.episodeLimit,
+    wifiOnly: wifiOnly ?? this.wifiOnly,
+    chargingOnly: chargingOnly ?? this.chargingOnly,
+    storageFloorBytes: storageFloorBytes ?? this.storageFloorBytes,
+    retention: retention ?? this.retention,
+    retentionDelayHours: retentionDelayHours ?? this.retentionDelayHours,
+  );
+  PodcastDownloadOverrideRecord copyWithCompanion(
+    PodcastDownloadOverrideRowsCompanion data,
+  ) {
+    return PodcastDownloadOverrideRecord(
+      podcastId: data.podcastId.present ? data.podcastId.value : this.podcastId,
+      automatic: data.automatic.present ? data.automatic.value : this.automatic,
+      episodeLimit: data.episodeLimit.present
+          ? data.episodeLimit.value
+          : this.episodeLimit,
+      wifiOnly: data.wifiOnly.present ? data.wifiOnly.value : this.wifiOnly,
+      chargingOnly: data.chargingOnly.present
+          ? data.chargingOnly.value
+          : this.chargingOnly,
+      storageFloorBytes: data.storageFloorBytes.present
+          ? data.storageFloorBytes.value
+          : this.storageFloorBytes,
+      retention: data.retention.present ? data.retention.value : this.retention,
+      retentionDelayHours: data.retentionDelayHours.present
+          ? data.retentionDelayHours.value
+          : this.retentionDelayHours,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PodcastDownloadOverrideRecord(')
+          ..write('podcastId: $podcastId, ')
+          ..write('automatic: $automatic, ')
+          ..write('episodeLimit: $episodeLimit, ')
+          ..write('wifiOnly: $wifiOnly, ')
+          ..write('chargingOnly: $chargingOnly, ')
+          ..write('storageFloorBytes: $storageFloorBytes, ')
+          ..write('retention: $retention, ')
+          ..write('retentionDelayHours: $retentionDelayHours')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    podcastId,
+    automatic,
+    episodeLimit,
+    wifiOnly,
+    chargingOnly,
+    storageFloorBytes,
+    retention,
+    retentionDelayHours,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PodcastDownloadOverrideRecord &&
+          other.podcastId == this.podcastId &&
+          other.automatic == this.automatic &&
+          other.episodeLimit == this.episodeLimit &&
+          other.wifiOnly == this.wifiOnly &&
+          other.chargingOnly == this.chargingOnly &&
+          other.storageFloorBytes == this.storageFloorBytes &&
+          other.retention == this.retention &&
+          other.retentionDelayHours == this.retentionDelayHours);
+}
+
+class PodcastDownloadOverrideRowsCompanion
+    extends UpdateCompanion<PodcastDownloadOverrideRecord> {
+  final Value<int> podcastId;
+  final Value<bool> automatic;
+  final Value<int> episodeLimit;
+  final Value<bool> wifiOnly;
+  final Value<bool> chargingOnly;
+  final Value<int> storageFloorBytes;
+  final Value<String> retention;
+  final Value<int> retentionDelayHours;
+  const PodcastDownloadOverrideRowsCompanion({
+    this.podcastId = const Value.absent(),
+    this.automatic = const Value.absent(),
+    this.episodeLimit = const Value.absent(),
+    this.wifiOnly = const Value.absent(),
+    this.chargingOnly = const Value.absent(),
+    this.storageFloorBytes = const Value.absent(),
+    this.retention = const Value.absent(),
+    this.retentionDelayHours = const Value.absent(),
+  });
+  PodcastDownloadOverrideRowsCompanion.insert({
+    this.podcastId = const Value.absent(),
+    required bool automatic,
+    required int episodeLimit,
+    required bool wifiOnly,
+    required bool chargingOnly,
+    required int storageFloorBytes,
+    required String retention,
+    required int retentionDelayHours,
+  }) : automatic = Value(automatic),
+       episodeLimit = Value(episodeLimit),
+       wifiOnly = Value(wifiOnly),
+       chargingOnly = Value(chargingOnly),
+       storageFloorBytes = Value(storageFloorBytes),
+       retention = Value(retention),
+       retentionDelayHours = Value(retentionDelayHours);
+  static Insertable<PodcastDownloadOverrideRecord> custom({
+    Expression<int>? podcastId,
+    Expression<bool>? automatic,
+    Expression<int>? episodeLimit,
+    Expression<bool>? wifiOnly,
+    Expression<bool>? chargingOnly,
+    Expression<int>? storageFloorBytes,
+    Expression<String>? retention,
+    Expression<int>? retentionDelayHours,
+  }) {
+    return RawValuesInsertable({
+      if (podcastId != null) 'podcast_id': podcastId,
+      if (automatic != null) 'automatic': automatic,
+      if (episodeLimit != null) 'episode_limit': episodeLimit,
+      if (wifiOnly != null) 'wifi_only': wifiOnly,
+      if (chargingOnly != null) 'charging_only': chargingOnly,
+      if (storageFloorBytes != null) 'storage_floor_bytes': storageFloorBytes,
+      if (retention != null) 'retention': retention,
+      if (retentionDelayHours != null)
+        'retention_delay_hours': retentionDelayHours,
+    });
+  }
+
+  PodcastDownloadOverrideRowsCompanion copyWith({
+    Value<int>? podcastId,
+    Value<bool>? automatic,
+    Value<int>? episodeLimit,
+    Value<bool>? wifiOnly,
+    Value<bool>? chargingOnly,
+    Value<int>? storageFloorBytes,
+    Value<String>? retention,
+    Value<int>? retentionDelayHours,
+  }) {
+    return PodcastDownloadOverrideRowsCompanion(
+      podcastId: podcastId ?? this.podcastId,
+      automatic: automatic ?? this.automatic,
+      episodeLimit: episodeLimit ?? this.episodeLimit,
+      wifiOnly: wifiOnly ?? this.wifiOnly,
+      chargingOnly: chargingOnly ?? this.chargingOnly,
+      storageFloorBytes: storageFloorBytes ?? this.storageFloorBytes,
+      retention: retention ?? this.retention,
+      retentionDelayHours: retentionDelayHours ?? this.retentionDelayHours,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (podcastId.present) {
+      map['podcast_id'] = Variable<int>(podcastId.value);
+    }
+    if (automatic.present) {
+      map['automatic'] = Variable<bool>(automatic.value);
+    }
+    if (episodeLimit.present) {
+      map['episode_limit'] = Variable<int>(episodeLimit.value);
+    }
+    if (wifiOnly.present) {
+      map['wifi_only'] = Variable<bool>(wifiOnly.value);
+    }
+    if (chargingOnly.present) {
+      map['charging_only'] = Variable<bool>(chargingOnly.value);
+    }
+    if (storageFloorBytes.present) {
+      map['storage_floor_bytes'] = Variable<int>(storageFloorBytes.value);
+    }
+    if (retention.present) {
+      map['retention'] = Variable<String>(retention.value);
+    }
+    if (retentionDelayHours.present) {
+      map['retention_delay_hours'] = Variable<int>(retentionDelayHours.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PodcastDownloadOverrideRowsCompanion(')
+          ..write('podcastId: $podcastId, ')
+          ..write('automatic: $automatic, ')
+          ..write('episodeLimit: $episodeLimit, ')
+          ..write('wifiOnly: $wifiOnly, ')
+          ..write('chargingOnly: $chargingOnly, ')
+          ..write('storageFloorBytes: $storageFloorBytes, ')
+          ..write('retention: $retention, ')
+          ..write('retentionDelayHours: $retentionDelayHours')
           ..write(')'))
         .toString();
   }
@@ -5733,6 +7006,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DownloadJobRowsTable downloadJobRows = $DownloadJobRowsTable(
     this,
   );
+  late final $DownloadPreferenceRowsTable downloadPreferenceRows =
+      $DownloadPreferenceRowsTable(this);
+  late final $PodcastDownloadOverrideRowsTable podcastDownloadOverrideRows =
+      $PodcastDownloadOverrideRowsTable(this);
   late final $QueueRowsTable queueRows = $QueueRowsTable(this);
   late final $InboxRowsTable inboxRows = $InboxRowsTable(this);
   late final $InboxPreferenceRowsTable inboxPreferenceRows =
@@ -5756,6 +7033,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     discoveryCacheRows,
     episodeRows,
     downloadJobRows,
+    downloadPreferenceRows,
+    podcastDownloadOverrideRows,
     queueRows,
     inboxRows,
     inboxPreferenceRows,
@@ -5814,6 +7093,32 @@ final class $$PodcastRowsTableReferences
     ).filter((f) => f.podcastId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_episodeRowsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $PodcastDownloadOverrideRowsTable,
+    List<PodcastDownloadOverrideRecord>
+  >
+  _podcastDownloadOverrideRowsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.podcastDownloadOverrideRows,
+        aliasName:
+            'podcast_rows__id__podcast_download_override_rows__podcast_id',
+      );
+
+  $$PodcastDownloadOverrideRowsTableProcessedTableManager
+  get podcastDownloadOverrideRowsRefs {
+    final manager = $$PodcastDownloadOverrideRowsTableTableManager(
+      $_db,
+      $_db.podcastDownloadOverrideRows,
+    ).filter((f) => f.podcastId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _podcastDownloadOverrideRowsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -5957,6 +7262,35 @@ class $$PodcastRowsTableFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> podcastDownloadOverrideRowsRefs(
+    Expression<bool> Function(
+      $$PodcastDownloadOverrideRowsTableFilterComposer f,
+    )
+    f,
+  ) {
+    final $$PodcastDownloadOverrideRowsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.podcastDownloadOverrideRows,
+          getReferencedColumn: (t) => t.podcastId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PodcastDownloadOverrideRowsTableFilterComposer(
+                $db: $db,
+                $table: $db.podcastDownloadOverrideRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 
@@ -6161,6 +7495,35 @@ class $$PodcastRowsTableAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> podcastDownloadOverrideRowsRefs<T extends Object>(
+    Expression<T> Function(
+      $$PodcastDownloadOverrideRowsTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$PodcastDownloadOverrideRowsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.podcastDownloadOverrideRows,
+          getReferencedColumn: (t) => t.podcastId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$PodcastDownloadOverrideRowsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.podcastDownloadOverrideRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
   Expression<T> podcastInboxOverrideRowsRefs<T extends Object>(
     Expression<T> Function($$PodcastInboxOverrideRowsTableAnnotationComposer a)
     f,
@@ -6233,6 +7596,7 @@ class $$PodcastRowsTableTableManager
           PodcastRecord,
           PrefetchHooks Function({
             bool episodeRowsRefs,
+            bool podcastDownloadOverrideRowsRefs,
             bool podcastInboxOverrideRowsRefs,
             bool podcastPlaybackOverrideRowsRefs,
           })
@@ -6311,6 +7675,7 @@ class $$PodcastRowsTableTableManager
           prefetchHooksCallback:
               ({
                 episodeRowsRefs = false,
+                podcastDownloadOverrideRowsRefs = false,
                 podcastInboxOverrideRowsRefs = false,
                 podcastPlaybackOverrideRowsRefs = false,
               }) {
@@ -6318,6 +7683,8 @@ class $$PodcastRowsTableTableManager
                   db: db,
                   explicitlyWatchedTables: [
                     if (episodeRowsRefs) db.episodeRows,
+                    if (podcastDownloadOverrideRowsRefs)
+                      db.podcastDownloadOverrideRows,
                     if (podcastInboxOverrideRowsRefs)
                       db.podcastInboxOverrideRows,
                     if (podcastPlaybackOverrideRowsRefs)
@@ -6341,6 +7708,27 @@ class $$PodcastRowsTableTableManager
                                 table,
                                 p0,
                               ).episodeRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.podcastId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (podcastDownloadOverrideRowsRefs)
+                        await $_getPrefetchedData<
+                          PodcastRecord,
+                          $PodcastRowsTable,
+                          PodcastDownloadOverrideRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PodcastRowsTableReferences
+                              ._podcastDownloadOverrideRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PodcastRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).podcastDownloadOverrideRowsRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.podcastId == item.id,
@@ -6411,6 +7799,7 @@ typedef $$PodcastRowsTableProcessedTableManager =
       PodcastRecord,
       PrefetchHooks Function({
         bool episodeRowsRefs,
+        bool podcastDownloadOverrideRowsRefs,
         bool podcastInboxOverrideRowsRefs,
         bool podcastPlaybackOverrideRowsRefs,
       })
@@ -7556,6 +8945,10 @@ typedef $$DownloadJobRowsTableCreateCompanionBuilder =
       Value<String?> etag,
       Value<String?> lastModified,
       Value<String?> error,
+      Value<bool> automatic,
+      Value<int> attempts,
+      Value<DateTime?> nextAttemptAt,
+      Value<DateTime?> playedAt,
       required DateTime createdAt,
       required DateTime updatedAt,
     });
@@ -7571,6 +8964,10 @@ typedef $$DownloadJobRowsTableUpdateCompanionBuilder =
       Value<String?> etag,
       Value<String?> lastModified,
       Value<String?> error,
+      Value<bool> automatic,
+      Value<int> attempts,
+      Value<DateTime?> nextAttemptAt,
+      Value<DateTime?> playedAt,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -7657,6 +9054,26 @@ class $$DownloadJobRowsTableFilterComposer
 
   ColumnFilters<String> get error => $composableBuilder(
     column: $table.error,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get automatic => $composableBuilder(
+    column: $table.automatic,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get playedAt => $composableBuilder(
+    column: $table.playedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7748,6 +9165,26 @@ class $$DownloadJobRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get automatic => $composableBuilder(
+    column: $table.automatic,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attempts => $composableBuilder(
+    column: $table.attempts,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get playedAt => $composableBuilder(
+    column: $table.playedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -7826,6 +9263,20 @@ class $$DownloadJobRowsTableAnnotationComposer
   GeneratedColumn<String> get error =>
       $composableBuilder(column: $table.error, builder: (column) => column);
 
+  GeneratedColumn<bool> get automatic =>
+      $composableBuilder(column: $table.automatic, builder: (column) => column);
+
+  GeneratedColumn<int> get attempts =>
+      $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get playedAt =>
+      $composableBuilder(column: $table.playedAt, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -7896,6 +9347,10 @@ class $$DownloadJobRowsTableTableManager
                 Value<String?> etag = const Value.absent(),
                 Value<String?> lastModified = const Value.absent(),
                 Value<String?> error = const Value.absent(),
+                Value<bool> automatic = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<DateTime?> nextAttemptAt = const Value.absent(),
+                Value<DateTime?> playedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => DownloadJobRowsCompanion(
@@ -7909,6 +9364,10 @@ class $$DownloadJobRowsTableTableManager
                 etag: etag,
                 lastModified: lastModified,
                 error: error,
+                automatic: automatic,
+                attempts: attempts,
+                nextAttemptAt: nextAttemptAt,
+                playedAt: playedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -7924,6 +9383,10 @@ class $$DownloadJobRowsTableTableManager
                 Value<String?> etag = const Value.absent(),
                 Value<String?> lastModified = const Value.absent(),
                 Value<String?> error = const Value.absent(),
+                Value<bool> automatic = const Value.absent(),
+                Value<int> attempts = const Value.absent(),
+                Value<DateTime?> nextAttemptAt = const Value.absent(),
+                Value<DateTime?> playedAt = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => DownloadJobRowsCompanion.insert(
@@ -7937,6 +9400,10 @@ class $$DownloadJobRowsTableTableManager
                 etag: etag,
                 lastModified: lastModified,
                 error: error,
+                automatic: automatic,
+                attempts: attempts,
+                nextAttemptAt: nextAttemptAt,
+                playedAt: playedAt,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -8008,6 +9475,690 @@ typedef $$DownloadJobRowsTableProcessedTableManager =
       (DownloadJobRecord, $$DownloadJobRowsTableReferences),
       DownloadJobRecord,
       PrefetchHooks Function({bool episodeId})
+    >;
+typedef $$DownloadPreferenceRowsTableCreateCompanionBuilder =
+    DownloadPreferenceRowsCompanion Function({
+      Value<int> id,
+      Value<bool> automatic,
+      Value<int> episodeLimit,
+      Value<bool> wifiOnly,
+      Value<bool> chargingOnly,
+      Value<int> storageFloorBytes,
+      Value<String> retention,
+      Value<int> retentionDelayHours,
+    });
+typedef $$DownloadPreferenceRowsTableUpdateCompanionBuilder =
+    DownloadPreferenceRowsCompanion Function({
+      Value<int> id,
+      Value<bool> automatic,
+      Value<int> episodeLimit,
+      Value<bool> wifiOnly,
+      Value<bool> chargingOnly,
+      Value<int> storageFloorBytes,
+      Value<String> retention,
+      Value<int> retentionDelayHours,
+    });
+
+class $$DownloadPreferenceRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadPreferenceRowsTable> {
+  $$DownloadPreferenceRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get automatic => $composableBuilder(
+    column: $table.automatic,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get episodeLimit => $composableBuilder(
+    column: $table.episodeLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get wifiOnly => $composableBuilder(
+    column: $table.wifiOnly,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get chargingOnly => $composableBuilder(
+    column: $table.chargingOnly,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get storageFloorBytes => $composableBuilder(
+    column: $table.storageFloorBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get retention => $composableBuilder(
+    column: $table.retention,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retentionDelayHours => $composableBuilder(
+    column: $table.retentionDelayHours,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DownloadPreferenceRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadPreferenceRowsTable> {
+  $$DownloadPreferenceRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get automatic => $composableBuilder(
+    column: $table.automatic,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get episodeLimit => $composableBuilder(
+    column: $table.episodeLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get wifiOnly => $composableBuilder(
+    column: $table.wifiOnly,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get chargingOnly => $composableBuilder(
+    column: $table.chargingOnly,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get storageFloorBytes => $composableBuilder(
+    column: $table.storageFloorBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get retention => $composableBuilder(
+    column: $table.retention,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retentionDelayHours => $composableBuilder(
+    column: $table.retentionDelayHours,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DownloadPreferenceRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadPreferenceRowsTable> {
+  $$DownloadPreferenceRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<bool> get automatic =>
+      $composableBuilder(column: $table.automatic, builder: (column) => column);
+
+  GeneratedColumn<int> get episodeLimit => $composableBuilder(
+    column: $table.episodeLimit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get wifiOnly =>
+      $composableBuilder(column: $table.wifiOnly, builder: (column) => column);
+
+  GeneratedColumn<bool> get chargingOnly => $composableBuilder(
+    column: $table.chargingOnly,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get storageFloorBytes => $composableBuilder(
+    column: $table.storageFloorBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get retention =>
+      $composableBuilder(column: $table.retention, builder: (column) => column);
+
+  GeneratedColumn<int> get retentionDelayHours => $composableBuilder(
+    column: $table.retentionDelayHours,
+    builder: (column) => column,
+  );
+}
+
+class $$DownloadPreferenceRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DownloadPreferenceRowsTable,
+          DownloadPreferenceRecord,
+          $$DownloadPreferenceRowsTableFilterComposer,
+          $$DownloadPreferenceRowsTableOrderingComposer,
+          $$DownloadPreferenceRowsTableAnnotationComposer,
+          $$DownloadPreferenceRowsTableCreateCompanionBuilder,
+          $$DownloadPreferenceRowsTableUpdateCompanionBuilder,
+          (
+            DownloadPreferenceRecord,
+            BaseReferences<
+              _$AppDatabase,
+              $DownloadPreferenceRowsTable,
+              DownloadPreferenceRecord
+            >,
+          ),
+          DownloadPreferenceRecord,
+          PrefetchHooks Function()
+        > {
+  $$DownloadPreferenceRowsTableTableManager(
+    _$AppDatabase db,
+    $DownloadPreferenceRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadPreferenceRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$DownloadPreferenceRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$DownloadPreferenceRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<bool> automatic = const Value.absent(),
+                Value<int> episodeLimit = const Value.absent(),
+                Value<bool> wifiOnly = const Value.absent(),
+                Value<bool> chargingOnly = const Value.absent(),
+                Value<int> storageFloorBytes = const Value.absent(),
+                Value<String> retention = const Value.absent(),
+                Value<int> retentionDelayHours = const Value.absent(),
+              }) => DownloadPreferenceRowsCompanion(
+                id: id,
+                automatic: automatic,
+                episodeLimit: episodeLimit,
+                wifiOnly: wifiOnly,
+                chargingOnly: chargingOnly,
+                storageFloorBytes: storageFloorBytes,
+                retention: retention,
+                retentionDelayHours: retentionDelayHours,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<bool> automatic = const Value.absent(),
+                Value<int> episodeLimit = const Value.absent(),
+                Value<bool> wifiOnly = const Value.absent(),
+                Value<bool> chargingOnly = const Value.absent(),
+                Value<int> storageFloorBytes = const Value.absent(),
+                Value<String> retention = const Value.absent(),
+                Value<int> retentionDelayHours = const Value.absent(),
+              }) => DownloadPreferenceRowsCompanion.insert(
+                id: id,
+                automatic: automatic,
+                episodeLimit: episodeLimit,
+                wifiOnly: wifiOnly,
+                chargingOnly: chargingOnly,
+                storageFloorBytes: storageFloorBytes,
+                retention: retention,
+                retentionDelayHours: retentionDelayHours,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DownloadPreferenceRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DownloadPreferenceRowsTable,
+      DownloadPreferenceRecord,
+      $$DownloadPreferenceRowsTableFilterComposer,
+      $$DownloadPreferenceRowsTableOrderingComposer,
+      $$DownloadPreferenceRowsTableAnnotationComposer,
+      $$DownloadPreferenceRowsTableCreateCompanionBuilder,
+      $$DownloadPreferenceRowsTableUpdateCompanionBuilder,
+      (
+        DownloadPreferenceRecord,
+        BaseReferences<
+          _$AppDatabase,
+          $DownloadPreferenceRowsTable,
+          DownloadPreferenceRecord
+        >,
+      ),
+      DownloadPreferenceRecord,
+      PrefetchHooks Function()
+    >;
+typedef $$PodcastDownloadOverrideRowsTableCreateCompanionBuilder =
+    PodcastDownloadOverrideRowsCompanion Function({
+      Value<int> podcastId,
+      required bool automatic,
+      required int episodeLimit,
+      required bool wifiOnly,
+      required bool chargingOnly,
+      required int storageFloorBytes,
+      required String retention,
+      required int retentionDelayHours,
+    });
+typedef $$PodcastDownloadOverrideRowsTableUpdateCompanionBuilder =
+    PodcastDownloadOverrideRowsCompanion Function({
+      Value<int> podcastId,
+      Value<bool> automatic,
+      Value<int> episodeLimit,
+      Value<bool> wifiOnly,
+      Value<bool> chargingOnly,
+      Value<int> storageFloorBytes,
+      Value<String> retention,
+      Value<int> retentionDelayHours,
+    });
+
+final class $$PodcastDownloadOverrideRowsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $PodcastDownloadOverrideRowsTable,
+          PodcastDownloadOverrideRecord
+        > {
+  $$PodcastDownloadOverrideRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PodcastRowsTable _podcastIdTable(_$AppDatabase db) =>
+      db.podcastRows.createAlias(
+        'podcast_download_override_rows__podcast_id__podcast_rows__id',
+      );
+
+  $$PodcastRowsTableProcessedTableManager get podcastId {
+    final $_column = $_itemColumn<int>('podcast_id')!;
+
+    final manager = $$PodcastRowsTableTableManager(
+      $_db,
+      $_db.podcastRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_podcastIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$PodcastDownloadOverrideRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $PodcastDownloadOverrideRowsTable> {
+  $$PodcastDownloadOverrideRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<bool> get automatic => $composableBuilder(
+    column: $table.automatic,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get episodeLimit => $composableBuilder(
+    column: $table.episodeLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get wifiOnly => $composableBuilder(
+    column: $table.wifiOnly,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get chargingOnly => $composableBuilder(
+    column: $table.chargingOnly,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get storageFloorBytes => $composableBuilder(
+    column: $table.storageFloorBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get retention => $composableBuilder(
+    column: $table.retention,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retentionDelayHours => $composableBuilder(
+    column: $table.retentionDelayHours,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$PodcastRowsTableFilterComposer get podcastId {
+    final $$PodcastRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PodcastDownloadOverrideRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PodcastDownloadOverrideRowsTable> {
+  $$PodcastDownloadOverrideRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<bool> get automatic => $composableBuilder(
+    column: $table.automatic,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get episodeLimit => $composableBuilder(
+    column: $table.episodeLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get wifiOnly => $composableBuilder(
+    column: $table.wifiOnly,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get chargingOnly => $composableBuilder(
+    column: $table.chargingOnly,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get storageFloorBytes => $composableBuilder(
+    column: $table.storageFloorBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get retention => $composableBuilder(
+    column: $table.retention,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retentionDelayHours => $composableBuilder(
+    column: $table.retentionDelayHours,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$PodcastRowsTableOrderingComposer get podcastId {
+    final $$PodcastRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PodcastDownloadOverrideRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PodcastDownloadOverrideRowsTable> {
+  $$PodcastDownloadOverrideRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<bool> get automatic =>
+      $composableBuilder(column: $table.automatic, builder: (column) => column);
+
+  GeneratedColumn<int> get episodeLimit => $composableBuilder(
+    column: $table.episodeLimit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get wifiOnly =>
+      $composableBuilder(column: $table.wifiOnly, builder: (column) => column);
+
+  GeneratedColumn<bool> get chargingOnly => $composableBuilder(
+    column: $table.chargingOnly,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get storageFloorBytes => $composableBuilder(
+    column: $table.storageFloorBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get retention =>
+      $composableBuilder(column: $table.retention, builder: (column) => column);
+
+  GeneratedColumn<int> get retentionDelayHours => $composableBuilder(
+    column: $table.retentionDelayHours,
+    builder: (column) => column,
+  );
+
+  $$PodcastRowsTableAnnotationComposer get podcastId {
+    final $$PodcastRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$PodcastDownloadOverrideRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PodcastDownloadOverrideRowsTable,
+          PodcastDownloadOverrideRecord,
+          $$PodcastDownloadOverrideRowsTableFilterComposer,
+          $$PodcastDownloadOverrideRowsTableOrderingComposer,
+          $$PodcastDownloadOverrideRowsTableAnnotationComposer,
+          $$PodcastDownloadOverrideRowsTableCreateCompanionBuilder,
+          $$PodcastDownloadOverrideRowsTableUpdateCompanionBuilder,
+          (
+            PodcastDownloadOverrideRecord,
+            $$PodcastDownloadOverrideRowsTableReferences,
+          ),
+          PodcastDownloadOverrideRecord,
+          PrefetchHooks Function({bool podcastId})
+        > {
+  $$PodcastDownloadOverrideRowsTableTableManager(
+    _$AppDatabase db,
+    $PodcastDownloadOverrideRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PodcastDownloadOverrideRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$PodcastDownloadOverrideRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$PodcastDownloadOverrideRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> podcastId = const Value.absent(),
+                Value<bool> automatic = const Value.absent(),
+                Value<int> episodeLimit = const Value.absent(),
+                Value<bool> wifiOnly = const Value.absent(),
+                Value<bool> chargingOnly = const Value.absent(),
+                Value<int> storageFloorBytes = const Value.absent(),
+                Value<String> retention = const Value.absent(),
+                Value<int> retentionDelayHours = const Value.absent(),
+              }) => PodcastDownloadOverrideRowsCompanion(
+                podcastId: podcastId,
+                automatic: automatic,
+                episodeLimit: episodeLimit,
+                wifiOnly: wifiOnly,
+                chargingOnly: chargingOnly,
+                storageFloorBytes: storageFloorBytes,
+                retention: retention,
+                retentionDelayHours: retentionDelayHours,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> podcastId = const Value.absent(),
+                required bool automatic,
+                required int episodeLimit,
+                required bool wifiOnly,
+                required bool chargingOnly,
+                required int storageFloorBytes,
+                required String retention,
+                required int retentionDelayHours,
+              }) => PodcastDownloadOverrideRowsCompanion.insert(
+                podcastId: podcastId,
+                automatic: automatic,
+                episodeLimit: episodeLimit,
+                wifiOnly: wifiOnly,
+                chargingOnly: chargingOnly,
+                storageFloorBytes: storageFloorBytes,
+                retention: retention,
+                retentionDelayHours: retentionDelayHours,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$PodcastDownloadOverrideRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({podcastId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (podcastId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.podcastId,
+                                referencedTable:
+                                    $$PodcastDownloadOverrideRowsTableReferences
+                                        ._podcastIdTable(db),
+                                referencedColumn:
+                                    $$PodcastDownloadOverrideRowsTableReferences
+                                        ._podcastIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$PodcastDownloadOverrideRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PodcastDownloadOverrideRowsTable,
+      PodcastDownloadOverrideRecord,
+      $$PodcastDownloadOverrideRowsTableFilterComposer,
+      $$PodcastDownloadOverrideRowsTableOrderingComposer,
+      $$PodcastDownloadOverrideRowsTableAnnotationComposer,
+      $$PodcastDownloadOverrideRowsTableCreateCompanionBuilder,
+      $$PodcastDownloadOverrideRowsTableUpdateCompanionBuilder,
+      (
+        PodcastDownloadOverrideRecord,
+        $$PodcastDownloadOverrideRowsTableReferences,
+      ),
+      PodcastDownloadOverrideRecord,
+      PrefetchHooks Function({bool podcastId})
     >;
 typedef $$QueueRowsTableCreateCompanionBuilder =
     QueueRowsCompanion Function({
@@ -10218,6 +12369,17 @@ class $AppDatabaseManager {
       $$EpisodeRowsTableTableManager(_db, _db.episodeRows);
   $$DownloadJobRowsTableTableManager get downloadJobRows =>
       $$DownloadJobRowsTableTableManager(_db, _db.downloadJobRows);
+  $$DownloadPreferenceRowsTableTableManager get downloadPreferenceRows =>
+      $$DownloadPreferenceRowsTableTableManager(
+        _db,
+        _db.downloadPreferenceRows,
+      );
+  $$PodcastDownloadOverrideRowsTableTableManager
+  get podcastDownloadOverrideRows =>
+      $$PodcastDownloadOverrideRowsTableTableManager(
+        _db,
+        _db.podcastDownloadOverrideRows,
+      );
   $$QueueRowsTableTableManager get queueRows =>
       $$QueueRowsTableTableManager(_db, _db.queueRows);
   $$InboxRowsTableTableManager get inboxRows =>

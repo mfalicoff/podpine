@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/downloads/download_actions.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
 import '../shared/episode_tile.dart';
@@ -241,7 +242,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       case InboxSwipeAction.download:
         wasDownloaded
             ? await ref.read(downloadManagerProvider).delete(episode.id)
-            : await ref.read(downloadManagerProvider).start(episode);
+            : await startDownloadWithCellularConfirmation(
+                context,
+                ref,
+                episode,
+              );
       case InboxSwipeAction.playNext:
         await app.addToQueue(episode, next: true);
     }
@@ -274,7 +279,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                   await app.setCompleted(episode, wasCompleted);
                 case InboxSwipeAction.download:
                   wasDownloaded
-                      ? await ref.read(downloadManagerProvider).start(episode)
+                      ? await startDownloadWithCellularConfirmation(
+                          context,
+                          ref,
+                          episode,
+                        )
                       : await ref
                             .read(downloadManagerProvider)
                             .delete(episode.id);

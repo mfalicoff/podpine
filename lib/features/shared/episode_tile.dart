@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/database/app_database.dart';
 import '../../core/backend/podcast_backend.dart';
 import '../../core/downloads/download_models.dart';
+import '../../core/downloads/download_actions.dart';
 import '../../providers.dart';
 import '../details/podcast_detail_screen.dart';
 import 'artwork.dart';
@@ -208,13 +209,13 @@ class EpisodeTile extends ConsumerWidget {
         case 'next':
           await app.addToQueue(episode, next: true);
         case 'download':
-          await ref.read(downloadManagerProvider).start(episode);
+          await startDownloadWithCellularConfirmation(context, ref, episode);
         case 'pause-download':
           await ref.read(downloadManagerProvider).pause(episode.id);
         case 'resume-download':
-          await ref.read(downloadManagerProvider).resume(episode.id);
+          await startDownloadWithCellularConfirmation(context, ref, episode);
         case 'retry-download':
-          await ref.read(downloadManagerProvider).retry(episode.id);
+          await startDownloadWithCellularConfirmation(context, ref, episode);
         case 'cancel-download':
           await ref.read(downloadManagerProvider).cancel(episode.id);
         case 'delete-download':

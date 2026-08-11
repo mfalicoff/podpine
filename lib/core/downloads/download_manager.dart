@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -15,21 +16,35 @@ class DownloadManager extends ChangeNotifier {
     this.database, {
     DownloadFileStore? files,
     StorageSpaceProbe? storage,
+    DownloadNetworkProbe? network,
+    ChargingStateProbe? charging,
     DownloadClientFactory? clientFactory,
     this.onDownloadedChanged,
     this.storageReserveBytes = 100 * 1024 * 1024,
+    DateTime Function()? now,
   }) : files = files ?? const DeviceDownloadFileStore(),
        storage = storage ?? const DeviceStorageSpaceProbe(),
+       network = network ?? const DeviceDownloadNetworkProbe(),
+       charging = charging ?? const DeviceChargingStateProbe(),
+       _now = now ?? DateTime.now,
        _clientFactory = clientFactory ?? http.Client.new;
 
   final AppDatabase database;
   final DownloadFileStore files;
   final StorageSpaceProbe storage;
+  final DownloadNetworkProbe network;
+  final ChargingStateProbe charging;
   final DownloadClientFactory _clientFactory;
+  final DateTime Function() _now;
   final Future<void> Function(EpisodeRecord episode, bool downloaded)?
   onDownloadedChanged;
   final int storageReserveBytes;
   final Map<int, _ActiveDownload> _active = <int, _ActiveDownload>{};
+  StreamSubscription<List<EpisodeRecord>>? _episodeSubscription;
+  Timer? _policyTimer;
+  DateTime? _policyDeadline;
+  Future<void>? _evaluationInFlight;
+  bool _evaluationRequested = false;
 
   bool _disposed = false;
 
@@ -88,10 +103,29 @@ class DownloadManager extends ChangeNotifier {
         ),
       );
     }
+    _episodeSubscription = database.watchAllEpisodes().listen(
+      (_) => unawaited(evaluateRules()),
+    );
+    await evaluateRules();
   }
 
-  Future<void> start(EpisodeRecord episode) async {
+  Future<bool> requiresCellularConfirmation() async {
+    final connections = await network.current();
+    return connections.contains(ConnectivityResult.mobile) &&
+        !connections.contains(ConnectivityResult.wifi) &&
+        !connections.contains(ConnectivityResult.ethernet);
+  }
+
+  Future<void> start(
+    EpisodeRecord episode, {
+    bool allowCellular = false,
+    bool automatic = false,
+    int? storageFloorBytes,
+  }) async {
     if (_disposed || _active.containsKey(episode.id)) return;
+    if (!automatic && !allowCellular && await requiresCellularConfirmation()) {
+      throw const CellularDownloadConfirmationRequired();
+    }
     if (episode.audioUrl.trim().isEmpty) {
       throw const DownloadException(
         'This episode has no downloadable media URL.',
@@ -111,6 +145,7 @@ class DownloadManager extends ChangeNotifier {
           filePath: filePath,
           partialPath: '$filePath.part',
           state: DownloadState.queued.name,
+          automatic: Value(automatic),
           createdAt: DateTime.now().toUtc(),
           updatedAt: DateTime.now().toUtc(),
         ),
@@ -121,13 +156,18 @@ class DownloadManager extends ChangeNotifier {
         DownloadJobRowsCompanion(
           state: Value(DownloadState.queued.name),
           error: const Value(null),
+          automatic: Value(automatic || current.automatic),
+          nextAttemptAt: const Value(null),
           updatedAt: Value(DateTime.now().toUtc()),
         ),
       );
     }
     await database.setDownloaded(episode.id, false);
 
-    final active = _ActiveDownload(_clientFactory());
+    final active = _ActiveDownload(
+      _clientFactory(),
+      storageFloorBytes ?? storageReserveBytes,
+    );
     _active[episode.id] = active;
     notifyListeners();
     unawaited(_run(episode.id, active));
@@ -250,7 +290,10 @@ class DownloadManager extends ChangeNotifier {
           ? rangeTotal ??
                 (contentLength == null ? null : offset + contentLength)
           : contentLength;
-      await _ensureStorage(totalBytes == null ? null : totalBytes - offset);
+      await _ensureStorage(
+        totalBytes == null ? null : totalBytes - offset,
+        active.storageFloorBytes,
+      );
       await database.updateDownloadJob(
         episodeId,
         DownloadJobRowsCompanion(
@@ -315,15 +358,24 @@ class DownloadManager extends ChangeNotifier {
             partial != null && await files.exists(partial.partialPath)
             ? await files.length(partial.partialPath)
             : 0;
+        final attempts = partial?.automatic == true
+            ? (partial?.attempts ?? 0) + 1
+            : (partial?.attempts ?? 0);
+        final nextAttemptAt = partial?.automatic == true
+            ? _now().toUtc().add(_retryDelay(attempts))
+            : null;
         await database.updateDownloadJob(
           episodeId,
           DownloadJobRowsCompanion(
             state: Value(DownloadState.failed.name),
             bytesDownloaded: Value(length),
             error: Value(message),
+            attempts: Value(attempts),
+            nextAttemptAt: Value(nextAttemptAt),
             updatedAt: Value(DateTime.now().toUtc()),
           ),
         );
+        if (nextAttemptAt != null) _schedulePolicyAt(nextAttemptAt);
       }
     } finally {
       try {
@@ -381,6 +433,8 @@ class DownloadManager extends ChangeNotifier {
         bytesDownloaded: Value(actualLength),
         totalBytes: Value(expected ?? actualLength),
         error: const Value(null),
+        attempts: const Value(0),
+        nextAttemptAt: const Value(null),
         updatedAt: Value(DateTime.now().toUtc()),
       ),
     );
@@ -394,11 +448,182 @@ class DownloadManager extends ChangeNotifier {
     if (callback != null) unawaited(callback(episode, value));
   }
 
-  Future<void> _ensureStorage(int? remainingBytes) async {
+  Future<void> _ensureStorage(int? remainingBytes, int floorBytes) async {
     final available = await storage.availableBytes();
     if (available == null) return;
-    final required = storageReserveBytes + (remainingBytes ?? 0);
+    final required = floorBytes + (remainingBytes ?? 0);
     if (available < required) throw const LowStorageException();
+  }
+
+  Future<void> evaluateRules() async {
+    if (_disposed) return;
+    _evaluationRequested = true;
+    final current = _evaluationInFlight;
+    if (current != null) return current;
+    final operation = _drainRuleEvaluations();
+    _evaluationInFlight = operation;
+    try {
+      await operation;
+    } finally {
+      if (identical(_evaluationInFlight, operation)) {
+        _evaluationInFlight = null;
+      }
+    }
+  }
+
+  Future<void> _drainRuleEvaluations() async {
+    do {
+      _evaluationRequested = false;
+      await _evaluateRules();
+    } while (_evaluationRequested && !_disposed);
+  }
+
+  Future<void> _evaluateRules() async {
+    _policyTimer?.cancel();
+    _policyTimer = null;
+    _policyDeadline = null;
+    final global =
+        (await database.downloadPreferences())?.settings ??
+        const DownloadRuleSettings();
+    final overrides = await database.podcastDownloadOverrides();
+    final episodes = await database.allEpisodes();
+    final jobs = {
+      for (final job in await database.downloadJobs()) job.episodeId: job,
+    };
+    final now = _now().toUtc();
+
+    await _applyRetention(episodes, jobs, global, overrides, now);
+
+    final connections = await network.current();
+    final hasNetwork = connections.any(
+      (result) => result != ConnectivityResult.none,
+    );
+    if (!hasNetwork) return;
+    final hasUnmetered =
+        connections.contains(ConnectivityResult.wifi) ||
+        connections.contains(ConnectivityResult.ethernet);
+    bool? isCharging;
+    final podcastIds =
+        episodes.map((episode) => episode.podcastId).toSet().toList()..sort();
+    for (final podcastId in podcastIds) {
+      final settings = overrides[podcastId]?.settings ?? global;
+      if (!settings.automatic || (settings.wifiOnly && !hasUnmetered)) continue;
+      if (settings.chargingOnly) {
+        isCharging ??= await charging.isCharging();
+        if (isCharging != true) continue;
+      }
+      final candidates =
+          episodes
+              .where(
+                (episode) =>
+                    episode.podcastId == podcastId &&
+                    !episode.completed &&
+                    episode.audioUrl.trim().isNotEmpty,
+              )
+              .toList()
+            ..sort((left, right) {
+              final published = right.publishedAt.compareTo(left.publishedAt);
+              return published != 0 ? published : right.id.compareTo(left.id);
+            });
+      final selected = candidates.take(settings.episodeLimit).toList();
+      for (final episode in candidates.skip(settings.episodeLimit)) {
+        final job = jobs[episode.id];
+        if (job?.automatic == true && !_active.containsKey(episode.id)) {
+          await delete(episode.id);
+        }
+      }
+      for (final episode in selected) {
+        final job = jobs[episode.id];
+        if (job?.downloadState == DownloadState.completed ||
+            _active.containsKey(episode.id)) {
+          continue;
+        }
+        if (job?.downloadState == DownloadState.failed &&
+            job?.nextAttemptAt != null &&
+            job!.nextAttemptAt!.isAfter(now)) {
+          _schedulePolicyAt(job.nextAttemptAt!);
+          continue;
+        }
+        await start(
+          episode,
+          allowCellular: true,
+          automatic: true,
+          storageFloorBytes: settings.storageFloorBytes,
+        );
+      }
+    }
+  }
+
+  Future<void> _applyRetention(
+    List<EpisodeRecord> episodes,
+    Map<int, DownloadJobRecord> jobs,
+    DownloadRuleSettings global,
+    Map<int, PodcastDownloadOverrideRecord> overrides,
+    DateTime now,
+  ) async {
+    final episodeById = {for (final episode in episodes) episode.id: episode};
+    for (final job in jobs.values) {
+      if (job.downloadState != DownloadState.completed) continue;
+      final episode = episodeById[job.episodeId];
+      if (episode == null) continue;
+      if (!episode.completed) {
+        if (job.playedAt != null) {
+          await database.updateDownloadJob(
+            job.episodeId,
+            const DownloadJobRowsCompanion(playedAt: Value(null)),
+          );
+        }
+        continue;
+      }
+      final settings = overrides[episode.podcastId]?.settings ?? global;
+      switch (settings.retention) {
+        case PlayedDownloadRetention.never:
+          continue;
+        case PlayedDownloadRetention.immediate:
+          await delete(episode.id);
+        case PlayedDownloadRetention.delayed:
+          final playedAt = job.playedAt?.toUtc() ?? now;
+          if (job.playedAt == null) {
+            await database.updateDownloadJob(
+              job.episodeId,
+              DownloadJobRowsCompanion(playedAt: Value(playedAt)),
+            );
+          }
+          final deleteAt = playedAt.add(
+            Duration(hours: settings.retentionDelayHours),
+          );
+          if (!deleteAt.isAfter(now)) {
+            await delete(episode.id);
+          } else {
+            _schedulePolicyAt(deleteAt);
+          }
+      }
+    }
+  }
+
+  void _schedulePolicyAt(DateTime at) {
+    if (_disposed) return;
+    final delay = at.difference(_now().toUtc());
+    final bounded = delay.isNegative ? Duration.zero : delay;
+    final existing = _policyTimer;
+    if (existing != null &&
+        existing.isActive &&
+        _policyDeadline != null &&
+        !_policyDeadline!.isAfter(at)) {
+      return;
+    }
+    existing?.cancel();
+    _policyDeadline = at;
+    _policyTimer = Timer(bounded, () {
+      _policyTimer = null;
+      _policyDeadline = null;
+      unawaited(evaluateRules());
+    });
+  }
+
+  static Duration _retryDelay(int attempts) {
+    final exponent = attempts.clamp(1, 7) - 1;
+    return Duration(minutes: 1 << exponent);
   }
 
   Future<void> _deleteFiles(DownloadJobRecord job) async {
@@ -439,6 +664,9 @@ class DownloadManager extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    unawaited(_episodeSubscription?.cancel());
+    _policyTimer?.cancel();
+    _policyDeadline = null;
     for (final active in _active.values) {
       active.command = _DownloadCommand.pause;
       active.client.close();
@@ -451,8 +679,9 @@ class DownloadManager extends ChangeNotifier {
 enum _DownloadCommand { none, pause, cancel }
 
 class _ActiveDownload {
-  _ActiveDownload(this.client);
+  _ActiveDownload(this.client, this.storageFloorBytes);
 
   final http.Client client;
+  final int storageFloorBytes;
   _DownloadCommand command = _DownloadCommand.none;
 }
