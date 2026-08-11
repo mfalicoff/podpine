@@ -622,23 +622,41 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
-  Future<void> addToQueue(int episodeId, {bool next = false}) async {
-    final current = await select(queueRows).get();
-    final sortKey = current.isEmpty
-        ? 0.0
-        : next
-        ? current.map((e) => e.sortKey).reduce((a, b) => a < b ? a : b) - 1
-        : current.map((e) => e.sortKey).reduce((a, b) => a > b ? a : b) + 1;
-    await into(queueRows).insertOnConflictUpdate(
-      QueueRowsCompanion.insert(
-        episodeId: Value(episodeId),
-        sortKey: sortKey,
-        addedAt: DateTime.now().toUtc(),
-      ),
+  Future<List<int>> queueEpisodeIds() async =>
+      (await (select(
+            queueRows,
+          )..orderBy([(row) => OrderingTerm.asc(row.sortKey)])).get())
+          .map((row) => row.episodeId)
+          .toList(growable: false);
+
+  Future<void> addToQueue(int episodeId, {int? afterEpisodeId}) async {
+    final orderedIds = (await queueEpisodeIds())
+        .where((id) => id != episodeId)
+        .toList();
+    final afterIndex = afterEpisodeId == null
+        ? -1
+        : orderedIds.indexOf(afterEpisodeId);
+    orderedIds.insert(
+      afterEpisodeId == null
+          ? orderedIds.length
+          : afterIndex < 0
+          ? 0
+          : afterIndex + 1,
+      episodeId,
     );
-    await (update(episodeRows)..where((e) => e.id.equals(episodeId))).write(
-      const EpisodeRowsCompanion(queued: Value(true)),
-    );
+    await transaction(() async {
+      await into(queueRows).insertOnConflictUpdate(
+        QueueRowsCompanion.insert(
+          episodeId: Value(episodeId),
+          sortKey: orderedIds.indexOf(episodeId).toDouble(),
+          addedAt: DateTime.now().toUtc(),
+        ),
+      );
+      await _writeQueueOrder(orderedIds);
+      await (update(episodeRows)..where((e) => e.id.equals(episodeId))).write(
+        const EpisodeRowsCompanion(queued: Value(true)),
+      );
+    });
   }
 
   Future<void> removeFromQueue(int episodeId) async {
@@ -646,6 +664,70 @@ class AppDatabase extends _$AppDatabase {
     await (update(episodeRows)..where((e) => e.id.equals(episodeId))).write(
       const EpisodeRowsCompanion(queued: Value(false)),
     );
+  }
+
+  Future<void> reorderQueue(List<int> orderedEpisodeIds) async {
+    final currentIds = await queueEpisodeIds();
+    final currentSet = currentIds.toSet();
+    final normalized =
+        orderedEpisodeIds
+            .where(currentSet.contains)
+            .toSet()
+            .toList(growable: true)
+          ..addAll(currentIds.where((id) => !orderedEpisodeIds.contains(id)));
+    await transaction(() => _writeQueueOrder(normalized));
+  }
+
+  Future<void> replaceQueueOrder(List<int> orderedEpisodeIds) async {
+    final knownIds = orderedEpisodeIds.isEmpty
+        ? <int>{}
+        : (await (selectOnly(episodeRows)
+                    ..addColumns([episodeRows.id])
+                    ..where(episodeRows.id.isIn(orderedEpisodeIds)))
+                  .get())
+              .map((row) => row.read(episodeRows.id)!)
+              .toSet();
+    final normalized = orderedEpisodeIds.where(knownIds.contains).toList();
+    final now = DateTime.now().toUtc();
+    await transaction(() async {
+      await update(
+        episodeRows,
+      ).write(const EpisodeRowsCompanion(queued: Value(false)));
+      if (normalized.isNotEmpty) {
+        await (update(episodeRows)..where((row) => row.id.isIn(normalized)))
+            .write(const EpisodeRowsCompanion(queued: Value(true)));
+      }
+      await delete(queueRows).go();
+      await batch(
+        (batch) => batch.insertAll(
+          queueRows,
+          normalized.indexed
+              .map(
+                (entry) => QueueRowsCompanion.insert(
+                  episodeId: Value(entry.$2),
+                  sortKey: entry.$1.toDouble(),
+                  addedAt: now,
+                ),
+              )
+              .toList(),
+        ),
+      );
+    });
+  }
+
+  Future<void> clearQueue() async {
+    await transaction(() async {
+      await delete(queueRows).go();
+      await (update(episodeRows)..where((row) => row.queued.equals(true)))
+          .write(const EpisodeRowsCompanion(queued: Value(false)));
+    });
+  }
+
+  Future<void> _writeQueueOrder(List<int> orderedEpisodeIds) async {
+    for (final entry in orderedEpisodeIds.indexed) {
+      await (update(queueRows)..where((row) => row.episodeId.equals(entry.$2)))
+          .write(QueueRowsCompanion(sortKey: Value(entry.$1.toDouble())));
+    }
   }
 
   Future<void> seedDemo() async {

@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/database/app_database.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
 import '../shared/episode_tile.dart';
 
-class QueueScreen extends ConsumerWidget {
+class QueueScreen extends ConsumerStatefulWidget {
   const QueueScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<QueueScreen> createState() => _QueueScreenState();
+}
+
+class _QueueScreenState extends ConsumerState<QueueScreen> {
+  List<EpisodeRecord> _visibleItems = const <EpisodeRecord>[];
+  bool _reorderPending = false;
+
+  @override
+  Widget build(BuildContext context) {
     final queue = ref.watch(queueProvider);
     return SafeArea(
       child: CustomScrollView(
@@ -34,69 +43,96 @@ class QueueScreen extends ConsumerWidget {
             ),
           ),
           ...queue.when(
-            data: (items) => items.isEmpty
-                ? const [
-                    SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: EmptyState(
-                        icon: Icons.queue_music_rounded,
-                        title: 'Nothing queued',
-                        body: 'Open an episode menu and choose Add to queue.',
-                      ),
-                    ),
-                  ]
-                : [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
-                        child: Row(
-                          children: [
-                            FilledButton.icon(
-                              onPressed: () => ref
-                                  .read(playerControllerProvider)
-                                  .playEpisode(items.first),
-                              icon: const Icon(Icons.play_arrow_rounded),
-                              label: const Text('Play queue'),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '${items.length} episode${items.length == 1 ? '' : 's'}',
-                              style: const TextStyle(
-                                fontFamily: 'sans-serif',
-                                color: Colors.black45,
-                              ),
-                            ),
-                          ],
+            data: (items) {
+              if (!_reorderPending) _visibleItems = items;
+              final visibleItems = _visibleItems;
+              return visibleItems.isEmpty
+                  ? const [
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: EmptyState(
+                          icon: Icons.queue_music_rounded,
+                          title: 'Nothing queued',
+                          body: 'Open an episode menu and choose Add to queue.',
                         ),
                       ),
-                    ),
-                    SliverList.builder(
-                      itemCount: items.length,
-                      itemBuilder: (_, index) => Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 34,
-                            child: Text(
-                              '${index + 1}',
-                              textAlign: TextAlign.right,
-                              style: const TextStyle(
-                                fontFamily: 'sans-serif',
-                                color: Colors.black38,
+                    ]
+                  : [
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
+                          child: Row(
+                            children: [
+                              FilledButton.icon(
+                                onPressed: () => ref
+                                    .read(playerControllerProvider)
+                                    .playEpisode(visibleItems.first),
+                                icon: const Icon(Icons.play_arrow_rounded),
+                                label: const Text('Play queue'),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: _confirmClear,
+                                tooltip: 'Clear queue',
+                                icon: const Icon(Icons.clear_all_rounded),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '${visibleItems.length} episode${visibleItems.length == 1 ? '' : 's'}',
+                                style: const TextStyle(
+                                  fontFamily: 'sans-serif',
+                                  color: Colors.black45,
+                                ),
+                              ),
+                            ],
                           ),
-                          Expanded(
-                            child: EpisodeTile(
-                              episode: items[index],
-                              compact: true,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                  ],
+                      SliverReorderableList(
+                        itemCount: visibleItems.length,
+                        onReorderItem: _reorder,
+                        itemBuilder: (_, index) => Material(
+                          key: ValueKey(visibleItems[index].id),
+                          type: MaterialType.transparency,
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              ReorderableDragStartListener(
+                                index: index,
+                                child: SizedBox(
+                                  width: 44,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${index + 1}',
+                                        style: const TextStyle(
+                                          fontFamily: 'sans-serif',
+                                          color: Colors.black38,
+                                        ),
+                                      ),
+                                      const Icon(
+                                        Icons.drag_handle_rounded,
+                                        size: 18,
+                                        color: Colors.black38,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: EpisodeTile(
+                                  episode: visibleItems[index],
+                                  compact: true,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                    ];
+            },
             loading: () => const [
               SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
@@ -115,5 +151,46 @@ class QueueScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _reorder(int oldIndex, int newIndex) async {
+    setState(() {
+      final reordered = List<EpisodeRecord>.of(_visibleItems);
+      final episode = reordered.removeAt(oldIndex);
+      reordered.insert(newIndex, episode);
+      _visibleItems = reordered;
+      _reorderPending = true;
+    });
+    try {
+      await ref.read(appControllerProvider).reorderQueue(_visibleItems);
+    } finally {
+      if (mounted) setState(() => _reorderPending = false);
+    }
+  }
+
+  Future<void> _confirmClear() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear queue?'),
+        content: const Text(
+          'This removes every queued episode on all connected devices. '
+          'Anything already playing will keep playing.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear queue'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await ref.read(appControllerProvider).clearQueue();
+    }
   }
 }

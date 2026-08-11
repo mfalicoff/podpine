@@ -31,9 +31,49 @@ void main() {
       expect((await database.watchRecentEpisodes().first).single.id, 8);
     },
   );
+
+  test('replays ordered queue mutations from the durable outbox', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final backend = _FakeBackend();
+    final mutations = <SyncMutationsCompanion>[
+      SyncMutationsCompanion.insert(
+        id: 'queue-add',
+        type: 'queue_add',
+        episodeId: const Value(8),
+        payload: const Value('{"order":[3,8,5]}'),
+        createdAt: DateTime.utc(2026, 8, 10),
+      ),
+      SyncMutationsCompanion.insert(
+        id: 'queue-reorder',
+        type: 'queue_reorder',
+        payload: const Value('{"order":[8,5,3]}'),
+        createdAt: DateTime.utc(2026, 8, 10, 0, 1),
+      ),
+      SyncMutationsCompanion.insert(
+        id: 'queue-clear',
+        type: 'queue_clear',
+        payload: const Value('{"episodeIds":[8,5,3]}'),
+        createdAt: DateTime.utc(2026, 8, 10, 0, 2),
+      ),
+    ];
+    for (final mutation in mutations) {
+      await database.enqueueMutation(mutation);
+    }
+
+    await SyncEngine(database, backend, 7).refresh();
+
+    expect(backend.calls, [
+      'queue-add:7:8',
+      'queue-order:7:3,8,5',
+      'queue-order:7:8,5,3',
+      'queue-clear:7',
+    ]);
+    expect(await database.pendingMutations(), isEmpty);
+  });
 }
 
-class _FakeBackend implements PodcastBackend {
+class _FakeBackend implements PodcastBackend, QueueControlBackend {
   final calls = <String>[];
 
   @override
@@ -117,8 +157,20 @@ class _FakeBackend implements PodcastBackend {
   Future<void> markCompleted(int userId, int episodeId, bool completed) async {}
 
   @override
-  Future<void> addToQueue(int userId, int episodeId) async {}
+  Future<void> addToQueue(int userId, int episodeId) async {
+    calls.add('queue-add:$userId:$episodeId');
+  }
 
   @override
   Future<void> removeFromQueue(int userId, int episodeId) async {}
+
+  @override
+  Future<void> reorderQueue(int userId, List<int> episodeIds) async {
+    calls.add('queue-order:$userId:${episodeIds.join(',')}');
+  }
+
+  @override
+  Future<void> clearQueue(int userId) async {
+    calls.add('queue-clear:$userId');
+  }
 }

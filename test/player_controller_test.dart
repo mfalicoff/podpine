@@ -119,6 +119,41 @@ void main() {
     expect(controller.isPlaying, isTrue);
   });
 
+  test('queue reordering preserves the active episode and position', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final handler = _RecordingAudioHandler();
+    final first = _episode(1, title: 'First');
+    final second = _episode(2, title: 'Second');
+    await database.into(database.podcastRows).insert(_podcast);
+    await database.into(database.episodeRows).insert(first);
+    await database.into(database.episodeRows).insert(second);
+    await database.addToQueue(first.id);
+    await database.addToQueue(second.id);
+    final controller = PlayerController(
+      database,
+      handler,
+      (_, _) async {},
+      (_, _) async {},
+    );
+    addTearDown(() {
+      controller.dispose();
+      return database.close();
+    });
+
+    await controller.playEpisode(first);
+    await controller.seek(const Duration(seconds: 42));
+    await database.reorderQueue([second.id, first.id]);
+    await controller.syncQueue(await database.watchQueue().first);
+
+    expect(handler.receivedQueue.map(episodeIdForMediaItem), <int?>[2, 1]);
+    expect(handler.selectedIndices, [0]);
+    expect(controller.current?.id, first.id);
+    expect(
+      (controller.position - const Duration(seconds: 42)).abs(),
+      lessThan(const Duration(milliseconds: 50)),
+    );
+  });
+
   test(
     'completion advances and marks the finished episode exactly once',
     () async {

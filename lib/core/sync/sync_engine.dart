@@ -22,6 +22,7 @@ class SyncEngine {
     final podcasts = results[0] as List<RemotePodcast>;
     final episodes = results[1] as List<RemoteEpisode>;
     final queue = results[2] as List<RemoteEpisode>;
+    final queuedEpisodeIds = queue.map((episode) => episode.id).toSet();
     final now = DateTime.now().toUtc();
     final cachedChapters = await database.episodeChapterMetadata();
     final podcastIds = podcasts.map((podcast) => podcast.id).toSet();
@@ -80,7 +81,7 @@ class SyncEngine {
             durationSeconds: Value(episode.durationSeconds),
             positionSeconds: Value(episode.positionSeconds),
             completed: Value(episode.completed),
-            queued: Value(episode.queued),
+            queued: Value(queuedEpisodeIds.contains(episode.id)),
             downloaded: Value(episode.downloaded),
             isYoutube: Value(episode.isYoutube),
             chaptersJson: Value(
@@ -134,17 +135,41 @@ class SyncEngine {
           case 'queue_add':
             if (episodeId == null) break;
             await backend.addToQueue(userId, episodeId);
-            if (payload['next'] == true && backend is QueueReorderBackend) {
-              final queue = await database.watchQueue().first;
+            var addOrder = _episodeIds(payload['order']);
+            if (addOrder.isEmpty && payload['next'] == true) {
+              addOrder = await database.queueEpisodeIds();
+            }
+            if (addOrder.isNotEmpty && backend is QueueReorderBackend) {
               await (backend as QueueReorderBackend).reorderQueue(
                 userId,
-                queue.map((item) => item.id).toList(),
+                addOrder,
               );
             }
             break;
           case 'queue_remove':
             if (episodeId == null) break;
             await backend.removeFromQueue(userId, episodeId);
+            break;
+          case 'queue_reorder':
+            final reorderBackend = backend is QueueReorderBackend
+                ? backend as QueueReorderBackend
+                : null;
+            if (reorderBackend == null) {
+              throw UnsupportedError('Queue reordering is unavailable.');
+            }
+            await reorderBackend.reorderQueue(
+              userId,
+              _episodeIds(payload['order']),
+            );
+            break;
+          case 'queue_clear':
+            if (backend is QueueControlBackend) {
+              await (backend as QueueControlBackend).clearQueue(userId);
+            } else {
+              for (final id in _episodeIds(payload['episodeIds'])) {
+                await backend.removeFromQueue(userId, id);
+              }
+            }
             break;
           case 'downloaded':
             if (episodeId == null) break;
@@ -181,6 +206,12 @@ class SyncEngine {
       }
     }
   }
+
+  static List<int> _episodeIds(Object? value) => (value as List? ?? const [])
+      .map((id) => id is int ? id : int.tryParse('$id'))
+      .whereType<int>()
+      .where((id) => id > 0)
+      .toList(growable: false);
 
   static PodcastRowsCompanion _podcastCompanion(RemotePodcast podcast) =>
       PodcastRowsCompanion.insert(

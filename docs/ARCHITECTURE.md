@@ -38,6 +38,6 @@ The next sync iteration should coalesce repeated position entries per episode, a
 
 1. Add a download manager with resumable jobs, storage accounting, and Wi-Fi policy.
 2. Add discovery ranking, history, and category browsing refinements.
-3. Add queue drag/reorder and operation-level conflict handling.
+3. Add operation-level conflict handling for concurrent queue edits.
 4. Schedule opportunistic refresh with Android WorkManager and iOS BackgroundTasks.
 5. Add API fixture tests for Pinepods response variants and migration tests for Drift schema changes.

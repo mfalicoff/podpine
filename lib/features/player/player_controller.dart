@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../core/database/app_database.dart';
@@ -42,6 +43,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
   Timer? _timer;
   late final Future<void> _settingsReady;
   PlaybackState _playbackState = PlaybackState();
+  List<int> _playbackQueueIds = const <int>[];
 
   EpisodeRecord? current;
   Duration position = Duration.zero;
@@ -140,6 +142,9 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
       );
 
       await _handler.updateQueue(queue);
+      _playbackQueueIds = playableQueue
+          .map((episode) => episode.id)
+          .toList(growable: false);
       await _handler.skipToQueueItem(activeIndex);
       await _handler.seek(position);
       await _handler.setSpeed(speed);
@@ -346,6 +351,42 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
       unawaited(_recordPosition(previousEpisode, previousPosition));
     }
     notifyListeners();
+  }
+
+  Future<void> syncQueue(List<EpisodeRecord> storedQueue) async {
+    final active = current;
+    if (active == null || _demoPlayback || _selectingEpisode || loading) return;
+    await _syncPlaybackQueue(storedQueue, active);
+  }
+
+  Future<void> _syncPlaybackQueue(
+    List<EpisodeRecord> storedQueue,
+    EpisodeRecord active,
+  ) async {
+    final playableQueue = storedQueue
+        .where((episode) => episode.audioUrl.trim().isNotEmpty)
+        .toList();
+    if (!playableQueue.any((episode) => episode.id == active.id)) {
+      playableQueue.insert(0, active);
+    }
+    final ids = playableQueue
+        .map((episode) => episode.id)
+        .toList(growable: false);
+    _episodesById
+      ..clear()
+      ..addEntries(
+        playableQueue.map((episode) => MapEntry(episode.id, episode)),
+      );
+    if (listEquals(ids, _playbackQueueIds)) return;
+    try {
+      await _handler.updateQueue(
+        playableQueue.map(mediaItemForEpisode).toList(),
+      );
+      _playbackQueueIds = ids;
+    } catch (_) {
+      // Playback continues on its existing queue. A later database emission
+      // retries the update without replacing the active episode in the UI.
+    }
   }
 
   void _onCustomEvent(dynamic event) {

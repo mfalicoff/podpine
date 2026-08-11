@@ -16,7 +16,7 @@ class PinepodsException implements Exception {
 }
 
 class PinepodsBackend
-    implements PodcastBackend, EpisodeDownloadBackend, QueueReorderBackend {
+    implements PodcastBackend, EpisodeDownloadBackend, QueueControlBackend {
   PinepodsBackend({
     required String serverUrl,
     required this.apiKey,
@@ -342,6 +342,10 @@ class PinepodsBackend
     {'episode_ids': episodeIds},
     {'user_id': '$userId'},
   );
+
+  @override
+  Future<void> clearQueue(int userId) =>
+      _post('/api/data/clear_queue', {'user_id': userId});
 
   static List<T> _mapRows<T>(
     Object? response,

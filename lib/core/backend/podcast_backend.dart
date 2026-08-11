@@ -184,6 +184,10 @@ abstract interface class QueueReorderBackend {
   Future<void> reorderQueue(int userId, List<int> episodeIds);
 }
 
+abstract interface class QueueControlBackend implements QueueReorderBackend {
+  Future<void> clearQueue(int userId);
+}
+
 int _jsonInt(Object? value) => switch (value) {
   int number => number,
   num number => number.toInt(),

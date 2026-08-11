@@ -26,6 +26,7 @@ class AppController extends ChangeNotifier {
   int? userId;
   DateTime? lastSyncedAt;
   PodcastBackend? backend;
+  int? Function()? activeEpisodeId;
   String? _apiKey;
   static const _uuid = Uuid();
 
@@ -345,38 +346,132 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> addToQueue(EpisodeRecord episode, {bool next = false}) async {
-    await database.addToQueue(episode.id, next: next);
-    if (backend != null && userId != null && episode.id > 0) {
-      try {
-        await backend!.addToQueue(userId!, episode.id);
-        final reorderBackend = backend is QueueReorderBackend
-            ? backend! as QueueReorderBackend
-            : null;
-        if (next && reorderBackend != null) {
-          final queue = await database.watchQueue().first;
-          await reorderBackend.reorderQueue(
-            userId!,
-            queue.map((item) => item.id).toList(),
-          );
-        }
-      } catch (_) {
-        await _enqueueMutation('queue_add', episode.id, {'next': next});
-        error = 'Queue changed offline.';
-        notifyListeners();
+    final afterEpisodeId = next ? activeEpisodeId?.call() : null;
+    await database.addToQueue(episode.id, afterEpisodeId: afterEpisodeId);
+    final order = await database.queueEpisodeIds();
+    final currentBackend = backend;
+    final currentUserId = userId;
+    if (currentBackend == null || currentUserId == null || episode.id <= 0) {
+      if (episode.id > 0) {
+        await _enqueueMutation('queue_add', episode.id, {'order': order});
       }
+      return;
     }
+    try {
+      await currentBackend.addToQueue(currentUserId, episode.id);
+      if (next) {
+        final reorderBackend = currentBackend is QueueReorderBackend
+            ? currentBackend as QueueReorderBackend
+            : null;
+        if (reorderBackend == null) {
+          throw UnsupportedError('Queue reordering is unavailable.');
+        }
+        await reorderBackend.reorderQueue(currentUserId, order);
+      }
+    } catch (_) {
+      await _enqueueMutation('queue_add', episode.id, {'order': order});
+      error = 'Queue changed offline.';
+      notifyListeners();
+      return;
+    }
+    await _reconcileQueue(currentBackend, currentUserId);
   }
 
   Future<void> removeFromQueue(EpisodeRecord episode) async {
     await database.removeFromQueue(episode.id);
-    if (backend != null && userId != null && episode.id > 0) {
-      try {
-        await backend!.removeFromQueue(userId!, episode.id);
-      } catch (_) {
+    final currentBackend = backend;
+    final currentUserId = userId;
+    if (currentBackend == null || currentUserId == null || episode.id <= 0) {
+      if (episode.id > 0) {
         await _enqueueMutation('queue_remove', episode.id, const {});
-        error = 'Queue changed offline.';
-        notifyListeners();
       }
+      return;
+    }
+    try {
+      await currentBackend.removeFromQueue(currentUserId, episode.id);
+    } catch (_) {
+      await _enqueueMutation('queue_remove', episode.id, const {});
+      error = 'Queue changed offline.';
+      notifyListeners();
+      return;
+    }
+    await _reconcileQueue(currentBackend, currentUserId);
+  }
+
+  Future<void> reorderQueue(List<EpisodeRecord> episodes) async {
+    final order = episodes.map((episode) => episode.id).toList(growable: false);
+    await database.reorderQueue(order);
+    final currentBackend = backend;
+    final currentUserId = userId;
+    final reorderBackend = currentBackend is QueueReorderBackend
+        ? currentBackend as QueueReorderBackend
+        : null;
+    if (reorderBackend == null || currentUserId == null) {
+      if (order.any((id) => id > 0)) {
+        await _enqueueMutation('queue_reorder', null, {'order': order});
+      }
+      return;
+    }
+    try {
+      await reorderBackend.reorderQueue(currentUserId, order);
+    } catch (_) {
+      await _enqueueMutation('queue_reorder', null, {'order': order});
+      error = 'Queue order saved offline.';
+      notifyListeners();
+      return;
+    }
+    await _reconcileQueue(currentBackend!, currentUserId);
+  }
+
+  Future<void> clearQueue() async {
+    final removedIds = await database.queueEpisodeIds();
+    if (removedIds.isEmpty) return;
+    await database.clearQueue();
+    final currentBackend = backend;
+    final currentUserId = userId;
+    if (currentBackend == null || currentUserId == null) {
+      if (removedIds.any((id) => id > 0)) {
+        await _enqueueMutation('queue_clear', null, {'episodeIds': removedIds});
+      }
+      return;
+    }
+    try {
+      if (currentBackend is QueueControlBackend) {
+        await (currentBackend as QueueControlBackend).clearQueue(currentUserId);
+      } else {
+        for (final episodeId in removedIds.where((id) => id > 0)) {
+          await currentBackend.removeFromQueue(currentUserId, episodeId);
+        }
+      }
+    } catch (_) {
+      await _enqueueMutation('queue_clear', null, {'episodeIds': removedIds});
+      error = 'Queue clear saved offline.';
+      notifyListeners();
+      return;
+    }
+    await _reconcileQueue(currentBackend, currentUserId);
+  }
+
+  Future<void> _reconcileQueue(
+    PodcastBackend currentBackend,
+    int currentUserId,
+  ) async {
+    try {
+      final remote = await currentBackend.getQueue(currentUserId);
+      final indexed = remote.indexed.toList()
+        ..sort((left, right) {
+          final leftPosition = left.$2.queuePosition ?? left.$1;
+          final rightPosition = right.$2.queuePosition ?? right.$1;
+          return leftPosition.compareTo(rightPosition);
+        });
+      await database.replaceQueueOrder(
+        indexed.map((entry) => entry.$2.id).toList(growable: false),
+      );
+      error = null;
+      notifyListeners();
+    } catch (_) {
+      // The server mutation already succeeded. Keep the optimistic order; the
+      // next regular refresh will reconcile it without duplicating the write.
     }
   }
 

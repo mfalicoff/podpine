@@ -327,6 +327,21 @@ void main() {
         'episode_ids': [101, 202],
       });
     });
+
+    test('clears the server queue', () async {
+      late http.Request request;
+      final backend = _backend(
+        MockClient((value) async {
+          request = value;
+          return _json({'message': 'Queue cleared'});
+        }),
+      );
+
+      await backend.clearQueue(42);
+
+      expect(request.url.path, '/api/data/clear_queue');
+      expect(jsonDecode(request.body), {'user_id': 42});
+    });
   });
 
   group('Pinepods failure contracts', () {

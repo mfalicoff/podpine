@@ -56,6 +56,17 @@ final playerControllerProvider = ChangeNotifierProvider<PlayerController>((
     ref.read(appControllerProvider).setCompleted,
     chapterLoader: ref.read(appControllerProvider).loadChapters,
   );
-  ref.onDispose(controller.dispose);
+  final app = ref.read(appControllerProvider);
+  int? activeEpisodeId() => controller.current?.id;
+  app.activeEpisodeId = activeEpisodeId;
+  ref.listen(queueProvider, (_, queue) {
+    queue.whenData(controller.syncQueue);
+  }, fireImmediately: true);
+  ref.onDispose(() {
+    if (identical(app.activeEpisodeId, activeEpisodeId)) {
+      app.activeEpisodeId = null;
+    }
+    controller.dispose();
+  });
   return controller;
 });

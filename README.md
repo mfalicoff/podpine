@@ -21,7 +21,7 @@ Podpine is an offline-first Flutter client for a self-hosted [Pinepods](https://
 - Secure credential storage
 - Demo library for development and product review
 
-The player integrates `just_audio` through `audio_service`, including queue-aware previous/next controls and active-episode artwork and metadata. Production downloads, automatic-download rules, queue reordering, and background refresh scheduling remain follow-up work. See [Architecture](docs/ARCHITECTURE.md) and [Background audio](docs/BACKGROUND_AUDIO.md).
+The player integrates `just_audio` through `audio_service`, including queue-aware previous/next controls, server-backed queue reordering, and active-episode artwork and metadata. Production downloads, automatic-download rules, and background refresh scheduling remain follow-up work. See [Architecture](docs/ARCHITECTURE.md) and [Background audio](docs/BACKGROUND_AUDIO.md).
 
 ## Run it
 

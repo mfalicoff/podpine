@@ -116,14 +116,17 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> updateQueue(List<MediaItem> queue) async {
-    await _player.stop();
+    final activeItem = mediaItem.value;
+    final activePosition = _player.position;
+    final wasPlaying = _player.playing;
     _queueGeneration++;
     _completedIndices.clear();
     final newQueue = List<MediaItem>.unmodifiable(queue);
     this.queue.add(newQueue);
-    mediaItem.add(null);
     if (newQueue.isEmpty) {
+      await _player.stop();
       await _player.clearAudioSources();
+      mediaItem.add(null);
       _broadcastState(_player.playbackEvent);
       return;
     }
@@ -142,7 +145,22 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
           return AudioSource.uri(uri, tag: item);
         })
         .toList(growable: false);
-    await _player.setAudioSources(sources, preload: false);
+    final preservedIndex = activeItem == null
+        ? -1
+        : newQueue.indexWhere((item) => item.id == activeItem.id);
+    await _player.setAudioSources(
+      sources,
+      initialIndex: preservedIndex < 0 ? 0 : preservedIndex,
+      initialPosition: preservedIndex < 0 ? Duration.zero : activePosition,
+      preload: false,
+    );
+    if (preservedIndex >= 0) {
+      mediaItem.add(newQueue[preservedIndex]);
+      if (wasPlaying) unawaited(_player.play());
+    } else {
+      mediaItem.add(null);
+    }
+    _broadcastState(_player.playbackEvent);
   }
 
   @override
