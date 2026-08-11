@@ -30,6 +30,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final app = ref.watch(appControllerProvider);
+    ref.watch(downloadManagerProvider);
     return Scaffold(
       body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: Column(

@@ -229,7 +229,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
       case InboxSwipeAction.togglePlayed:
         await app.setCompleted(episode, !wasCompleted);
       case InboxSwipeAction.download:
-        await app.setDownloaded(episode, !wasDownloaded);
+        wasDownloaded
+            ? await ref.read(downloadManagerProvider).delete(episode.id)
+            : await ref.read(downloadManagerProvider).start(episode);
       case InboxSwipeAction.playNext:
         await app.addToQueue(episode, next: true);
     }
@@ -252,7 +254,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                 case InboxSwipeAction.togglePlayed:
                   await app.setCompleted(episode, wasCompleted);
                 case InboxSwipeAction.download:
-                  await app.setDownloaded(episode, wasDownloaded);
+                  wasDownloaded
+                      ? await ref.read(downloadManagerProvider).start(episode)
+                      : await ref
+                            .read(downloadManagerProvider)
+                            .delete(episode.id);
                 case InboxSwipeAction.playNext:
                   wasQueued
                       ? await app.addToQueue(episode)

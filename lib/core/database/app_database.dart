@@ -59,6 +59,25 @@ class EpisodeRows extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+@DataClassName('DownloadJobRecord')
+class DownloadJobRows extends Table {
+  IntColumn get episodeId => integer().references(EpisodeRows, #id)();
+  TextColumn get sourceUrl => text()();
+  TextColumn get filePath => text()();
+  TextColumn get partialPath => text()();
+  TextColumn get state => text()();
+  IntColumn get bytesDownloaded => integer().withDefault(const Constant(0))();
+  IntColumn get totalBytes => integer().nullable()();
+  TextColumn get etag => text().nullable()();
+  TextColumn get lastModified => text().nullable()();
+  TextColumn get error => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {episodeId};
+}
+
 @DataClassName('QueueRecord')
 class QueueRows extends Table {
   IntColumn get episodeId => integer().references(EpisodeRows, #id)();
@@ -137,6 +156,7 @@ class PodcastPlaybackOverrideRows extends Table {
     PodcastRows,
     DiscoveryCacheRows,
     EpisodeRows,
+    DownloadJobRows,
     QueueRows,
     InboxRows,
     InboxPreferenceRows,
@@ -160,7 +180,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -199,6 +219,9 @@ class AppDatabase extends _$AppDatabase {
           ),
         );
       }
+      if (from < 5) {
+        await migrator.createTable(downloadJobRows);
+      }
     },
   );
 
@@ -211,6 +234,50 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(e) => OrderingTerm.desc(e.publishedAt)])
             ..limit(100))
           .watch();
+
+  Stream<List<EpisodeRecord>> watchAllEpisodes() => (select(
+    episodeRows,
+  )..orderBy([(episode) => OrderingTerm.desc(episode.publishedAt)])).watch();
+
+  Future<EpisodeRecord?> episodeById(int episodeId) => (select(
+    episodeRows,
+  )..where((row) => row.id.equals(episodeId))).getSingleOrNull();
+
+  Stream<List<DownloadJobRecord>> watchDownloadJobs() => (select(
+    downloadJobRows,
+  )..orderBy([(job) => OrderingTerm.desc(job.updatedAt)])).watch();
+
+  Future<List<DownloadJobRecord>> downloadJobs() =>
+      select(downloadJobRows).get();
+
+  Future<DownloadJobRecord?> downloadJob(int episodeId) => (select(
+    downloadJobRows,
+  )..where((job) => job.episodeId.equals(episodeId))).getSingleOrNull();
+
+  Future<void> upsertDownloadJob(DownloadJobRowsCompanion job) =>
+      into(downloadJobRows).insertOnConflictUpdate(job);
+
+  Future<void> updateDownloadJob(int episodeId, DownloadJobRowsCompanion job) =>
+      (update(
+        downloadJobRows,
+      )..where((row) => row.episodeId.equals(episodeId))).write(job);
+
+  Future<void> deleteDownloadJob(int episodeId) => (delete(
+    downloadJobRows,
+  )..where((row) => row.episodeId.equals(episodeId))).go();
+
+  Future<Map<int, String>> completedDownloadPaths(
+    Iterable<int> episodeIds,
+  ) async {
+    final ids = episodeIds.toSet();
+    if (ids.isEmpty) return const <int, String>{};
+    final rows =
+        await (select(downloadJobRows)..where(
+              (job) => job.episodeId.isIn(ids) & job.state.equals('completed'),
+            ))
+            .get();
+    return {for (final row in rows) row.episodeId: row.filePath};
+  }
 
   Stream<List<EpisodeRecord>> watchPodcastEpisodes(int podcastId) =>
       (select(episodeRows)
@@ -301,6 +368,9 @@ class AppDatabase extends _$AppDatabase {
               .map((row) => row.read(episodeRows.id)!)
               .get();
       if (episodeIds.isNotEmpty) {
+        await (delete(
+          downloadJobRows,
+        )..where((row) => row.episodeId.isIn(episodeIds))).go();
         await (delete(
           queueRows,
         )..where((row) => row.episodeId.isIn(episodeIds))).go();
@@ -556,6 +626,9 @@ class AppDatabase extends _$AppDatabase {
                 .get();
         if (staleEpisodeIds.isNotEmpty) {
           await (delete(
+            downloadJobRows,
+          )..where((row) => row.episodeId.isIn(staleEpisodeIds))).go();
+          await (delete(
             queueRows,
           )..where((row) => row.episodeId.isIn(staleEpisodeIds))).go();
           await (delete(
@@ -579,6 +652,19 @@ class AppDatabase extends _$AppDatabase {
         batch.insertAllOnConflictUpdate(podcastRows, podcasts);
         batch.insertAllOnConflictUpdate(episodeRows, episodes);
       });
+      await update(
+        episodeRows,
+      ).write(const EpisodeRowsCompanion(downloaded: Value(false)));
+      final completedIds =
+          await (selectOnly(downloadJobRows)
+                ..addColumns([downloadJobRows.episodeId])
+                ..where(downloadJobRows.state.equals('completed')))
+              .map((row) => row.read(downloadJobRows.episodeId)!)
+              .get();
+      if (completedIds.isNotEmpty) {
+        await (update(episodeRows)..where((row) => row.id.isIn(completedIds)))
+            .write(const EpisodeRowsCompanion(downloaded: Value(true)));
+      }
       final discoveredAt = DateTime.now().toUtc();
       final newInboxRows = episodes
           .where((episode) => !knownInboxEpisodeIds.contains(episode.id.value))
@@ -826,6 +912,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> clearAll() async {
     await transaction(() async {
       await delete(queueRows).go();
+      await delete(downloadJobRows).go();
       await delete(inboxRows).go();
       await delete(syncMutations).go();
       await delete(discoveryCacheRows).go();

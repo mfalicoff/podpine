@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app_controller.dart';
 import '../../core/backend/podcast_backend.dart';
 import '../../core/database/app_database.dart';
+import '../../core/downloads/download_models.dart';
 import '../../core/metadata_sanitizer.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
@@ -360,6 +361,14 @@ class EpisodeDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final local = localEpisode;
+    final jobs = ref.watch(downloadJobsProvider).valueOrNull ?? const [];
+    DownloadJobRecord? download;
+    for (final job in jobs) {
+      if (job.episodeId == episode.id) {
+        download = job;
+        break;
+      }
+    }
     final chapters = _chapters(local?.chaptersJson ?? episode.chaptersJson);
     final description = MetadataSanitizer.plainText(episode.description);
     final published = episode.publishedAt.year <= 1971
@@ -416,6 +425,10 @@ class EpisodeDetailScreen extends ConsumerWidget {
               icon: const Icon(Icons.play_arrow_rounded),
               label: Text(local.positionSeconds > 0 ? 'Resume' : 'Play'),
             ),
+          ],
+          if (local != null) ...[
+            const SizedBox(height: 10),
+            _DownloadControls(episode: local, job: download),
           ],
           if (description.isNotEmpty) ...[
             const SizedBox(height: 26),
@@ -480,6 +493,85 @@ class EpisodeDetailScreen extends ConsumerWidget {
     return hours > 0
         ? '$hours:${minutes.toString().padLeft(2, '0')}:${remaining.toString().padLeft(2, '0')}'
         : '$minutes:${remaining.toString().padLeft(2, '0')}';
+  }
+}
+
+class _DownloadControls extends ConsumerWidget {
+  const _DownloadControls({required this.episode, required this.job});
+
+  final EpisodeRecord episode;
+  final DownloadJobRecord? job;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = job?.downloadState;
+    final (icon, label, action) = switch (state) {
+      null => (
+        Icons.download_rounded,
+        'Download',
+        () => ref.read(downloadManagerProvider).start(episode),
+      ),
+      DownloadState.queued || DownloadState.downloading => (
+        Icons.pause_rounded,
+        'Pause download',
+        () => ref.read(downloadManagerProvider).pause(episode.id),
+      ),
+      DownloadState.paused => (
+        Icons.download_rounded,
+        'Resume download',
+        () => ref.read(downloadManagerProvider).resume(episode.id),
+      ),
+      DownloadState.failed => (
+        Icons.refresh_rounded,
+        'Retry download',
+        () => ref.read(downloadManagerProvider).retry(episode.id),
+      ),
+      DownloadState.completed => (
+        Icons.delete_outline_rounded,
+        'Delete download',
+        () => ref.read(downloadManagerProvider).delete(episode.id),
+      ),
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: () async {
+            try {
+              await action();
+            } catch (error) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(error.toString())));
+              }
+            }
+          },
+          icon: Icon(icon),
+          label: Text(label),
+        ),
+        if (job != null && state != DownloadState.completed) ...[
+          const SizedBox(height: 7),
+          LinearProgressIndicator(value: job!.progress),
+          if (job!.error != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              job!.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () =>
+                  ref.read(downloadManagerProvider).cancel(episode.id),
+              child: const Text('Cancel'),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }
 

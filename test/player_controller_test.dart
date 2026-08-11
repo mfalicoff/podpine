@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +25,44 @@ void main() {
     expect(item.duration, const Duration(minutes: 2));
     expect(item.extras?[audioUrlExtra], episode.audioUrl);
     expect(episodeIdForMediaItem(item), episode.id);
+  });
+
+  test('controller prefers a completed local download for playback', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final handler = _RecordingAudioHandler();
+    final episode = _episode(1, title: 'Offline episode');
+    await database.into(database.podcastRows).insert(_podcast);
+    await database.into(database.episodeRows).insert(episode);
+    await database.upsertDownloadJob(
+      DownloadJobRowsCompanion.insert(
+        episodeId: const Value(1),
+        sourceUrl: episode.audioUrl,
+        filePath: '/downloads/offline.mp3',
+        partialPath: '/downloads/offline.mp3.part',
+        state: 'completed',
+        bytesDownloaded: const Value(4),
+        totalBytes: const Value(4),
+        createdAt: DateTime.utc(2026, 8, 10),
+        updatedAt: DateTime.utc(2026, 8, 10),
+      ),
+    );
+    final controller = PlayerController(
+      database,
+      handler,
+      (_, _) async {},
+      (_, _) async {},
+    );
+    addTearDown(() {
+      controller.dispose();
+      return database.close();
+    });
+
+    await controller.playEpisode(episode);
+
+    expect(
+      handler.receivedQueue.single.extras?[audioUrlExtra],
+      Uri.file('/downloads/offline.mp3').toString(),
+    );
   });
 
   test('system controls expose podcast skip and seek actions', () {

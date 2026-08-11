@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/backend/podcast_backend.dart';
+import '../../core/downloads/download_models.dart';
 import '../../providers.dart';
 import '../details/podcast_detail_screen.dart';
 import 'artwork.dart';
@@ -21,6 +22,8 @@ class EpisodeTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final jobs = ref.watch(downloadJobsProvider).valueOrNull ?? const [];
+    final download = _jobFor(jobs, episode.id);
     final progress = episode.durationSeconds > 0
         ? (episode.positionSeconds / episode.durationSeconds).clamp(0.0, 1.0)
         : 0.0;
@@ -99,7 +102,9 @@ class EpisodeTile extends ConsumerWidget {
                             color: Colors.black45,
                           ),
                         ),
-                        if (episode.downloaded) ...[
+                        if (download?.downloadState ==
+                                DownloadState.completed ||
+                            episode.downloaded) ...[
                           const SizedBox(width: 7),
                           const Icon(
                             Icons.download_done_rounded,
@@ -120,12 +125,34 @@ class EpisodeTile extends ConsumerWidget {
                         ),
                       ),
                     ],
+                    if (download != null &&
+                        download.downloadState != DownloadState.completed) ...[
+                      const SizedBox(height: 7),
+                      LinearProgressIndicator(
+                        value: download.progress,
+                        minHeight: 3,
+                        backgroundColor: Colors.black12,
+                      ),
+                      if (download.error != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          download.error!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'sans-serif',
+                            fontSize: 10,
+                            color: Colors.redAccent,
+                          ),
+                        ),
+                      ],
+                    ],
                   ],
                 ),
               ),
               PopupMenuButton<String>(
                 tooltip: 'Episode actions',
-                onSelected: (value) => _handleAction(ref, value),
+                onSelected: (value) => _handleAction(context, ref, value),
                 itemBuilder: (_) => [
                   PopupMenuItem(
                     value: 'complete',
@@ -144,6 +171,7 @@ class EpisodeTile extends ConsumerWidget {
                       value: 'next',
                       child: Text('Play next'),
                     ),
+                  ..._downloadMenuItems(download),
                 ],
                 icon: const Icon(Icons.more_horiz_rounded),
               ),
@@ -154,18 +182,80 @@ class EpisodeTile extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleAction(WidgetRef ref, String value) async {
+  Future<void> _handleAction(
+    BuildContext context,
+    WidgetRef ref,
+    String value,
+  ) async {
     final app = ref.read(appControllerProvider);
-    switch (value) {
-      case 'complete':
-        await app.setCompleted(episode, !episode.completed);
-      case 'queue':
-        episode.queued
-            ? await app.removeFromQueue(episode)
-            : await app.addToQueue(episode);
-      case 'next':
-        await app.addToQueue(episode, next: true);
+    try {
+      switch (value) {
+        case 'complete':
+          await app.setCompleted(episode, !episode.completed);
+        case 'queue':
+          episode.queued
+              ? await app.removeFromQueue(episode)
+              : await app.addToQueue(episode);
+        case 'next':
+          await app.addToQueue(episode, next: true);
+        case 'download':
+          await ref.read(downloadManagerProvider).start(episode);
+        case 'pause-download':
+          await ref.read(downloadManagerProvider).pause(episode.id);
+        case 'resume-download':
+          await ref.read(downloadManagerProvider).resume(episode.id);
+        case 'retry-download':
+          await ref.read(downloadManagerProvider).retry(episode.id);
+        case 'cancel-download':
+          await ref.read(downloadManagerProvider).cancel(episode.id);
+        case 'delete-download':
+          await ref.read(downloadManagerProvider).delete(episode.id);
+      }
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
     }
+  }
+
+  static DownloadJobRecord? _jobFor(
+    List<DownloadJobRecord> jobs,
+    int episodeId,
+  ) {
+    for (final job in jobs) {
+      if (job.episodeId == episodeId) return job;
+    }
+    return null;
+  }
+
+  static List<PopupMenuEntry<String>> _downloadMenuItems(
+    DownloadJobRecord? job,
+  ) {
+    final state = job?.downloadState;
+    return switch (state) {
+      null => const [PopupMenuItem(value: 'download', child: Text('Download'))],
+      DownloadState.queued || DownloadState.downloading => const [
+        PopupMenuDivider(),
+        PopupMenuItem(value: 'pause-download', child: Text('Pause download')),
+        PopupMenuItem(value: 'cancel-download', child: Text('Cancel download')),
+      ],
+      DownloadState.paused => const [
+        PopupMenuDivider(),
+        PopupMenuItem(value: 'resume-download', child: Text('Resume download')),
+        PopupMenuItem(value: 'cancel-download', child: Text('Cancel download')),
+      ],
+      DownloadState.failed => const [
+        PopupMenuDivider(),
+        PopupMenuItem(value: 'retry-download', child: Text('Retry download')),
+        PopupMenuItem(value: 'cancel-download', child: Text('Cancel download')),
+      ],
+      DownloadState.completed => const [
+        PopupMenuDivider(),
+        PopupMenuItem(value: 'delete-download', child: Text('Delete download')),
+      ],
+    };
   }
 
   static String _metadata(EpisodeRecord episode) {

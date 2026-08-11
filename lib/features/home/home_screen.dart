@@ -8,11 +8,18 @@ import '../../providers.dart';
 import '../shared/artwork.dart';
 import '../shared/episode_tile.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  _EpisodeFilter _filter = _EpisodeFilter.all;
+
+  @override
+  Widget build(BuildContext context) {
     final episodes = ref.watch(episodesProvider);
     final app = ref.watch(appControllerProvider);
     return SafeArea(
@@ -64,7 +71,7 @@ class HomeScreen extends ConsumerWidget {
     final inProgress = episodes
         .where((e) => !e.completed && e.positionSeconds > 0)
         .firstOrNull;
-    final unplayed = episodes.where((e) => !e.completed).take(12).toList();
+    final filtered = episodes.where(_filter.matches).toList();
     return [
       if (inProgress != null) ...[
         const SliverToBoxAdapter(child: SectionHeading('Continue listening')),
@@ -72,7 +79,7 @@ class HomeScreen extends ConsumerWidget {
       ],
       SliverToBoxAdapter(
         child: SectionHeading(
-          'New episodes',
+          'All episodes',
           trailing: TextButton.icon(
             onPressed: () => ref.read(appControllerProvider).refresh(),
             icon: const Icon(Icons.refresh_rounded, size: 18),
@@ -80,13 +87,66 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
       ),
-      SliverList.builder(
-        itemCount: unplayed.length,
-        itemBuilder: (context, index) => EpisodeTile(episode: unplayed[index]),
+      SliverToBoxAdapter(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+          child: Row(
+            children: _EpisodeFilter.values
+                .map(
+                  (filter) => Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(filter.label),
+                      selected: _filter == filter,
+                      onSelected: (_) => setState(() => _filter = filter),
+                    ),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        ),
       ),
+      if (filtered.isEmpty)
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: EmptyState(
+              icon: Icons.filter_alt_off_outlined,
+              title: 'No matching episodes',
+              body: 'Choose another filter or refresh your subscriptions.',
+            ),
+          ),
+        )
+      else
+        SliverList.builder(
+          itemCount: filtered.length,
+          itemBuilder: (context, index) =>
+              EpisodeTile(episode: filtered[index]),
+        ),
       const SliverToBoxAdapter(child: SizedBox(height: 28)),
     ];
   }
+}
+
+enum _EpisodeFilter {
+  all('All'),
+  unplayed('Unplayed'),
+  played('Played'),
+  downloaded('Downloaded'),
+  queued('Queued');
+
+  const _EpisodeFilter(this.label);
+
+  final String label;
+
+  bool matches(EpisodeRecord episode) => switch (this) {
+    _EpisodeFilter.all => true,
+    _EpisodeFilter.unplayed => !episode.completed,
+    _EpisodeFilter.played => episode.completed,
+    _EpisodeFilter.downloaded => episode.downloaded,
+    _EpisodeFilter.queued => episode.queued,
+  };
 }
 
 class _Header extends StatelessWidget {

@@ -10,6 +10,10 @@ flowchart LR
     DB --> UI["Flutter UI"]
     UI --> DB
     UI <--> PC["Player controller"]
+    UI <--> DM["Download manager"]
+    DM <--> DB
+    DM <--> FS["Validated media files"]
+    PC --> FS
     PC <--> AS["audio_service handler"]
     AS <--> PL["just_audio"]
     PC --> DB
@@ -23,6 +27,8 @@ flowchart LR
 - `AppController` coordinates the session and optimistic mutations. Network failure does not roll local state back; it adds a retryable outbox entry.
 - `PodpineAudioHandler` owns the sole `just_audio` instance and publishes queue, metadata, position, and controls to Android and iOS through `audio_service`.
 - `PlayerController` is the UI-facing façade. It maps handler state back to local episodes and persists position every 15 seconds plus pause, seek, and episode changes.
+- `DownloadManager` owns device-side media transfers. Drift persists range validators, byte counts, and state; partial files use a separate `.part` path and are promoted only after length validation.
+- Playback resolves completed device files before remote media URLs, so downloaded episodes remain playable without connectivity.
 
 ## Sync rules in this slice
 
@@ -36,7 +42,7 @@ The next sync iteration should coalesce repeated position entries per episode, a
 
 ## Next implementation milestones
 
-1. Add a download manager with resumable jobs, storage accounting, and Wi-Fi policy.
+1. Add automatic download and retention policies on top of the manual download manager.
 2. Add discovery ranking, history, and category browsing refinements.
 3. Add operation-level conflict handling for concurrent queue edits.
 4. Schedule opportunistic refresh with Android WorkManager and iOS BackgroundTasks.

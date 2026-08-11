@@ -18,7 +18,7 @@ const skipSilenceDiagnosticEvent = 'skipSilenceDiagnostic';
 const setSkipSilenceAction = 'setSkipSilence';
 const setSleepTimerAction = 'setSleepTimer';
 
-MediaItem mediaItemForEpisode(EpisodeRecord episode) {
+MediaItem mediaItemForEpisode(EpisodeRecord episode, {String? localPath}) {
   final artwork = Uri.tryParse(episode.artworkUrl.trim());
   return MediaItem(
     id: 'podpine:episode:${episode.id}',
@@ -34,7 +34,9 @@ MediaItem mediaItemForEpisode(EpisodeRecord episode) {
     displayDescription: episode.description,
     extras: <String, dynamic>{
       episodeIdExtra: episode.id,
-      audioUrlExtra: episode.audioUrl,
+      audioUrlExtra: localPath == null
+          ? episode.audioUrl
+          : Uri.file(localPath).toString(),
     },
   );
 }

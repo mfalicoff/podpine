@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'app_controller.dart';
 import 'core/database/app_database.dart';
+import 'core/downloads/download_manager.dart';
 import 'core/storage/credential_store.dart';
 import 'features/player/player_controller.dart';
 
@@ -35,7 +38,21 @@ final podcastsProvider = StreamProvider<List<PodcastRecord>>(
 );
 
 final episodesProvider = StreamProvider<List<EpisodeRecord>>(
-  (ref) => ref.watch(databaseProvider).watchRecentEpisodes(),
+  (ref) => ref.watch(databaseProvider).watchAllEpisodes(),
+);
+
+final downloadManagerProvider = ChangeNotifierProvider<DownloadManager>((ref) {
+  final app = ref.watch(appControllerProvider);
+  final manager = DownloadManager(
+    ref.watch(databaseProvider),
+    onDownloadedChanged: app.setDownloaded,
+  );
+  unawaited(manager.initialize());
+  return manager;
+});
+
+final downloadJobsProvider = StreamProvider<List<DownloadJobRecord>>(
+  (ref) => ref.watch(databaseProvider).watchDownloadJobs(),
 );
 
 final queueProvider = StreamProvider<List<EpisodeRecord>>(

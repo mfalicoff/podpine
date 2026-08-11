@@ -136,7 +136,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
       _episodesById
         ..clear()
         ..addEntries(playableQueue.map((item) => MapEntry(item.id, item)));
-      final queue = playableQueue.map(mediaItemForEpisode).toList();
+      final queue = await _mediaItems(playableQueue);
       final activeIndex = playableQueue.indexWhere(
         (item) => item.id == episode.id,
       );
@@ -379,14 +379,24 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
       );
     if (listEquals(ids, _playbackQueueIds)) return;
     try {
-      await _handler.updateQueue(
-        playableQueue.map(mediaItemForEpisode).toList(),
-      );
+      await _handler.updateQueue(await _mediaItems(playableQueue));
       _playbackQueueIds = ids;
     } catch (_) {
       // Playback continues on its existing queue. A later database emission
       // retries the update without replacing the active episode in the UI.
     }
+  }
+
+  Future<List<MediaItem>> _mediaItems(List<EpisodeRecord> episodes) async {
+    final paths = await database.completedDownloadPaths(
+      episodes.map((episode) => episode.id),
+    );
+    return episodes
+        .map(
+          (episode) =>
+              mediaItemForEpisode(episode, localPath: paths[episode.id]),
+        )
+        .toList(growable: false);
   }
 
   void _onCustomEvent(dynamic event) {

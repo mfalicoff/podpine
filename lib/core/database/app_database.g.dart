@@ -1933,6 +1933,716 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
   }
 }
 
+class $DownloadJobRowsTable extends DownloadJobRows
+    with TableInfo<$DownloadJobRowsTable, DownloadJobRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadJobRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _episodeIdMeta = const VerificationMeta(
+    'episodeId',
+  );
+  @override
+  late final GeneratedColumn<int> episodeId = GeneratedColumn<int>(
+    'episode_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES episode_rows (id)',
+    ),
+  );
+  static const VerificationMeta _sourceUrlMeta = const VerificationMeta(
+    'sourceUrl',
+  );
+  @override
+  late final GeneratedColumn<String> sourceUrl = GeneratedColumn<String>(
+    'source_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _filePathMeta = const VerificationMeta(
+    'filePath',
+  );
+  @override
+  late final GeneratedColumn<String> filePath = GeneratedColumn<String>(
+    'file_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _partialPathMeta = const VerificationMeta(
+    'partialPath',
+  );
+  @override
+  late final GeneratedColumn<String> partialPath = GeneratedColumn<String>(
+    'partial_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bytesDownloadedMeta = const VerificationMeta(
+    'bytesDownloaded',
+  );
+  @override
+  late final GeneratedColumn<int> bytesDownloaded = GeneratedColumn<int>(
+    'bytes_downloaded',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _totalBytesMeta = const VerificationMeta(
+    'totalBytes',
+  );
+  @override
+  late final GeneratedColumn<int> totalBytes = GeneratedColumn<int>(
+    'total_bytes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _etagMeta = const VerificationMeta('etag');
+  @override
+  late final GeneratedColumn<String> etag = GeneratedColumn<String>(
+    'etag',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lastModifiedMeta = const VerificationMeta(
+    'lastModified',
+  );
+  @override
+  late final GeneratedColumn<String> lastModified = GeneratedColumn<String>(
+    'last_modified',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _errorMeta = const VerificationMeta('error');
+  @override
+  late final GeneratedColumn<String> error = GeneratedColumn<String>(
+    'error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    episodeId,
+    sourceUrl,
+    filePath,
+    partialPath,
+    state,
+    bytesDownloaded,
+    totalBytes,
+    etag,
+    lastModified,
+    error,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'download_job_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DownloadJobRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('episode_id')) {
+      context.handle(
+        _episodeIdMeta,
+        episodeId.isAcceptableOrUnknown(data['episode_id']!, _episodeIdMeta),
+      );
+    }
+    if (data.containsKey('source_url')) {
+      context.handle(
+        _sourceUrlMeta,
+        sourceUrl.isAcceptableOrUnknown(data['source_url']!, _sourceUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceUrlMeta);
+    }
+    if (data.containsKey('file_path')) {
+      context.handle(
+        _filePathMeta,
+        filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_filePathMeta);
+    }
+    if (data.containsKey('partial_path')) {
+      context.handle(
+        _partialPathMeta,
+        partialPath.isAcceptableOrUnknown(
+          data['partial_path']!,
+          _partialPathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_partialPathMeta);
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    if (data.containsKey('bytes_downloaded')) {
+      context.handle(
+        _bytesDownloadedMeta,
+        bytesDownloaded.isAcceptableOrUnknown(
+          data['bytes_downloaded']!,
+          _bytesDownloadedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_bytes')) {
+      context.handle(
+        _totalBytesMeta,
+        totalBytes.isAcceptableOrUnknown(data['total_bytes']!, _totalBytesMeta),
+      );
+    }
+    if (data.containsKey('etag')) {
+      context.handle(
+        _etagMeta,
+        etag.isAcceptableOrUnknown(data['etag']!, _etagMeta),
+      );
+    }
+    if (data.containsKey('last_modified')) {
+      context.handle(
+        _lastModifiedMeta,
+        lastModified.isAcceptableOrUnknown(
+          data['last_modified']!,
+          _lastModifiedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('error')) {
+      context.handle(
+        _errorMeta,
+        error.isAcceptableOrUnknown(data['error']!, _errorMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {episodeId};
+  @override
+  DownloadJobRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadJobRecord(
+      episodeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}episode_id'],
+      )!,
+      sourceUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_url'],
+      )!,
+      filePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_path'],
+      )!,
+      partialPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}partial_path'],
+      )!,
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      bytesDownloaded: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}bytes_downloaded'],
+      )!,
+      totalBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_bytes'],
+      ),
+      etag: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}etag'],
+      ),
+      lastModified: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_modified'],
+      ),
+      error: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}error'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DownloadJobRowsTable createAlias(String alias) {
+    return $DownloadJobRowsTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadJobRecord extends DataClass
+    implements Insertable<DownloadJobRecord> {
+  final int episodeId;
+  final String sourceUrl;
+  final String filePath;
+  final String partialPath;
+  final String state;
+  final int bytesDownloaded;
+  final int? totalBytes;
+  final String? etag;
+  final String? lastModified;
+  final String? error;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const DownloadJobRecord({
+    required this.episodeId,
+    required this.sourceUrl,
+    required this.filePath,
+    required this.partialPath,
+    required this.state,
+    required this.bytesDownloaded,
+    this.totalBytes,
+    this.etag,
+    this.lastModified,
+    this.error,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['episode_id'] = Variable<int>(episodeId);
+    map['source_url'] = Variable<String>(sourceUrl);
+    map['file_path'] = Variable<String>(filePath);
+    map['partial_path'] = Variable<String>(partialPath);
+    map['state'] = Variable<String>(state);
+    map['bytes_downloaded'] = Variable<int>(bytesDownloaded);
+    if (!nullToAbsent || totalBytes != null) {
+      map['total_bytes'] = Variable<int>(totalBytes);
+    }
+    if (!nullToAbsent || etag != null) {
+      map['etag'] = Variable<String>(etag);
+    }
+    if (!nullToAbsent || lastModified != null) {
+      map['last_modified'] = Variable<String>(lastModified);
+    }
+    if (!nullToAbsent || error != null) {
+      map['error'] = Variable<String>(error);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  DownloadJobRowsCompanion toCompanion(bool nullToAbsent) {
+    return DownloadJobRowsCompanion(
+      episodeId: Value(episodeId),
+      sourceUrl: Value(sourceUrl),
+      filePath: Value(filePath),
+      partialPath: Value(partialPath),
+      state: Value(state),
+      bytesDownloaded: Value(bytesDownloaded),
+      totalBytes: totalBytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(totalBytes),
+      etag: etag == null && nullToAbsent ? const Value.absent() : Value(etag),
+      lastModified: lastModified == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastModified),
+      error: error == null && nullToAbsent
+          ? const Value.absent()
+          : Value(error),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory DownloadJobRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadJobRecord(
+      episodeId: serializer.fromJson<int>(json['episodeId']),
+      sourceUrl: serializer.fromJson<String>(json['sourceUrl']),
+      filePath: serializer.fromJson<String>(json['filePath']),
+      partialPath: serializer.fromJson<String>(json['partialPath']),
+      state: serializer.fromJson<String>(json['state']),
+      bytesDownloaded: serializer.fromJson<int>(json['bytesDownloaded']),
+      totalBytes: serializer.fromJson<int?>(json['totalBytes']),
+      etag: serializer.fromJson<String?>(json['etag']),
+      lastModified: serializer.fromJson<String?>(json['lastModified']),
+      error: serializer.fromJson<String?>(json['error']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'episodeId': serializer.toJson<int>(episodeId),
+      'sourceUrl': serializer.toJson<String>(sourceUrl),
+      'filePath': serializer.toJson<String>(filePath),
+      'partialPath': serializer.toJson<String>(partialPath),
+      'state': serializer.toJson<String>(state),
+      'bytesDownloaded': serializer.toJson<int>(bytesDownloaded),
+      'totalBytes': serializer.toJson<int?>(totalBytes),
+      'etag': serializer.toJson<String?>(etag),
+      'lastModified': serializer.toJson<String?>(lastModified),
+      'error': serializer.toJson<String?>(error),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  DownloadJobRecord copyWith({
+    int? episodeId,
+    String? sourceUrl,
+    String? filePath,
+    String? partialPath,
+    String? state,
+    int? bytesDownloaded,
+    Value<int?> totalBytes = const Value.absent(),
+    Value<String?> etag = const Value.absent(),
+    Value<String?> lastModified = const Value.absent(),
+    Value<String?> error = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => DownloadJobRecord(
+    episodeId: episodeId ?? this.episodeId,
+    sourceUrl: sourceUrl ?? this.sourceUrl,
+    filePath: filePath ?? this.filePath,
+    partialPath: partialPath ?? this.partialPath,
+    state: state ?? this.state,
+    bytesDownloaded: bytesDownloaded ?? this.bytesDownloaded,
+    totalBytes: totalBytes.present ? totalBytes.value : this.totalBytes,
+    etag: etag.present ? etag.value : this.etag,
+    lastModified: lastModified.present ? lastModified.value : this.lastModified,
+    error: error.present ? error.value : this.error,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  DownloadJobRecord copyWithCompanion(DownloadJobRowsCompanion data) {
+    return DownloadJobRecord(
+      episodeId: data.episodeId.present ? data.episodeId.value : this.episodeId,
+      sourceUrl: data.sourceUrl.present ? data.sourceUrl.value : this.sourceUrl,
+      filePath: data.filePath.present ? data.filePath.value : this.filePath,
+      partialPath: data.partialPath.present
+          ? data.partialPath.value
+          : this.partialPath,
+      state: data.state.present ? data.state.value : this.state,
+      bytesDownloaded: data.bytesDownloaded.present
+          ? data.bytesDownloaded.value
+          : this.bytesDownloaded,
+      totalBytes: data.totalBytes.present
+          ? data.totalBytes.value
+          : this.totalBytes,
+      etag: data.etag.present ? data.etag.value : this.etag,
+      lastModified: data.lastModified.present
+          ? data.lastModified.value
+          : this.lastModified,
+      error: data.error.present ? data.error.value : this.error,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadJobRecord(')
+          ..write('episodeId: $episodeId, ')
+          ..write('sourceUrl: $sourceUrl, ')
+          ..write('filePath: $filePath, ')
+          ..write('partialPath: $partialPath, ')
+          ..write('state: $state, ')
+          ..write('bytesDownloaded: $bytesDownloaded, ')
+          ..write('totalBytes: $totalBytes, ')
+          ..write('etag: $etag, ')
+          ..write('lastModified: $lastModified, ')
+          ..write('error: $error, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    episodeId,
+    sourceUrl,
+    filePath,
+    partialPath,
+    state,
+    bytesDownloaded,
+    totalBytes,
+    etag,
+    lastModified,
+    error,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadJobRecord &&
+          other.episodeId == this.episodeId &&
+          other.sourceUrl == this.sourceUrl &&
+          other.filePath == this.filePath &&
+          other.partialPath == this.partialPath &&
+          other.state == this.state &&
+          other.bytesDownloaded == this.bytesDownloaded &&
+          other.totalBytes == this.totalBytes &&
+          other.etag == this.etag &&
+          other.lastModified == this.lastModified &&
+          other.error == this.error &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class DownloadJobRowsCompanion extends UpdateCompanion<DownloadJobRecord> {
+  final Value<int> episodeId;
+  final Value<String> sourceUrl;
+  final Value<String> filePath;
+  final Value<String> partialPath;
+  final Value<String> state;
+  final Value<int> bytesDownloaded;
+  final Value<int?> totalBytes;
+  final Value<String?> etag;
+  final Value<String?> lastModified;
+  final Value<String?> error;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const DownloadJobRowsCompanion({
+    this.episodeId = const Value.absent(),
+    this.sourceUrl = const Value.absent(),
+    this.filePath = const Value.absent(),
+    this.partialPath = const Value.absent(),
+    this.state = const Value.absent(),
+    this.bytesDownloaded = const Value.absent(),
+    this.totalBytes = const Value.absent(),
+    this.etag = const Value.absent(),
+    this.lastModified = const Value.absent(),
+    this.error = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  DownloadJobRowsCompanion.insert({
+    this.episodeId = const Value.absent(),
+    required String sourceUrl,
+    required String filePath,
+    required String partialPath,
+    required String state,
+    this.bytesDownloaded = const Value.absent(),
+    this.totalBytes = const Value.absent(),
+    this.etag = const Value.absent(),
+    this.lastModified = const Value.absent(),
+    this.error = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : sourceUrl = Value(sourceUrl),
+       filePath = Value(filePath),
+       partialPath = Value(partialPath),
+       state = Value(state),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<DownloadJobRecord> custom({
+    Expression<int>? episodeId,
+    Expression<String>? sourceUrl,
+    Expression<String>? filePath,
+    Expression<String>? partialPath,
+    Expression<String>? state,
+    Expression<int>? bytesDownloaded,
+    Expression<int>? totalBytes,
+    Expression<String>? etag,
+    Expression<String>? lastModified,
+    Expression<String>? error,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (episodeId != null) 'episode_id': episodeId,
+      if (sourceUrl != null) 'source_url': sourceUrl,
+      if (filePath != null) 'file_path': filePath,
+      if (partialPath != null) 'partial_path': partialPath,
+      if (state != null) 'state': state,
+      if (bytesDownloaded != null) 'bytes_downloaded': bytesDownloaded,
+      if (totalBytes != null) 'total_bytes': totalBytes,
+      if (etag != null) 'etag': etag,
+      if (lastModified != null) 'last_modified': lastModified,
+      if (error != null) 'error': error,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  DownloadJobRowsCompanion copyWith({
+    Value<int>? episodeId,
+    Value<String>? sourceUrl,
+    Value<String>? filePath,
+    Value<String>? partialPath,
+    Value<String>? state,
+    Value<int>? bytesDownloaded,
+    Value<int?>? totalBytes,
+    Value<String?>? etag,
+    Value<String?>? lastModified,
+    Value<String?>? error,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return DownloadJobRowsCompanion(
+      episodeId: episodeId ?? this.episodeId,
+      sourceUrl: sourceUrl ?? this.sourceUrl,
+      filePath: filePath ?? this.filePath,
+      partialPath: partialPath ?? this.partialPath,
+      state: state ?? this.state,
+      bytesDownloaded: bytesDownloaded ?? this.bytesDownloaded,
+      totalBytes: totalBytes ?? this.totalBytes,
+      etag: etag ?? this.etag,
+      lastModified: lastModified ?? this.lastModified,
+      error: error ?? this.error,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (episodeId.present) {
+      map['episode_id'] = Variable<int>(episodeId.value);
+    }
+    if (sourceUrl.present) {
+      map['source_url'] = Variable<String>(sourceUrl.value);
+    }
+    if (filePath.present) {
+      map['file_path'] = Variable<String>(filePath.value);
+    }
+    if (partialPath.present) {
+      map['partial_path'] = Variable<String>(partialPath.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (bytesDownloaded.present) {
+      map['bytes_downloaded'] = Variable<int>(bytesDownloaded.value);
+    }
+    if (totalBytes.present) {
+      map['total_bytes'] = Variable<int>(totalBytes.value);
+    }
+    if (etag.present) {
+      map['etag'] = Variable<String>(etag.value);
+    }
+    if (lastModified.present) {
+      map['last_modified'] = Variable<String>(lastModified.value);
+    }
+    if (error.present) {
+      map['error'] = Variable<String>(error.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadJobRowsCompanion(')
+          ..write('episodeId: $episodeId, ')
+          ..write('sourceUrl: $sourceUrl, ')
+          ..write('filePath: $filePath, ')
+          ..write('partialPath: $partialPath, ')
+          ..write('state: $state, ')
+          ..write('bytesDownloaded: $bytesDownloaded, ')
+          ..write('totalBytes: $totalBytes, ')
+          ..write('etag: $etag, ')
+          ..write('lastModified: $lastModified, ')
+          ..write('error: $error, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $QueueRowsTable extends QueueRows
     with TableInfo<$QueueRowsTable, QueueRecord> {
   @override
@@ -3929,6 +4639,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DiscoveryCacheRowsTable discoveryCacheRows =
       $DiscoveryCacheRowsTable(this);
   late final $EpisodeRowsTable episodeRows = $EpisodeRowsTable(this);
+  late final $DownloadJobRowsTable downloadJobRows = $DownloadJobRowsTable(
+    this,
+  );
   late final $QueueRowsTable queueRows = $QueueRowsTable(this);
   late final $InboxRowsTable inboxRows = $InboxRowsTable(this);
   late final $InboxPreferenceRowsTable inboxPreferenceRows =
@@ -3948,6 +4661,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     podcastRows,
     discoveryCacheRows,
     episodeRows,
+    downloadJobRows,
     queueRows,
     inboxRows,
     inboxPreferenceRows,
@@ -4882,6 +5596,26 @@ final class $$EpisodeRowsTableReferences
     );
   }
 
+  static MultiTypedResultKey<$DownloadJobRowsTable, List<DownloadJobRecord>>
+  _downloadJobRowsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.downloadJobRows,
+    aliasName: 'episode_rows__id__download_job_rows__episode_id',
+  );
+
+  $$DownloadJobRowsTableProcessedTableManager get downloadJobRowsRefs {
+    final manager = $$DownloadJobRowsTableTableManager(
+      $_db,
+      $_db.downloadJobRows,
+    ).filter((f) => f.episodeId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _downloadJobRowsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<$QueueRowsTable, List<QueueRecord>>
   _queueRowsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
     db.queueRows,
@@ -5024,6 +5758,31 @@ class $$EpisodeRowsTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> downloadJobRowsRefs(
+    Expression<bool> Function($$DownloadJobRowsTableFilterComposer f) f,
+  ) {
+    final $$DownloadJobRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.downloadJobRows,
+      getReferencedColumn: (t) => t.episodeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DownloadJobRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.downloadJobRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 
   Expression<bool> queueRowsRefs(
@@ -5278,6 +6037,31 @@ class $$EpisodeRowsTableAnnotationComposer
     return composer;
   }
 
+  Expression<T> downloadJobRowsRefs<T extends Object>(
+    Expression<T> Function($$DownloadJobRowsTableAnnotationComposer a) f,
+  ) {
+    final $$DownloadJobRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.downloadJobRows,
+      getReferencedColumn: (t) => t.episodeId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DownloadJobRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.downloadJobRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> queueRowsRefs<T extends Object>(
     Expression<T> Function($$QueueRowsTableAnnotationComposer a) f,
   ) {
@@ -5344,6 +6128,7 @@ class $$EpisodeRowsTableTableManager
           EpisodeRecord,
           PrefetchHooks Function({
             bool podcastId,
+            bool downloadJobRowsRefs,
             bool queueRowsRefs,
             bool inboxRowsRefs,
           })
@@ -5442,12 +6227,14 @@ class $$EpisodeRowsTableTableManager
           prefetchHooksCallback:
               ({
                 podcastId = false,
+                downloadJobRowsRefs = false,
                 queueRowsRefs = false,
                 inboxRowsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
+                    if (downloadJobRowsRefs) db.downloadJobRows,
                     if (queueRowsRefs) db.queueRows,
                     if (inboxRowsRefs) db.inboxRows,
                   ],
@@ -5487,6 +6274,27 @@ class $$EpisodeRowsTableTableManager
                       },
                   getPrefetchedDataCallback: (items) async {
                     return [
+                      if (downloadJobRowsRefs)
+                        await $_getPrefetchedData<
+                          EpisodeRecord,
+                          $EpisodeRowsTable,
+                          DownloadJobRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$EpisodeRowsTableReferences
+                              ._downloadJobRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$EpisodeRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).downloadJobRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.episodeId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                       if (queueRowsRefs)
                         await $_getPrefetchedData<
                           EpisodeRecord,
@@ -5551,9 +6359,475 @@ typedef $$EpisodeRowsTableProcessedTableManager =
       EpisodeRecord,
       PrefetchHooks Function({
         bool podcastId,
+        bool downloadJobRowsRefs,
         bool queueRowsRefs,
         bool inboxRowsRefs,
       })
+    >;
+typedef $$DownloadJobRowsTableCreateCompanionBuilder =
+    DownloadJobRowsCompanion Function({
+      Value<int> episodeId,
+      required String sourceUrl,
+      required String filePath,
+      required String partialPath,
+      required String state,
+      Value<int> bytesDownloaded,
+      Value<int?> totalBytes,
+      Value<String?> etag,
+      Value<String?> lastModified,
+      Value<String?> error,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$DownloadJobRowsTableUpdateCompanionBuilder =
+    DownloadJobRowsCompanion Function({
+      Value<int> episodeId,
+      Value<String> sourceUrl,
+      Value<String> filePath,
+      Value<String> partialPath,
+      Value<String> state,
+      Value<int> bytesDownloaded,
+      Value<int?> totalBytes,
+      Value<String?> etag,
+      Value<String?> lastModified,
+      Value<String?> error,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$DownloadJobRowsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $DownloadJobRowsTable,
+          DownloadJobRecord
+        > {
+  $$DownloadJobRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $EpisodeRowsTable _episodeIdTable(_$AppDatabase db) => db.episodeRows
+      .createAlias('download_job_rows__episode_id__episode_rows__id');
+
+  $$EpisodeRowsTableProcessedTableManager get episodeId {
+    final $_column = $_itemColumn<int>('episode_id')!;
+
+    final manager = $$EpisodeRowsTableTableManager(
+      $_db,
+      $_db.episodeRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_episodeIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$DownloadJobRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $DownloadJobRowsTable> {
+  $$DownloadJobRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get sourceUrl => $composableBuilder(
+    column: $table.sourceUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get partialPath => $composableBuilder(
+    column: $table.partialPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get bytesDownloaded => $composableBuilder(
+    column: $table.bytesDownloaded,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalBytes => $composableBuilder(
+    column: $table.totalBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get etag => $composableBuilder(
+    column: $table.etag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastModified => $composableBuilder(
+    column: $table.lastModified,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get error => $composableBuilder(
+    column: $table.error,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$EpisodeRowsTableFilterComposer get episodeId {
+    final $$EpisodeRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.episodeId,
+      referencedTable: $db.episodeRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EpisodeRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.episodeRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DownloadJobRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $DownloadJobRowsTable> {
+  $$DownloadJobRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get sourceUrl => $composableBuilder(
+    column: $table.sourceUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get partialPath => $composableBuilder(
+    column: $table.partialPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get bytesDownloaded => $composableBuilder(
+    column: $table.bytesDownloaded,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalBytes => $composableBuilder(
+    column: $table.totalBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get etag => $composableBuilder(
+    column: $table.etag,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastModified => $composableBuilder(
+    column: $table.lastModified,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get error => $composableBuilder(
+    column: $table.error,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$EpisodeRowsTableOrderingComposer get episodeId {
+    final $$EpisodeRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.episodeId,
+      referencedTable: $db.episodeRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EpisodeRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.episodeRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DownloadJobRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DownloadJobRowsTable> {
+  $$DownloadJobRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get sourceUrl =>
+      $composableBuilder(column: $table.sourceUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => column);
+
+  GeneratedColumn<String> get partialPath => $composableBuilder(
+    column: $table.partialPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<int> get bytesDownloaded => $composableBuilder(
+    column: $table.bytesDownloaded,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalBytes => $composableBuilder(
+    column: $table.totalBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get etag =>
+      $composableBuilder(column: $table.etag, builder: (column) => column);
+
+  GeneratedColumn<String> get lastModified => $composableBuilder(
+    column: $table.lastModified,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get error =>
+      $composableBuilder(column: $table.error, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$EpisodeRowsTableAnnotationComposer get episodeId {
+    final $$EpisodeRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.episodeId,
+      referencedTable: $db.episodeRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$EpisodeRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.episodeRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$DownloadJobRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $DownloadJobRowsTable,
+          DownloadJobRecord,
+          $$DownloadJobRowsTableFilterComposer,
+          $$DownloadJobRowsTableOrderingComposer,
+          $$DownloadJobRowsTableAnnotationComposer,
+          $$DownloadJobRowsTableCreateCompanionBuilder,
+          $$DownloadJobRowsTableUpdateCompanionBuilder,
+          (DownloadJobRecord, $$DownloadJobRowsTableReferences),
+          DownloadJobRecord,
+          PrefetchHooks Function({bool episodeId})
+        > {
+  $$DownloadJobRowsTableTableManager(
+    _$AppDatabase db,
+    $DownloadJobRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadJobRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DownloadJobRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DownloadJobRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> episodeId = const Value.absent(),
+                Value<String> sourceUrl = const Value.absent(),
+                Value<String> filePath = const Value.absent(),
+                Value<String> partialPath = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<int> bytesDownloaded = const Value.absent(),
+                Value<int?> totalBytes = const Value.absent(),
+                Value<String?> etag = const Value.absent(),
+                Value<String?> lastModified = const Value.absent(),
+                Value<String?> error = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => DownloadJobRowsCompanion(
+                episodeId: episodeId,
+                sourceUrl: sourceUrl,
+                filePath: filePath,
+                partialPath: partialPath,
+                state: state,
+                bytesDownloaded: bytesDownloaded,
+                totalBytes: totalBytes,
+                etag: etag,
+                lastModified: lastModified,
+                error: error,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> episodeId = const Value.absent(),
+                required String sourceUrl,
+                required String filePath,
+                required String partialPath,
+                required String state,
+                Value<int> bytesDownloaded = const Value.absent(),
+                Value<int?> totalBytes = const Value.absent(),
+                Value<String?> etag = const Value.absent(),
+                Value<String?> lastModified = const Value.absent(),
+                Value<String?> error = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => DownloadJobRowsCompanion.insert(
+                episodeId: episodeId,
+                sourceUrl: sourceUrl,
+                filePath: filePath,
+                partialPath: partialPath,
+                state: state,
+                bytesDownloaded: bytesDownloaded,
+                totalBytes: totalBytes,
+                etag: etag,
+                lastModified: lastModified,
+                error: error,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$DownloadJobRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({episodeId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (episodeId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.episodeId,
+                                referencedTable:
+                                    $$DownloadJobRowsTableReferences
+                                        ._episodeIdTable(db),
+                                referencedColumn:
+                                    $$DownloadJobRowsTableReferences
+                                        ._episodeIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$DownloadJobRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $DownloadJobRowsTable,
+      DownloadJobRecord,
+      $$DownloadJobRowsTableFilterComposer,
+      $$DownloadJobRowsTableOrderingComposer,
+      $$DownloadJobRowsTableAnnotationComposer,
+      $$DownloadJobRowsTableCreateCompanionBuilder,
+      $$DownloadJobRowsTableUpdateCompanionBuilder,
+      (DownloadJobRecord, $$DownloadJobRowsTableReferences),
+      DownloadJobRecord,
+      PrefetchHooks Function({bool episodeId})
     >;
 typedef $$QueueRowsTableCreateCompanionBuilder =
     QueueRowsCompanion Function({
@@ -7292,6 +8566,8 @@ class $AppDatabaseManager {
       $$DiscoveryCacheRowsTableTableManager(_db, _db.discoveryCacheRows);
   $$EpisodeRowsTableTableManager get episodeRows =>
       $$EpisodeRowsTableTableManager(_db, _db.episodeRows);
+  $$DownloadJobRowsTableTableManager get downloadJobRows =>
+      $$DownloadJobRowsTableTableManager(_db, _db.downloadJobRows);
   $$QueueRowsTableTableManager get queueRows =>
       $$QueueRowsTableTableManager(_db, _db.queueRows);
   $$InboxRowsTableTableManager get inboxRows =>

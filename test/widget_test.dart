@@ -62,7 +62,7 @@ void main() {
       chaptersJson: '[]',
       updatedAt: DateTime.utc(2026, 8, 10),
     );
-    await player.playEpisode(episode);
+    player.current = episode;
 
     await tester.pumpWidget(
       ProviderScope(
@@ -73,7 +73,8 @@ void main() {
       ),
     );
     await tester.tap(find.text('Playing episode').first);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Show notes'), findsOneWidget);
     expect(find.text('These are the show notes & links.'), findsOneWidget);
