@@ -3764,6 +3764,62 @@ class $SyncMutationsTable extends SyncMutations
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  @override
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('pending'),
+  );
+  static const VerificationMeta _nextAttemptAtMeta = const VerificationMeta(
+    'nextAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> nextAttemptAt =
+      GeneratedColumn<DateTime>(
+        'next_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _lastAttemptAtMeta = const VerificationMeta(
+    'lastAttemptAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptAt =
+      GeneratedColumn<DateTime>(
+        'last_attempt_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _failedAtMeta = const VerificationMeta(
+    'failedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> failedAt = GeneratedColumn<DateTime>(
+    'failed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3772,6 +3828,11 @@ class $SyncMutationsTable extends SyncMutations
     payload,
     createdAt,
     attempts,
+    state,
+    nextAttemptAt,
+    lastAttemptAt,
+    lastError,
+    failedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3824,6 +3885,42 @@ class $SyncMutationsTable extends SyncMutations
         attempts.isAcceptableOrUnknown(data['attempts']!, _attemptsMeta),
       );
     }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    }
+    if (data.containsKey('next_attempt_at')) {
+      context.handle(
+        _nextAttemptAtMeta,
+        nextAttemptAt.isAcceptableOrUnknown(
+          data['next_attempt_at']!,
+          _nextAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_attempt_at')) {
+      context.handle(
+        _lastAttemptAtMeta,
+        lastAttemptAt.isAcceptableOrUnknown(
+          data['last_attempt_at']!,
+          _lastAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
+    if (data.containsKey('failed_at')) {
+      context.handle(
+        _failedAtMeta,
+        failedAt.isAcceptableOrUnknown(data['failed_at']!, _failedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -3857,6 +3954,26 @@ class $SyncMutationsTable extends SyncMutations
         DriftSqlType.int,
         data['${effectivePrefix}attempts'],
       )!,
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      nextAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}next_attempt_at'],
+      ),
+      lastAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}last_attempt_at'],
+      ),
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
+      failedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}failed_at'],
+      ),
     );
   }
 
@@ -3873,6 +3990,11 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
   final String payload;
   final DateTime createdAt;
   final int attempts;
+  final String state;
+  final DateTime? nextAttemptAt;
+  final DateTime? lastAttemptAt;
+  final String? lastError;
+  final DateTime? failedAt;
   const PendingMutation({
     required this.id,
     required this.type,
@@ -3880,6 +4002,11 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     required this.payload,
     required this.createdAt,
     required this.attempts,
+    required this.state,
+    this.nextAttemptAt,
+    this.lastAttemptAt,
+    this.lastError,
+    this.failedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3892,6 +4019,19 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     map['payload'] = Variable<String>(payload);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['attempts'] = Variable<int>(attempts);
+    map['state'] = Variable<String>(state);
+    if (!nullToAbsent || nextAttemptAt != null) {
+      map['next_attempt_at'] = Variable<DateTime>(nextAttemptAt);
+    }
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    if (!nullToAbsent || failedAt != null) {
+      map['failed_at'] = Variable<DateTime>(failedAt);
+    }
     return map;
   }
 
@@ -3905,6 +4045,19 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       payload: Value(payload),
       createdAt: Value(createdAt),
       attempts: Value(attempts),
+      state: Value(state),
+      nextAttemptAt: nextAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextAttemptAt),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      failedAt: failedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(failedAt),
     );
   }
 
@@ -3920,6 +4073,11 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       payload: serializer.fromJson<String>(json['payload']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       attempts: serializer.fromJson<int>(json['attempts']),
+      state: serializer.fromJson<String>(json['state']),
+      nextAttemptAt: serializer.fromJson<DateTime?>(json['nextAttemptAt']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      failedAt: serializer.fromJson<DateTime?>(json['failedAt']),
     );
   }
   @override
@@ -3932,6 +4090,11 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       'payload': serializer.toJson<String>(payload),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'attempts': serializer.toJson<int>(attempts),
+      'state': serializer.toJson<String>(state),
+      'nextAttemptAt': serializer.toJson<DateTime?>(nextAttemptAt),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+      'lastError': serializer.toJson<String?>(lastError),
+      'failedAt': serializer.toJson<DateTime?>(failedAt),
     };
   }
 
@@ -3942,6 +4105,11 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     String? payload,
     DateTime? createdAt,
     int? attempts,
+    String? state,
+    Value<DateTime?> nextAttemptAt = const Value.absent(),
+    Value<DateTime?> lastAttemptAt = const Value.absent(),
+    Value<String?> lastError = const Value.absent(),
+    Value<DateTime?> failedAt = const Value.absent(),
   }) => PendingMutation(
     id: id ?? this.id,
     type: type ?? this.type,
@@ -3949,6 +4117,15 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     payload: payload ?? this.payload,
     createdAt: createdAt ?? this.createdAt,
     attempts: attempts ?? this.attempts,
+    state: state ?? this.state,
+    nextAttemptAt: nextAttemptAt.present
+        ? nextAttemptAt.value
+        : this.nextAttemptAt,
+    lastAttemptAt: lastAttemptAt.present
+        ? lastAttemptAt.value
+        : this.lastAttemptAt,
+    lastError: lastError.present ? lastError.value : this.lastError,
+    failedAt: failedAt.present ? failedAt.value : this.failedAt,
   );
   PendingMutation copyWithCompanion(SyncMutationsCompanion data) {
     return PendingMutation(
@@ -3958,6 +4135,15 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       payload: data.payload.present ? data.payload.value : this.payload,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       attempts: data.attempts.present ? data.attempts.value : this.attempts,
+      state: data.state.present ? data.state.value : this.state,
+      nextAttemptAt: data.nextAttemptAt.present
+          ? data.nextAttemptAt.value
+          : this.nextAttemptAt,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      failedAt: data.failedAt.present ? data.failedAt.value : this.failedAt,
     );
   }
 
@@ -3969,14 +4155,30 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
           ..write('episodeId: $episodeId, ')
           ..write('payload: $payload, ')
           ..write('createdAt: $createdAt, ')
-          ..write('attempts: $attempts')
+          ..write('attempts: $attempts, ')
+          ..write('state: $state, ')
+          ..write('nextAttemptAt: $nextAttemptAt, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('lastError: $lastError, ')
+          ..write('failedAt: $failedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, type, episodeId, payload, createdAt, attempts);
+  int get hashCode => Object.hash(
+    id,
+    type,
+    episodeId,
+    payload,
+    createdAt,
+    attempts,
+    state,
+    nextAttemptAt,
+    lastAttemptAt,
+    lastError,
+    failedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3986,7 +4188,12 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
           other.episodeId == this.episodeId &&
           other.payload == this.payload &&
           other.createdAt == this.createdAt &&
-          other.attempts == this.attempts);
+          other.attempts == this.attempts &&
+          other.state == this.state &&
+          other.nextAttemptAt == this.nextAttemptAt &&
+          other.lastAttemptAt == this.lastAttemptAt &&
+          other.lastError == this.lastError &&
+          other.failedAt == this.failedAt);
 }
 
 class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
@@ -3996,6 +4203,11 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
   final Value<String> payload;
   final Value<DateTime> createdAt;
   final Value<int> attempts;
+  final Value<String> state;
+  final Value<DateTime?> nextAttemptAt;
+  final Value<DateTime?> lastAttemptAt;
+  final Value<String?> lastError;
+  final Value<DateTime?> failedAt;
   final Value<int> rowid;
   const SyncMutationsCompanion({
     this.id = const Value.absent(),
@@ -4004,6 +4216,11 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
     this.payload = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.attempts = const Value.absent(),
+    this.state = const Value.absent(),
+    this.nextAttemptAt = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.failedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SyncMutationsCompanion.insert({
@@ -4013,6 +4230,11 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
     this.payload = const Value.absent(),
     required DateTime createdAt,
     this.attempts = const Value.absent(),
+    this.state = const Value.absent(),
+    this.nextAttemptAt = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.failedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        type = Value(type),
@@ -4024,6 +4246,11 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
     Expression<String>? payload,
     Expression<DateTime>? createdAt,
     Expression<int>? attempts,
+    Expression<String>? state,
+    Expression<DateTime>? nextAttemptAt,
+    Expression<DateTime>? lastAttemptAt,
+    Expression<String>? lastError,
+    Expression<DateTime>? failedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4033,6 +4260,11 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
       if (payload != null) 'payload': payload,
       if (createdAt != null) 'created_at': createdAt,
       if (attempts != null) 'attempts': attempts,
+      if (state != null) 'state': state,
+      if (nextAttemptAt != null) 'next_attempt_at': nextAttemptAt,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (lastError != null) 'last_error': lastError,
+      if (failedAt != null) 'failed_at': failedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4044,6 +4276,11 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
     Value<String>? payload,
     Value<DateTime>? createdAt,
     Value<int>? attempts,
+    Value<String>? state,
+    Value<DateTime?>? nextAttemptAt,
+    Value<DateTime?>? lastAttemptAt,
+    Value<String?>? lastError,
+    Value<DateTime?>? failedAt,
     Value<int>? rowid,
   }) {
     return SyncMutationsCompanion(
@@ -4053,6 +4290,11 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
       payload: payload ?? this.payload,
       createdAt: createdAt ?? this.createdAt,
       attempts: attempts ?? this.attempts,
+      state: state ?? this.state,
+      nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      lastError: lastError ?? this.lastError,
+      failedAt: failedAt ?? this.failedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4078,6 +4320,21 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
     if (attempts.present) {
       map['attempts'] = Variable<int>(attempts.value);
     }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (nextAttemptAt.present) {
+      map['next_attempt_at'] = Variable<DateTime>(nextAttemptAt.value);
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (failedAt.present) {
+      map['failed_at'] = Variable<DateTime>(failedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4093,6 +4350,11 @@ class SyncMutationsCompanion extends UpdateCompanion<PendingMutation> {
           ..write('payload: $payload, ')
           ..write('createdAt: $createdAt, ')
           ..write('attempts: $attempts, ')
+          ..write('state: $state, ')
+          ..write('nextAttemptAt: $nextAttemptAt, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('lastError: $lastError, ')
+          ..write('failedAt: $failedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7863,6 +8125,11 @@ typedef $$SyncMutationsTableCreateCompanionBuilder =
       Value<String> payload,
       required DateTime createdAt,
       Value<int> attempts,
+      Value<String> state,
+      Value<DateTime?> nextAttemptAt,
+      Value<DateTime?> lastAttemptAt,
+      Value<String?> lastError,
+      Value<DateTime?> failedAt,
       Value<int> rowid,
     });
 typedef $$SyncMutationsTableUpdateCompanionBuilder =
@@ -7873,6 +8140,11 @@ typedef $$SyncMutationsTableUpdateCompanionBuilder =
       Value<String> payload,
       Value<DateTime> createdAt,
       Value<int> attempts,
+      Value<String> state,
+      Value<DateTime?> nextAttemptAt,
+      Value<DateTime?> lastAttemptAt,
+      Value<String?> lastError,
+      Value<DateTime?> failedAt,
       Value<int> rowid,
     });
 
@@ -7912,6 +8184,31 @@ class $$SyncMutationsTableFilterComposer
 
   ColumnFilters<int> get attempts => $composableBuilder(
     column: $table.attempts,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get failedAt => $composableBuilder(
+    column: $table.failedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -7954,6 +8251,31 @@ class $$SyncMutationsTableOrderingComposer
     column: $table.attempts,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get failedAt => $composableBuilder(
+    column: $table.failedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncMutationsTableAnnotationComposer
@@ -7982,6 +8304,25 @@ class $$SyncMutationsTableAnnotationComposer
 
   GeneratedColumn<int> get attempts =>
       $composableBuilder(column: $table.attempts, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
+    column: $table.lastAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get failedAt =>
+      $composableBuilder(column: $table.failedAt, builder: (column) => column);
 }
 
 class $$SyncMutationsTableTableManager
@@ -8021,6 +8362,11 @@ class $$SyncMutationsTableTableManager
                 Value<String> payload = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> attempts = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<DateTime?> nextAttemptAt = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime?> failedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncMutationsCompanion(
                 id: id,
@@ -8029,6 +8375,11 @@ class $$SyncMutationsTableTableManager
                 payload: payload,
                 createdAt: createdAt,
                 attempts: attempts,
+                state: state,
+                nextAttemptAt: nextAttemptAt,
+                lastAttemptAt: lastAttemptAt,
+                lastError: lastError,
+                failedAt: failedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -8039,6 +8390,11 @@ class $$SyncMutationsTableTableManager
                 Value<String> payload = const Value.absent(),
                 required DateTime createdAt,
                 Value<int> attempts = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<DateTime?> nextAttemptAt = const Value.absent(),
+                Value<DateTime?> lastAttemptAt = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
+                Value<DateTime?> failedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncMutationsCompanion.insert(
                 id: id,
@@ -8047,6 +8403,11 @@ class $$SyncMutationsTableTableManager
                 payload: payload,
                 createdAt: createdAt,
                 attempts: attempts,
+                state: state,
+                nextAttemptAt: nextAttemptAt,
+                lastAttemptAt: lastAttemptAt,
+                lastError: lastError,
+                failedAt: failedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

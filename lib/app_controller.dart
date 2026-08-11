@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
@@ -12,10 +13,16 @@ import 'core/storage/credential_store.dart';
 import 'core/sync/sync_engine.dart';
 
 class AppController extends ChangeNotifier {
-  AppController(this.database, this.credentials);
+  AppController(
+    this.database,
+    this.credentials, {
+    Stream<List<ConnectivityResult>>? connectivityChanges,
+  }) : _connectivityChanges =
+           connectivityChanges ?? Connectivity().onConnectivityChanged;
 
   final AppDatabase database;
   final CredentialStore credentials;
+  final Stream<List<ConnectivityResult>> _connectivityChanges;
 
   bool initialized = false;
   bool connected = false;
@@ -29,9 +36,12 @@ class AppController extends ChangeNotifier {
   int? Function()? activeEpisodeId;
   String? _apiKey;
   Future<void>? _refreshInFlight;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool? _wasOffline;
   static const _uuid = Uuid();
 
   Future<void> initialize() async {
+    _listenForConnectivityRestoration();
     try {
       final stored = await credentials.read();
       if (stored != null) {
@@ -104,13 +114,19 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> refresh({bool silent = false}) async {
+  Future<void> refresh({
+    bool silent = false,
+    bool forceMutationRetry = false,
+  }) async {
     final current = _refreshInFlight;
     if (current != null) {
       await current;
       return;
     }
-    final operation = _performRefresh(silent: silent);
+    final operation = _performRefresh(
+      silent: silent,
+      forceMutationRetry: forceMutationRetry,
+    );
     _refreshInFlight = operation;
     try {
       await operation;
@@ -119,7 +135,10 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> _performRefresh({required bool silent}) async {
+  Future<void> _performRefresh({
+    required bool silent,
+    required bool forceMutationRetry,
+  }) async {
     if (backend == null || userId == null) return;
     if (!silent) {
       busy = true;
@@ -127,13 +146,21 @@ class AppController extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      await SyncEngine(database, backend!, userId!).refresh();
+      await SyncEngine(
+        database,
+        backend!,
+        userId!,
+      ).refresh(forceMutationRetry: forceMutationRetry);
       lastSyncedAt = DateTime.now();
     } catch (exception) {
       if (exception is PinepodsException && exception.statusCode == 403) {
         try {
           await _resolveUserIdentity();
-          await SyncEngine(database, backend!, userId!).refresh();
+          await SyncEngine(
+            database,
+            backend!,
+            userId!,
+          ).refresh(forceMutationRetry: forceMutationRetry);
           lastSyncedAt = DateTime.now();
           error = null;
           return;
@@ -535,6 +562,26 @@ class AppController extends ChangeNotifier {
     _apiKey = null;
     lastSyncedAt = null;
     notifyListeners();
+  }
+
+  void _listenForConnectivityRestoration() {
+    if (_connectivitySubscription != null) return;
+    _connectivitySubscription = _connectivityChanges.listen((results) {
+      final offline =
+          results.isEmpty ||
+          results.every((result) => result == ConnectivityResult.none);
+      final restored = _wasOffline == true && !offline;
+      _wasOffline = offline;
+      if (restored && backend != null && userId != null) {
+        unawaited(refresh(silent: true, forceMutationRetry: true));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_connectivitySubscription?.cancel());
+    super.dispose();
   }
 
   Future<void> _resolveUserIdentity() async {

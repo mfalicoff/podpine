@@ -1,19 +1,35 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:drift/drift.dart';
 
+import '../backend/pinepods_backend.dart';
 import '../backend/podcast_backend.dart';
 import '../database/app_database.dart';
 
 class SyncEngine {
-  const SyncEngine(this.database, this.backend, this.userId);
+  SyncEngine(
+    this.database,
+    this.backend,
+    this.userId, {
+    DateTime Function()? clock,
+    double Function()? jitter,
+  }) : _clock = clock ?? _utcNow,
+       _jitter = jitter ?? Random().nextDouble;
 
   final AppDatabase database;
   final PodcastBackend backend;
   final int userId;
+  final DateTime Function() _clock;
+  final double Function() _jitter;
 
-  Future<void> refresh() async {
-    await _flushPendingMutations();
+  static const maxRetryDelay = Duration(minutes: 5);
+
+  Future<void> refresh({bool forceMutationRetry = false}) async {
+    await flushPendingMutations(ignoreBackoff: forceMutationRetry);
+    if ((await database.pendingMutations()).isNotEmpty) {
+      throw const SyncDeferredException();
+    }
     final results = await Future.wait([
       backend.getSubscriptions(userId),
       backend.getEpisodes(userId),
@@ -110,14 +126,20 @@ class SyncEngine {
     );
   }
 
-  Future<void> _flushPendingMutations() async {
-    for (final mutation in await database.pendingMutations()) {
+  Future<void> flushPendingMutations({bool ignoreBackoff = false}) async {
+    final now = _clock();
+    for (final mutation in await database.readyMutations(
+      now,
+      ignoreBackoff: ignoreBackoff,
+    )) {
       try {
         final payload = jsonDecode(mutation.payload) as Map<String, dynamic>;
         final episodeId = mutation.episodeId;
         switch (mutation.type) {
           case 'position':
-            if (episodeId == null) break;
+            if (episodeId == null) {
+              throw const FormatException('Position mutation has no episode.');
+            }
             await backend.updatePlayback(
               userId,
               episodeId,
@@ -125,7 +147,9 @@ class SyncEngine {
             );
             break;
           case 'completed':
-            if (episodeId == null) break;
+            if (episodeId == null) {
+              throw const FormatException('Completed mutation has no episode.');
+            }
             await backend.markCompleted(
               userId,
               episodeId,
@@ -133,7 +157,9 @@ class SyncEngine {
             );
             break;
           case 'queue_add':
-            if (episodeId == null) break;
+            if (episodeId == null) {
+              throw const FormatException('Queue add mutation has no episode.');
+            }
             await backend.addToQueue(userId, episodeId);
             var addOrder = _episodeIds(payload['order']);
             if (addOrder.isEmpty && payload['next'] == true) {
@@ -147,7 +173,11 @@ class SyncEngine {
             }
             break;
           case 'queue_remove':
-            if (episodeId == null) break;
+            if (episodeId == null) {
+              throw const FormatException(
+                'Queue remove mutation has no episode.',
+              );
+            }
             await backend.removeFromQueue(userId, episodeId);
             break;
           case 'queue_reorder':
@@ -172,7 +202,9 @@ class SyncEngine {
             }
             break;
           case 'downloaded':
-            if (episodeId == null) break;
+            if (episodeId == null) {
+              throw const FormatException('Download mutation has no episode.');
+            }
             final downloadBackend = backend is EpisodeDownloadBackend
                 ? backend as EpisodeDownloadBackend
                 : null;
@@ -198,14 +230,69 @@ class SyncEngine {
           case 'podcast_unsubscribe':
             await backend.unsubscribe(userId, RemotePodcast.fromJson(payload));
             break;
+          default:
+            throw UnsupportedError(
+              'Unknown outbox mutation type: ${mutation.type}',
+            );
         }
         await database.removeMutation(mutation.id);
-      } catch (_) {
-        await database.noteMutationFailure(mutation.id, mutation.attempts);
-        rethrow;
+      } catch (error) {
+        final attemptedAt = _clock();
+        final message = _shortError(error);
+        if (_isPermanent(error)) {
+          await database.markMutationFailed(
+            id: mutation.id,
+            attempts: mutation.attempts,
+            failedAt: attemptedAt,
+            error: message,
+          );
+          continue;
+        }
+        await database.scheduleMutationRetry(
+          id: mutation.id,
+          attempts: mutation.attempts,
+          attemptedAt: attemptedAt,
+          nextAttemptAt: attemptedAt.add(_retryDelay(mutation.attempts)),
+          error: message,
+        );
+        // Preserve outbox order after a transient failure. Later operations
+        // may depend on this mutation having reached the server first.
+        break;
       }
     }
   }
+
+  Duration _retryDelay(int previousAttempts) {
+    final exponent = previousAttempts.clamp(0, 20);
+    final exponentialSeconds = min(1 << exponent, maxRetryDelay.inSeconds);
+    final jitteredMilliseconds = (exponentialSeconds * 1000 * (.5 + _jitter()))
+        .round();
+    return Duration(
+      milliseconds: min(jitteredMilliseconds, maxRetryDelay.inMilliseconds),
+    );
+  }
+
+  static bool _isPermanent(Object error) {
+    if (error is UnsupportedError ||
+        error is FormatException ||
+        error is TypeError) {
+      return true;
+    }
+    if (error is! PinepodsException || error.statusCode == null) return false;
+    final status = error.statusCode!;
+    return status >= 400 &&
+        status < 500 &&
+        status != 408 &&
+        status != 425 &&
+        status != 429;
+  }
+
+  static String _shortError(Object error) {
+    final message = error.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
+    return message.length <= 500 ? message : '${message.substring(0, 497)}...';
+  }
+
+  static DateTime _utcNow() => DateTime.now().toUtc();
 
   static List<int> _episodeIds(Object? value) => (value as List? ?? const [])
       .map((id) => id is int ? id : int.tryParse('$id'))
@@ -227,4 +314,11 @@ class SyncEngine {
         explicit: Value(podcast.explicit),
         podcastIndexId: Value(podcast.podcastIndexId),
       );
+}
+
+class SyncDeferredException implements Exception {
+  const SyncDeferredException();
+
+  @override
+  String toString() => 'Outbox retry is scheduled for a later time.';
 }

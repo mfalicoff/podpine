@@ -126,6 +126,11 @@ class SyncMutations extends Table {
   TextColumn get payload => text().withDefault(const Constant('{}'))();
   DateTimeColumn get createdAt => dateTime()();
   IntColumn get attempts => integer().withDefault(const Constant(0))();
+  TextColumn get state => text().withDefault(const Constant('pending'))();
+  DateTimeColumn get nextAttemptAt => dateTime().nullable()();
+  DateTimeColumn get lastAttemptAt => dateTime().nullable()();
+  TextColumn get lastError => text().nullable()();
+  DateTimeColumn get failedAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -180,7 +185,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -221,6 +226,13 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5) {
         await migrator.createTable(downloadJobRows);
+      }
+      if (from < 6) {
+        await migrator.addColumn(syncMutations, syncMutations.state);
+        await migrator.addColumn(syncMutations, syncMutations.nextAttemptAt);
+        await migrator.addColumn(syncMutations, syncMutations.lastAttemptAt);
+        await migrator.addColumn(syncMutations, syncMutations.lastError);
+        await migrator.addColumn(syncMutations, syncMutations.failedAt);
       }
     },
   );
@@ -517,20 +529,110 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  Future<List<PendingMutation>> pendingMutations() => (select(
-    syncMutations,
-  )..orderBy([(row) => OrderingTerm.asc(row.createdAt)])).get();
+  Future<List<PendingMutation>> pendingMutations() =>
+      (select(syncMutations)
+            ..where((row) => row.state.equals('pending'))
+            ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
+          .get();
 
-  Future<void> enqueueMutation(SyncMutationsCompanion mutation) =>
-      into(syncMutations).insert(mutation);
+  Future<List<PendingMutation>> readyMutations(
+    DateTime now, {
+    bool ignoreBackoff = false,
+  }) =>
+      (select(syncMutations)
+            ..where(
+              (row) =>
+                  row.state.equals('pending') &
+                  (ignoreBackoff
+                      ? const Constant(true)
+                      : row.nextAttemptAt.isNull() |
+                            row.nextAttemptAt.isSmallerOrEqualValue(now)),
+            )
+            ..orderBy([(row) => OrderingTerm.asc(row.createdAt)]))
+          .get();
+
+  Future<List<PendingMutation>> failedMutations() =>
+      (select(syncMutations)
+            ..where((row) => row.state.equals('failed'))
+            ..orderBy([(row) => OrderingTerm.desc(row.failedAt)]))
+          .get();
+
+  Stream<List<PendingMutation>> watchOutboxMutations() => (select(
+    syncMutations,
+  )..orderBy([(row) => OrderingTerm.asc(row.createdAt)])).watch();
+
+  Future<void> enqueueMutation(SyncMutationsCompanion mutation) async {
+    final type = mutation.type.value;
+    final episodeId = mutation.episodeId.value;
+    await transaction(() async {
+      Expression<bool> sameEpisode(SyncMutations row) => episodeId == null
+          ? row.episodeId.isNull()
+          : row.episodeId.equals(episodeId);
+
+      if ({'position', 'completed', 'downloaded'}.contains(type)) {
+        await (delete(
+          syncMutations,
+        )..where((row) => row.type.equals(type) & sameEpisode(row))).go();
+      } else if (type == 'queue_clear') {
+        await (delete(
+          syncMutations,
+        )..where((row) => row.type.like('queue_%'))).go();
+      } else if (type == 'queue_reorder') {
+        await (delete(
+          syncMutations,
+        )..where((row) => row.type.equals('queue_reorder'))).go();
+      } else if (type == 'queue_add' || type == 'queue_remove') {
+        await (delete(syncMutations)..where(
+              (row) =>
+                  row.type.isIn(['queue_add', 'queue_remove']) &
+                  sameEpisode(row),
+            ))
+            .go();
+        if (type == 'queue_add') {
+          // queue_add carries the complete desired order, so an older reorder
+          // can no longer contribute to the final queue state.
+          await (delete(
+            syncMutations,
+          )..where((row) => row.type.equals('queue_reorder'))).go();
+        }
+      }
+      await into(syncMutations).insert(mutation);
+    });
+  }
 
   Future<void> removeMutation(String id) =>
       (delete(syncMutations)..where((row) => row.id.equals(id))).go();
 
-  Future<void> noteMutationFailure(String id, int attempts) =>
-      (update(syncMutations)..where((row) => row.id.equals(id))).write(
-        SyncMutationsCompanion(attempts: Value(attempts + 1)),
-      );
+  Future<void> scheduleMutationRetry({
+    required String id,
+    required int attempts,
+    required DateTime attemptedAt,
+    required DateTime nextAttemptAt,
+    required String error,
+  }) => (update(syncMutations)..where((row) => row.id.equals(id))).write(
+    SyncMutationsCompanion(
+      attempts: Value(attempts + 1),
+      nextAttemptAt: Value(nextAttemptAt),
+      lastAttemptAt: Value(attemptedAt),
+      lastError: Value(error),
+    ),
+  );
+
+  Future<void> markMutationFailed({
+    required String id,
+    required int attempts,
+    required DateTime failedAt,
+    required String error,
+  }) => (update(syncMutations)..where((row) => row.id.equals(id))).write(
+    SyncMutationsCompanion(
+      attempts: Value(attempts + 1),
+      state: const Value('failed'),
+      nextAttemptAt: const Value(null),
+      lastAttemptAt: Value(failedAt),
+      lastError: Value(error),
+      failedAt: Value(failedAt),
+    ),
+  );
 
   Future<PlaybackPreferences> playbackPreferences() async {
     final row = await select(playbackPreferenceRows).getSingleOrNull();

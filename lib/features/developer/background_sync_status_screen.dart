@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/database/app_database.dart';
 import '../../core/sync/background_sync.dart';
 import '../../providers.dart';
 
@@ -27,10 +28,12 @@ class _BackgroundSyncStatusScreenState
     final results = await Future.wait<Object>([
       BackgroundSyncDiagnostics().read(),
       ref.read(databaseProvider).pendingMutations(),
+      ref.read(databaseProvider).failedMutations(),
     ]);
     return _StatusData(
       diagnostics: results[0] as BackgroundSyncSnapshot,
-      pendingMutations: (results[1] as List).length,
+      pendingMutations: results[1] as List<PendingMutation>,
+      failedMutations: results[2] as List<PendingMutation>,
     );
   }
 
@@ -133,7 +136,11 @@ class _BackgroundSyncStatusScreenState
                   children: [
                     _StatusRow(
                       'Pending mutations now',
-                      '${data.pendingMutations}',
+                      '${data.pendingMutations.length}',
+                    ),
+                    _StatusRow(
+                      'Failed mutations now',
+                      '${data.failedMutations.length}',
                     ),
                     _StatusRow(
                       'Last foreground sync',
@@ -146,6 +153,20 @@ class _BackgroundSyncStatusScreenState
                     ),
                   ],
                 ),
+                if (data.pendingMutations.isNotEmpty ||
+                    data.failedMutations.isNotEmpty) ...[
+                  const SizedBox(height: 18),
+                  const _SectionTitle('Mutation outbox'),
+                  _StatusCard(
+                    children: [
+                      for (final mutation in [
+                        ...data.pendingMutations,
+                        ...data.failedMutations,
+                      ])
+                        _MutationRow(mutation),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 18),
                 FilledButton.icon(
                   onPressed: app.busy ? null : _foregroundRefresh,
@@ -172,10 +193,66 @@ class _StatusData {
   const _StatusData({
     required this.diagnostics,
     required this.pendingMutations,
+    required this.failedMutations,
   });
 
   final BackgroundSyncSnapshot diagnostics;
-  final int pendingMutations;
+  final List<PendingMutation> pendingMutations;
+  final List<PendingMutation> failedMutations;
+}
+
+class _MutationRow extends StatelessWidget {
+  const _MutationRow(this.mutation);
+
+  final PendingMutation mutation;
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = mutation.state == 'failed';
+    final subtitle = <String>[
+      if (mutation.episodeId != null) 'episode ${mutation.episodeId}',
+      '${mutation.attempts} attempt${mutation.attempts == 1 ? '' : 's'}',
+      if (!failed && mutation.nextAttemptAt != null)
+        'retry ${_formatDate(mutation.nextAttemptAt)}',
+      if (failed && mutation.failedAt != null)
+        'failed ${_formatDate(mutation.failedAt)}',
+    ].join(' · ');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            failed ? Icons.error_outline : Icons.schedule,
+            color: failed ? Colors.red : Colors.orange,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  mutation.type.replaceAll('_', ' '),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                Text(subtitle, style: const TextStyle(color: Colors.black54)),
+                if (mutation.lastError != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    mutation.lastError!,
+                    style: TextStyle(
+                      color: failed ? Colors.red.shade700 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _StatusBanner extends StatelessWidget {
