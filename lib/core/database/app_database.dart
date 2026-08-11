@@ -6,6 +6,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 import '../../features/player/playback_options.dart';
 import '../../features/inbox/inbox_models.dart';
 import '../sync/queue_sync.dart';
+import '../sync/playback_sync.dart';
 
 part 'app_database.g.dart';
 
@@ -56,6 +57,12 @@ class EpisodeRows extends Table {
   BoolColumn get downloaded => boolean().withDefault(const Constant(false))();
   BoolColumn get isYoutube => boolean().withDefault(const Constant(false))();
   TextColumn get chaptersJson => text().withDefault(const Constant('[]'))();
+  DateTimeColumn get playbackUpdatedAt => dateTime().nullable()();
+  TextColumn get playbackDeviceId => text().nullable()();
+  TextColumn get playbackIntent =>
+      text().withDefault(const Constant('progress'))();
+  TextColumn get playbackMediaIdentity =>
+      text().withDefault(const Constant(''))();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override
@@ -150,6 +157,16 @@ class QueueSyncStateRows extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+@DataClassName('SyncDeviceRecord')
+class SyncDeviceRows extends Table {
+  IntColumn get id => integer().withDefault(const Constant(0))();
+  TextColumn get deviceId => text()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
 @DataClassName('PlaybackPreferencesRecord')
 class PlaybackPreferenceRows extends Table {
   IntColumn get id => integer().withDefault(const Constant(0))();
@@ -182,6 +199,7 @@ class PodcastPlaybackOverrideRows extends Table {
     PodcastInboxOverrideRows,
     SyncMutations,
     QueueSyncStateRows,
+    SyncDeviceRows,
     PlaybackPreferenceRows,
     PodcastPlaybackOverrideRows,
   ],
@@ -200,7 +218,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -251,6 +269,16 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 7) {
         await migrator.createTable(queueSyncStateRows);
+      }
+      if (from < 8) {
+        await migrator.addColumn(episodeRows, episodeRows.playbackUpdatedAt);
+        await migrator.addColumn(episodeRows, episodeRows.playbackDeviceId);
+        await migrator.addColumn(episodeRows, episodeRows.playbackIntent);
+        await migrator.addColumn(
+          episodeRows,
+          episodeRows.playbackMediaIdentity,
+        );
+        await migrator.createTable(syncDeviceRows);
       }
     },
   );
@@ -643,6 +671,20 @@ class AppDatabase extends _$AppDatabase {
   Future<String?> acknowledgedQueueRevision() async =>
       (await select(queueSyncStateRows).getSingleOrNull())?.revision;
 
+  Future<String> ensureSyncDeviceId(String candidate) async {
+    final existing = await select(syncDeviceRows).getSingleOrNull();
+    if (existing != null) return existing.deviceId;
+    await into(syncDeviceRows).insert(
+      SyncDeviceRowsCompanion.insert(
+        id: const Value(0),
+        deviceId: candidate,
+        createdAt: DateTime.now().toUtc(),
+      ),
+      mode: InsertMode.insertOrIgnore,
+    );
+    return (await select(syncDeviceRows).getSingle()).deviceId;
+  }
+
   Future<List<int>> acknowledgedQueueOrder() async {
     final row = await select(queueSyncStateRows).getSingleOrNull();
     if (row == null) return const [];
@@ -821,22 +863,65 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
-  Future<void> setCompleted(int episodeId, bool value) =>
-      (update(episodeRows)..where((e) => e.id.equals(episodeId))).write(
-        EpisodeRowsCompanion(
-          completed: Value(value),
-          positionSeconds: value ? const Value(0) : const Value.absent(),
-          updatedAt: Value(DateTime.now().toUtc()),
-        ),
-      );
+  Future<void> setCompleted(
+    int episodeId,
+    bool value, {
+    DateTime? playbackUpdatedAt,
+    String? deviceId,
+    String? mediaIdentity,
+  }) => (update(episodeRows)..where((e) => e.id.equals(episodeId))).write(
+    EpisodeRowsCompanion(
+      completed: Value(value),
+      positionSeconds: value ? const Value(0) : const Value.absent(),
+      playbackUpdatedAt: playbackUpdatedAt == null
+          ? const Value.absent()
+          : Value(playbackUpdatedAt),
+      playbackDeviceId: deviceId == null
+          ? const Value.absent()
+          : Value(deviceId),
+      playbackIntent: playbackUpdatedAt == null
+          ? const Value.absent()
+          : Value(
+              value
+                  ? PlaybackEventKind.completed.name
+                  : PlaybackEventKind.uncompleted.name,
+            ),
+      playbackMediaIdentity: mediaIdentity == null
+          ? const Value.absent()
+          : Value(mediaIdentity),
+      updatedAt: Value(DateTime.now().toUtc()),
+    ),
+  );
 
-  Future<void> setPosition(int episodeId, Duration position) =>
-      (update(episodeRows)..where((e) => e.id.equals(episodeId))).write(
-        EpisodeRowsCompanion(
-          positionSeconds: Value(position.inSeconds),
-          updatedAt: Value(DateTime.now().toUtc()),
-        ),
-      );
+  Future<void> setPosition(
+    int episodeId,
+    Duration position, {
+    DateTime? playbackUpdatedAt,
+    String? deviceId,
+    bool userInitiatedSeek = false,
+    String? mediaIdentity,
+  }) => (update(episodeRows)..where((e) => e.id.equals(episodeId))).write(
+    EpisodeRowsCompanion(
+      positionSeconds: Value(position.inSeconds),
+      playbackUpdatedAt: playbackUpdatedAt == null
+          ? const Value.absent()
+          : Value(playbackUpdatedAt),
+      playbackDeviceId: deviceId == null
+          ? const Value.absent()
+          : Value(deviceId),
+      playbackIntent: playbackUpdatedAt == null
+          ? const Value.absent()
+          : Value(
+              userInitiatedSeek
+                  ? PlaybackEventKind.seek.name
+                  : PlaybackEventKind.progress.name,
+            ),
+      playbackMediaIdentity: mediaIdentity == null
+          ? const Value.absent()
+          : Value(mediaIdentity),
+      updatedAt: Value(DateTime.now().toUtc()),
+    ),
+  );
 
   Future<void> setDownloaded(int episodeId, bool value) =>
       (update(episodeRows)..where((e) => e.id.equals(episodeId))).write(
@@ -845,6 +930,16 @@ class AppDatabase extends _$AppDatabase {
           updatedAt: Value(DateTime.now().toUtc()),
         ),
       );
+
+  Future<void> acknowledgePlaybackEvent(PlaybackSyncEvent event) async {
+    if (event.kind != PlaybackEventKind.seek) return;
+    await (update(episodeRows)..where(
+          (row) =>
+              row.id.equals(event.episodeId) &
+              row.playbackUpdatedAt.equals(event.occurredAt),
+        ))
+        .write(const EpisodeRowsCompanion(playbackIntent: Value('progress')));
+  }
 
   Future<List<int>> queueEpisodeIds() async =>
       (await (select(

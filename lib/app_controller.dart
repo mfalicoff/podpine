@@ -11,6 +11,7 @@ import 'core/backend/podcast_backend.dart';
 import 'core/database/app_database.dart';
 import 'core/storage/credential_store.dart';
 import 'core/sync/queue_sync.dart';
+import 'core/sync/playback_sync.dart';
 import 'core/sync/sync_engine.dart';
 
 class AppController extends ChangeNotifier {
@@ -18,12 +19,15 @@ class AppController extends ChangeNotifier {
     this.database,
     this.credentials, {
     Stream<List<ConnectivityResult>>? connectivityChanges,
+    String? playbackDeviceId,
   }) : _connectivityChanges =
-           connectivityChanges ?? Connectivity().onConnectivityChanged;
+           connectivityChanges ?? Connectivity().onConnectivityChanged,
+       _deviceIdCandidate = playbackDeviceId ?? _uuid.v4();
 
   final AppDatabase database;
   final CredentialStore credentials;
   final Stream<List<ConnectivityResult>> _connectivityChanges;
+  final String _deviceIdCandidate;
 
   bool initialized = false;
   bool connected = false;
@@ -39,6 +43,7 @@ class AppController extends ChangeNotifier {
   Future<void>? _refreshInFlight;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   bool? _wasOffline;
+  Future<String>? _deviceIdFuture;
   static const _uuid = Uuid();
 
   Future<void> initialize() async {
@@ -361,12 +366,37 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> setCompleted(EpisodeRecord episode, bool completed) async {
-    await database.setCompleted(episode.id, completed);
+    final occurredAt = DateTime.now().toUtc();
+    final deviceId = await _playbackDeviceId();
+    final event = PlaybackSyncEvent(
+      episodeId: episode.id,
+      positionSeconds: completed && episode.durationSeconds > 0
+          ? episode.durationSeconds
+          : episode.positionSeconds,
+      durationSeconds: episode.durationSeconds,
+      completed: completed,
+      kind: completed
+          ? PlaybackEventKind.completed
+          : PlaybackEventKind.uncompleted,
+      occurredAt: occurredAt,
+      deviceId: deviceId,
+      mediaIdentity: episode.audioUrl.trim(),
+    );
+    await database.setCompleted(
+      episode.id,
+      completed,
+      playbackUpdatedAt: occurredAt,
+      deviceId: deviceId,
+      mediaIdentity: event.mediaIdentity,
+    );
     if (backend != null && userId != null && episode.id > 0) {
       try {
-        await backend!.markCompleted(userId!, episode.id, completed);
+        await _sendPlaybackEvent(event);
       } catch (_) {
-        await _enqueueMutation('completed', episode.id, {'value': completed});
+        await _enqueueMutation('completed', episode.id, {
+          ...event.toPayload(),
+          'value': completed,
+        });
         error =
             'Saved offline. The change will sync when the server is available.';
         notifyListeners();
@@ -374,15 +404,39 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> recordPosition(EpisodeRecord episode, Duration position) async {
-    await database.setPosition(episode.id, position);
+  Future<void> recordPosition(
+    EpisodeRecord episode,
+    Duration position, {
+    bool userInitiatedSeek = false,
+  }) async {
+    final occurredAt = DateTime.now().toUtc();
+    final deviceId = await _playbackDeviceId();
+    final event = PlaybackSyncEvent(
+      episodeId: episode.id,
+      positionSeconds: position.inSeconds,
+      durationSeconds: episode.durationSeconds,
+      completed: false,
+      kind: userInitiatedSeek
+          ? PlaybackEventKind.seek
+          : PlaybackEventKind.progress,
+      occurredAt: occurredAt,
+      deviceId: deviceId,
+      mediaIdentity: episode.audioUrl.trim(),
+    );
+    await database.setPosition(
+      episode.id,
+      position,
+      playbackUpdatedAt: occurredAt,
+      deviceId: deviceId,
+      userInitiatedSeek: userInitiatedSeek,
+      mediaIdentity: event.mediaIdentity,
+    );
     if (backend != null && userId != null && episode.id > 0) {
       try {
-        await backend!.updatePlayback(userId!, episode.id, position);
+        await _sendPlaybackEvent(event);
+        await database.acknowledgePlaybackEvent(event);
       } catch (_) {
-        await _enqueueMutation('position', episode.id, {
-          'seconds': position.inSeconds,
-        });
+        await _enqueueMutation('position', episode.id, event.toPayload());
       }
     }
   }
@@ -592,6 +646,34 @@ class AppController extends ChangeNotifier {
       ),
     );
     return id;
+  }
+
+  Future<String> _playbackDeviceId() =>
+      _deviceIdFuture ??= database.ensureSyncDeviceId(_deviceIdCandidate);
+
+  Future<void> _sendPlaybackEvent(PlaybackSyncEvent event) {
+    final currentBackend = backend!;
+    final currentUserId = userId!;
+    if (currentBackend is PlaybackEventBackend) {
+      return (currentBackend as PlaybackEventBackend).updatePlaybackEvent(
+        currentUserId,
+        event,
+      );
+    }
+    return switch (event.kind) {
+      PlaybackEventKind.completed ||
+      PlaybackEventKind.uncompleted => currentBackend.markCompleted(
+        currentUserId,
+        event.episodeId,
+        event.completed,
+      ),
+      PlaybackEventKind.progress ||
+      PlaybackEventKind.seek => currentBackend.updatePlayback(
+        currentUserId,
+        event.episodeId,
+        Duration(seconds: event.positionSeconds),
+      ),
+    };
   }
 
   Future<void> _cachePodcast(

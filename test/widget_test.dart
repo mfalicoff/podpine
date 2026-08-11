@@ -60,6 +60,8 @@ void main() {
       downloaded: false,
       isYoutube: false,
       chaptersJson: '[]',
+      playbackIntent: 'progress',
+      playbackMediaIdentity: '',
       updatedAt: DateTime.utc(2026, 8, 10),
     );
     player.current = episode;

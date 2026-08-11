@@ -89,6 +89,8 @@ class RemoteEpisode {
     required this.isYoutube,
     this.chaptersJson = '[]',
     this.queuePosition,
+    this.playbackUpdatedAt,
+    this.playbackDeviceId,
   });
 
   final int id;
@@ -107,6 +109,8 @@ class RemoteEpisode {
   final bool isYoutube;
   final String chaptersJson;
   final int? queuePosition;
+  final DateTime? playbackUpdatedAt;
+  final String? playbackDeviceId;
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -125,6 +129,8 @@ class RemoteEpisode {
     'isYoutube': isYoutube,
     'chaptersJson': chaptersJson,
     'queuePosition': queuePosition,
+    'playbackUpdatedAt': playbackUpdatedAt?.toUtc().toIso8601String(),
+    'playbackDeviceId': playbackDeviceId,
   };
 
   factory RemoteEpisode.fromJson(Map<String, Object?> json) => RemoteEpisode(
@@ -148,6 +154,12 @@ class RemoteEpisode {
     queuePosition: json['queuePosition'] == null
         ? null
         : _jsonInt(json['queuePosition']),
+    playbackUpdatedAt: DateTime.tryParse(
+      '${json['playbackUpdatedAt'] ?? ''}',
+    )?.toUtc(),
+    playbackDeviceId: json['playbackDeviceId'] == null
+        ? null
+        : '${json['playbackDeviceId']}',
   );
 }
 

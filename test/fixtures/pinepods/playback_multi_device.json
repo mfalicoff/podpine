@@ -1,0 +1,49 @@
+{
+  "episode": {
+    "id": 101,
+    "durationSeconds": 3600,
+    "audioUrl": "https://example.test/episode-v1.mp3"
+  },
+  "events": [
+    {
+      "name": "pause-on-device-a",
+      "deviceId": "device-a",
+      "kind": "progress",
+      "positionSeconds": 120,
+      "completed": false,
+      "occurredAt": "2026-08-11T10:10:00Z"
+    },
+    {
+      "name": "offline-stale-pause-on-device-b",
+      "deviceId": "device-b",
+      "kind": "progress",
+      "positionSeconds": 40,
+      "completed": false,
+      "occurredAt": "2026-08-11T10:05:00Z"
+    },
+    {
+      "name": "backward-seek-on-device-a",
+      "deviceId": "device-a",
+      "kind": "seek",
+      "positionSeconds": 30,
+      "completed": false,
+      "occurredAt": "2026-08-11T10:30:00Z"
+    },
+    {
+      "name": "completion-on-device-b",
+      "deviceId": "device-b",
+      "kind": "completed",
+      "positionSeconds": 3600,
+      "completed": true,
+      "occurredAt": "2026-08-11T10:40:00Z"
+    },
+    {
+      "name": "offline-partial-after-completion",
+      "deviceId": "device-a",
+      "kind": "progress",
+      "positionSeconds": 50,
+      "completed": false,
+      "occurredAt": "2026-08-11T10:35:00Z"
+    }
+  ]
+}

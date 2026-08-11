@@ -72,6 +72,9 @@ final playerControllerProvider = ChangeNotifierProvider<PlayerController>((
     ref.read(appControllerProvider).recordPosition,
     ref.read(appControllerProvider).setCompleted,
     chapterLoader: ref.read(appControllerProvider).loadChapters,
+    recordSeek: (episode, position) => ref
+        .read(appControllerProvider)
+        .recordPosition(episode, position, userInitiatedSeek: true),
   );
   final app = ref.read(appControllerProvider);
   int? activeEpisodeId() => controller.current?.id;

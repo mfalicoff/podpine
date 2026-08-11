@@ -463,6 +463,14 @@ class PinepodsBackend
         _field(json, 'chapters') ?? _field(json, 'episode_chapters'),
       ),
       queuePosition: queuePosition == null ? null : _int(queuePosition),
+      playbackUpdatedAt: _optionalDateTime(
+        _field(json, 'playbackupdatedat') ??
+            _field(json, 'listenupdatedat') ??
+            _field(json, 'lastlistenedat'),
+      ),
+      playbackDeviceId: _optionalText(
+        _field(json, 'playbackdeviceid') ?? _field(json, 'deviceid'),
+      ),
     );
   }
 
@@ -526,6 +534,11 @@ class PinepodsBackend
     return text.isEmpty || text.toLowerCase() == 'null' ? fallback : text;
   }
 
+  static String? _optionalText(Object? value) {
+    final text = _text(value, '');
+    return text.isEmpty ? null : text;
+  }
+
   static List<String> _categories(Object? value) {
     final values = switch (value) {
       Map map => map.values,
@@ -575,5 +588,11 @@ class PinepodsBackend
     if (parsedNumber != null) return _dateTime(parsedNumber);
     return DateTime.tryParse(text)?.toUtc() ??
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+  }
+
+  static DateTime? _optionalDateTime(Object? value) {
+    if (value == null || '$value'.trim().isEmpty) return null;
+    final parsed = _dateTime(value);
+    return parsed.millisecondsSinceEpoch == 0 ? null : parsed;
   }
 }

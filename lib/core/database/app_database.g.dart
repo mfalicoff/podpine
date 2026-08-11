@@ -1216,6 +1216,53 @@ class $EpisodeRowsTable extends EpisodeRows
     requiredDuringInsert: false,
     defaultValue: const Constant('[]'),
   );
+  static const VerificationMeta _playbackUpdatedAtMeta = const VerificationMeta(
+    'playbackUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> playbackUpdatedAt =
+      GeneratedColumn<DateTime>(
+        'playback_updated_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _playbackDeviceIdMeta = const VerificationMeta(
+    'playbackDeviceId',
+  );
+  @override
+  late final GeneratedColumn<String> playbackDeviceId = GeneratedColumn<String>(
+    'playback_device_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _playbackIntentMeta = const VerificationMeta(
+    'playbackIntent',
+  );
+  @override
+  late final GeneratedColumn<String> playbackIntent = GeneratedColumn<String>(
+    'playback_intent',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('progress'),
+  );
+  static const VerificationMeta _playbackMediaIdentityMeta =
+      const VerificationMeta('playbackMediaIdentity');
+  @override
+  late final GeneratedColumn<String> playbackMediaIdentity =
+      GeneratedColumn<String>(
+        'playback_media_identity',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -1244,6 +1291,10 @@ class $EpisodeRowsTable extends EpisodeRows
     downloaded,
     isYoutube,
     chaptersJson,
+    playbackUpdatedAt,
+    playbackDeviceId,
+    playbackIntent,
+    playbackMediaIdentity,
     updatedAt,
   ];
   @override
@@ -1371,6 +1422,42 @@ class $EpisodeRowsTable extends EpisodeRows
         ),
       );
     }
+    if (data.containsKey('playback_updated_at')) {
+      context.handle(
+        _playbackUpdatedAtMeta,
+        playbackUpdatedAt.isAcceptableOrUnknown(
+          data['playback_updated_at']!,
+          _playbackUpdatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('playback_device_id')) {
+      context.handle(
+        _playbackDeviceIdMeta,
+        playbackDeviceId.isAcceptableOrUnknown(
+          data['playback_device_id']!,
+          _playbackDeviceIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('playback_intent')) {
+      context.handle(
+        _playbackIntentMeta,
+        playbackIntent.isAcceptableOrUnknown(
+          data['playback_intent']!,
+          _playbackIntentMeta,
+        ),
+      );
+    }
+    if (data.containsKey('playback_media_identity')) {
+      context.handle(
+        _playbackMediaIdentityMeta,
+        playbackMediaIdentity.isAcceptableOrUnknown(
+          data['playback_media_identity']!,
+          _playbackMediaIdentityMeta,
+        ),
+      );
+    }
     if (data.containsKey('updated_at')) {
       context.handle(
         _updatedAtMeta,
@@ -1448,6 +1535,22 @@ class $EpisodeRowsTable extends EpisodeRows
         DriftSqlType.string,
         data['${effectivePrefix}chapters_json'],
       )!,
+      playbackUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}playback_updated_at'],
+      ),
+      playbackDeviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}playback_device_id'],
+      ),
+      playbackIntent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}playback_intent'],
+      )!,
+      playbackMediaIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}playback_media_identity'],
+      )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -1477,6 +1580,10 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
   final bool downloaded;
   final bool isYoutube;
   final String chaptersJson;
+  final DateTime? playbackUpdatedAt;
+  final String? playbackDeviceId;
+  final String playbackIntent;
+  final String playbackMediaIdentity;
   final DateTime updatedAt;
   const EpisodeRecord({
     required this.id,
@@ -1494,6 +1601,10 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
     required this.downloaded,
     required this.isYoutube,
     required this.chaptersJson,
+    this.playbackUpdatedAt,
+    this.playbackDeviceId,
+    required this.playbackIntent,
+    required this.playbackMediaIdentity,
     required this.updatedAt,
   });
   @override
@@ -1514,6 +1625,14 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
     map['downloaded'] = Variable<bool>(downloaded);
     map['is_youtube'] = Variable<bool>(isYoutube);
     map['chapters_json'] = Variable<String>(chaptersJson);
+    if (!nullToAbsent || playbackUpdatedAt != null) {
+      map['playback_updated_at'] = Variable<DateTime>(playbackUpdatedAt);
+    }
+    if (!nullToAbsent || playbackDeviceId != null) {
+      map['playback_device_id'] = Variable<String>(playbackDeviceId);
+    }
+    map['playback_intent'] = Variable<String>(playbackIntent);
+    map['playback_media_identity'] = Variable<String>(playbackMediaIdentity);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -1535,6 +1654,14 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
       downloaded: Value(downloaded),
       isYoutube: Value(isYoutube),
       chaptersJson: Value(chaptersJson),
+      playbackUpdatedAt: playbackUpdatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(playbackUpdatedAt),
+      playbackDeviceId: playbackDeviceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(playbackDeviceId),
+      playbackIntent: Value(playbackIntent),
+      playbackMediaIdentity: Value(playbackMediaIdentity),
       updatedAt: Value(updatedAt),
     );
   }
@@ -1560,6 +1687,14 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
       downloaded: serializer.fromJson<bool>(json['downloaded']),
       isYoutube: serializer.fromJson<bool>(json['isYoutube']),
       chaptersJson: serializer.fromJson<String>(json['chaptersJson']),
+      playbackUpdatedAt: serializer.fromJson<DateTime?>(
+        json['playbackUpdatedAt'],
+      ),
+      playbackDeviceId: serializer.fromJson<String?>(json['playbackDeviceId']),
+      playbackIntent: serializer.fromJson<String>(json['playbackIntent']),
+      playbackMediaIdentity: serializer.fromJson<String>(
+        json['playbackMediaIdentity'],
+      ),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -1582,6 +1717,10 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
       'downloaded': serializer.toJson<bool>(downloaded),
       'isYoutube': serializer.toJson<bool>(isYoutube),
       'chaptersJson': serializer.toJson<String>(chaptersJson),
+      'playbackUpdatedAt': serializer.toJson<DateTime?>(playbackUpdatedAt),
+      'playbackDeviceId': serializer.toJson<String?>(playbackDeviceId),
+      'playbackIntent': serializer.toJson<String>(playbackIntent),
+      'playbackMediaIdentity': serializer.toJson<String>(playbackMediaIdentity),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -1602,6 +1741,10 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
     bool? downloaded,
     bool? isYoutube,
     String? chaptersJson,
+    Value<DateTime?> playbackUpdatedAt = const Value.absent(),
+    Value<String?> playbackDeviceId = const Value.absent(),
+    String? playbackIntent,
+    String? playbackMediaIdentity,
     DateTime? updatedAt,
   }) => EpisodeRecord(
     id: id ?? this.id,
@@ -1619,6 +1762,14 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
     downloaded: downloaded ?? this.downloaded,
     isYoutube: isYoutube ?? this.isYoutube,
     chaptersJson: chaptersJson ?? this.chaptersJson,
+    playbackUpdatedAt: playbackUpdatedAt.present
+        ? playbackUpdatedAt.value
+        : this.playbackUpdatedAt,
+    playbackDeviceId: playbackDeviceId.present
+        ? playbackDeviceId.value
+        : this.playbackDeviceId,
+    playbackIntent: playbackIntent ?? this.playbackIntent,
+    playbackMediaIdentity: playbackMediaIdentity ?? this.playbackMediaIdentity,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   EpisodeRecord copyWithCompanion(EpisodeRowsCompanion data) {
@@ -1654,6 +1805,18 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
       chaptersJson: data.chaptersJson.present
           ? data.chaptersJson.value
           : this.chaptersJson,
+      playbackUpdatedAt: data.playbackUpdatedAt.present
+          ? data.playbackUpdatedAt.value
+          : this.playbackUpdatedAt,
+      playbackDeviceId: data.playbackDeviceId.present
+          ? data.playbackDeviceId.value
+          : this.playbackDeviceId,
+      playbackIntent: data.playbackIntent.present
+          ? data.playbackIntent.value
+          : this.playbackIntent,
+      playbackMediaIdentity: data.playbackMediaIdentity.present
+          ? data.playbackMediaIdentity.value
+          : this.playbackMediaIdentity,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -1676,6 +1839,10 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
           ..write('downloaded: $downloaded, ')
           ..write('isYoutube: $isYoutube, ')
           ..write('chaptersJson: $chaptersJson, ')
+          ..write('playbackUpdatedAt: $playbackUpdatedAt, ')
+          ..write('playbackDeviceId: $playbackDeviceId, ')
+          ..write('playbackIntent: $playbackIntent, ')
+          ..write('playbackMediaIdentity: $playbackMediaIdentity, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -1698,6 +1865,10 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
     downloaded,
     isYoutube,
     chaptersJson,
+    playbackUpdatedAt,
+    playbackDeviceId,
+    playbackIntent,
+    playbackMediaIdentity,
     updatedAt,
   );
   @override
@@ -1719,6 +1890,10 @@ class EpisodeRecord extends DataClass implements Insertable<EpisodeRecord> {
           other.downloaded == this.downloaded &&
           other.isYoutube == this.isYoutube &&
           other.chaptersJson == this.chaptersJson &&
+          other.playbackUpdatedAt == this.playbackUpdatedAt &&
+          other.playbackDeviceId == this.playbackDeviceId &&
+          other.playbackIntent == this.playbackIntent &&
+          other.playbackMediaIdentity == this.playbackMediaIdentity &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -1738,6 +1913,10 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
   final Value<bool> downloaded;
   final Value<bool> isYoutube;
   final Value<String> chaptersJson;
+  final Value<DateTime?> playbackUpdatedAt;
+  final Value<String?> playbackDeviceId;
+  final Value<String> playbackIntent;
+  final Value<String> playbackMediaIdentity;
   final Value<DateTime> updatedAt;
   const EpisodeRowsCompanion({
     this.id = const Value.absent(),
@@ -1755,6 +1934,10 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
     this.downloaded = const Value.absent(),
     this.isYoutube = const Value.absent(),
     this.chaptersJson = const Value.absent(),
+    this.playbackUpdatedAt = const Value.absent(),
+    this.playbackDeviceId = const Value.absent(),
+    this.playbackIntent = const Value.absent(),
+    this.playbackMediaIdentity = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
   EpisodeRowsCompanion.insert({
@@ -1773,6 +1956,10 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
     this.downloaded = const Value.absent(),
     this.isYoutube = const Value.absent(),
     this.chaptersJson = const Value.absent(),
+    this.playbackUpdatedAt = const Value.absent(),
+    this.playbackDeviceId = const Value.absent(),
+    this.playbackIntent = const Value.absent(),
+    this.playbackMediaIdentity = const Value.absent(),
     required DateTime updatedAt,
   }) : podcastId = Value(podcastId),
        podcastTitle = Value(podcastTitle),
@@ -1795,6 +1982,10 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
     Expression<bool>? downloaded,
     Expression<bool>? isYoutube,
     Expression<String>? chaptersJson,
+    Expression<DateTime>? playbackUpdatedAt,
+    Expression<String>? playbackDeviceId,
+    Expression<String>? playbackIntent,
+    Expression<String>? playbackMediaIdentity,
     Expression<DateTime>? updatedAt,
   }) {
     return RawValuesInsertable({
@@ -1813,6 +2004,11 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
       if (downloaded != null) 'downloaded': downloaded,
       if (isYoutube != null) 'is_youtube': isYoutube,
       if (chaptersJson != null) 'chapters_json': chaptersJson,
+      if (playbackUpdatedAt != null) 'playback_updated_at': playbackUpdatedAt,
+      if (playbackDeviceId != null) 'playback_device_id': playbackDeviceId,
+      if (playbackIntent != null) 'playback_intent': playbackIntent,
+      if (playbackMediaIdentity != null)
+        'playback_media_identity': playbackMediaIdentity,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
   }
@@ -1833,6 +2029,10 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
     Value<bool>? downloaded,
     Value<bool>? isYoutube,
     Value<String>? chaptersJson,
+    Value<DateTime?>? playbackUpdatedAt,
+    Value<String?>? playbackDeviceId,
+    Value<String>? playbackIntent,
+    Value<String>? playbackMediaIdentity,
     Value<DateTime>? updatedAt,
   }) {
     return EpisodeRowsCompanion(
@@ -1851,6 +2051,11 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
       downloaded: downloaded ?? this.downloaded,
       isYoutube: isYoutube ?? this.isYoutube,
       chaptersJson: chaptersJson ?? this.chaptersJson,
+      playbackUpdatedAt: playbackUpdatedAt ?? this.playbackUpdatedAt,
+      playbackDeviceId: playbackDeviceId ?? this.playbackDeviceId,
+      playbackIntent: playbackIntent ?? this.playbackIntent,
+      playbackMediaIdentity:
+          playbackMediaIdentity ?? this.playbackMediaIdentity,
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
@@ -1903,6 +2108,20 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
     if (chaptersJson.present) {
       map['chapters_json'] = Variable<String>(chaptersJson.value);
     }
+    if (playbackUpdatedAt.present) {
+      map['playback_updated_at'] = Variable<DateTime>(playbackUpdatedAt.value);
+    }
+    if (playbackDeviceId.present) {
+      map['playback_device_id'] = Variable<String>(playbackDeviceId.value);
+    }
+    if (playbackIntent.present) {
+      map['playback_intent'] = Variable<String>(playbackIntent.value);
+    }
+    if (playbackMediaIdentity.present) {
+      map['playback_media_identity'] = Variable<String>(
+        playbackMediaIdentity.value,
+      );
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -1927,6 +2146,10 @@ class EpisodeRowsCompanion extends UpdateCompanion<EpisodeRecord> {
           ..write('downloaded: $downloaded, ')
           ..write('isYoutube: $isYoutube, ')
           ..write('chaptersJson: $chaptersJson, ')
+          ..write('playbackUpdatedAt: $playbackUpdatedAt, ')
+          ..write('playbackDeviceId: $playbackDeviceId, ')
+          ..write('playbackIntent: $playbackIntent, ')
+          ..write('playbackMediaIdentity: $playbackMediaIdentity, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -4658,6 +4881,255 @@ class QueueSyncStateRowsCompanion
   }
 }
 
+class $SyncDeviceRowsTable extends SyncDeviceRows
+    with TableInfo<$SyncDeviceRowsTable, SyncDeviceRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncDeviceRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, deviceId, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_device_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncDeviceRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SyncDeviceRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncDeviceRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncDeviceRowsTable createAlias(String alias) {
+    return $SyncDeviceRowsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncDeviceRecord extends DataClass
+    implements Insertable<SyncDeviceRecord> {
+  final int id;
+  final String deviceId;
+  final DateTime createdAt;
+  const SyncDeviceRecord({
+    required this.id,
+    required this.deviceId,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['device_id'] = Variable<String>(deviceId);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SyncDeviceRowsCompanion toCompanion(bool nullToAbsent) {
+    return SyncDeviceRowsCompanion(
+      id: Value(id),
+      deviceId: Value(deviceId),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SyncDeviceRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncDeviceRecord(
+      id: serializer.fromJson<int>(json['id']),
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'deviceId': serializer.toJson<String>(deviceId),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  SyncDeviceRecord copyWith({int? id, String? deviceId, DateTime? createdAt}) =>
+      SyncDeviceRecord(
+        id: id ?? this.id,
+        deviceId: deviceId ?? this.deviceId,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  SyncDeviceRecord copyWithCompanion(SyncDeviceRowsCompanion data) {
+    return SyncDeviceRecord(
+      id: data.id.present ? data.id.value : this.id,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncDeviceRecord(')
+          ..write('id: $id, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, deviceId, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncDeviceRecord &&
+          other.id == this.id &&
+          other.deviceId == this.deviceId &&
+          other.createdAt == this.createdAt);
+}
+
+class SyncDeviceRowsCompanion extends UpdateCompanion<SyncDeviceRecord> {
+  final Value<int> id;
+  final Value<String> deviceId;
+  final Value<DateTime> createdAt;
+  const SyncDeviceRowsCompanion({
+    this.id = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  SyncDeviceRowsCompanion.insert({
+    this.id = const Value.absent(),
+    required String deviceId,
+    required DateTime createdAt,
+  }) : deviceId = Value(deviceId),
+       createdAt = Value(createdAt);
+  static Insertable<SyncDeviceRecord> custom({
+    Expression<int>? id,
+    Expression<String>? deviceId,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (deviceId != null) 'device_id': deviceId,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  SyncDeviceRowsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? deviceId,
+    Value<DateTime>? createdAt,
+  }) {
+    return SyncDeviceRowsCompanion(
+      id: id ?? this.id,
+      deviceId: deviceId ?? this.deviceId,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncDeviceRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $PlaybackPreferenceRowsTable extends PlaybackPreferenceRows
     with TableInfo<$PlaybackPreferenceRowsTable, PlaybackPreferencesRecord> {
   @override
@@ -5210,6 +5682,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncMutationsTable syncMutations = $SyncMutationsTable(this);
   late final $QueueSyncStateRowsTable queueSyncStateRows =
       $QueueSyncStateRowsTable(this);
+  late final $SyncDeviceRowsTable syncDeviceRows = $SyncDeviceRowsTable(this);
   late final $PlaybackPreferenceRowsTable playbackPreferenceRows =
       $PlaybackPreferenceRowsTable(this);
   late final $PodcastPlaybackOverrideRowsTable podcastPlaybackOverrideRows =
@@ -5229,6 +5702,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     podcastInboxOverrideRows,
     syncMutations,
     queueSyncStateRows,
+    syncDeviceRows,
     playbackPreferenceRows,
     podcastPlaybackOverrideRows,
   ];
@@ -6115,6 +6589,10 @@ typedef $$EpisodeRowsTableCreateCompanionBuilder =
       Value<bool> downloaded,
       Value<bool> isYoutube,
       Value<String> chaptersJson,
+      Value<DateTime?> playbackUpdatedAt,
+      Value<String?> playbackDeviceId,
+      Value<String> playbackIntent,
+      Value<String> playbackMediaIdentity,
       required DateTime updatedAt,
     });
 typedef $$EpisodeRowsTableUpdateCompanionBuilder =
@@ -6134,6 +6612,10 @@ typedef $$EpisodeRowsTableUpdateCompanionBuilder =
       Value<bool> downloaded,
       Value<bool> isYoutube,
       Value<String> chaptersJson,
+      Value<DateTime?> playbackUpdatedAt,
+      Value<String?> playbackDeviceId,
+      Value<String> playbackIntent,
+      Value<String> playbackMediaIdentity,
       Value<DateTime> updatedAt,
     });
 
@@ -6291,6 +6773,26 @@ class $$EpisodeRowsTableFilterComposer
 
   ColumnFilters<String> get chaptersJson => $composableBuilder(
     column: $table.chaptersJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get playbackUpdatedAt => $composableBuilder(
+    column: $table.playbackUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playbackDeviceId => $composableBuilder(
+    column: $table.playbackDeviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playbackIntent => $composableBuilder(
+    column: $table.playbackIntent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playbackMediaIdentity => $composableBuilder(
+    column: $table.playbackMediaIdentity,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6477,6 +6979,26 @@ class $$EpisodeRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get playbackUpdatedAt => $composableBuilder(
+    column: $table.playbackUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get playbackDeviceId => $composableBuilder(
+    column: $table.playbackDeviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get playbackIntent => $composableBuilder(
+    column: $table.playbackIntent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get playbackMediaIdentity => $composableBuilder(
+    column: $table.playbackMediaIdentity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -6570,6 +7092,26 @@ class $$EpisodeRowsTableAnnotationComposer
 
   GeneratedColumn<String> get chaptersJson => $composableBuilder(
     column: $table.chaptersJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get playbackUpdatedAt => $composableBuilder(
+    column: $table.playbackUpdatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get playbackDeviceId => $composableBuilder(
+    column: $table.playbackDeviceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get playbackIntent => $composableBuilder(
+    column: $table.playbackIntent,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get playbackMediaIdentity => $composableBuilder(
+    column: $table.playbackMediaIdentity,
     builder: (column) => column,
   );
 
@@ -6723,6 +7265,10 @@ class $$EpisodeRowsTableTableManager
                 Value<bool> downloaded = const Value.absent(),
                 Value<bool> isYoutube = const Value.absent(),
                 Value<String> chaptersJson = const Value.absent(),
+                Value<DateTime?> playbackUpdatedAt = const Value.absent(),
+                Value<String?> playbackDeviceId = const Value.absent(),
+                Value<String> playbackIntent = const Value.absent(),
+                Value<String> playbackMediaIdentity = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => EpisodeRowsCompanion(
                 id: id,
@@ -6740,6 +7286,10 @@ class $$EpisodeRowsTableTableManager
                 downloaded: downloaded,
                 isYoutube: isYoutube,
                 chaptersJson: chaptersJson,
+                playbackUpdatedAt: playbackUpdatedAt,
+                playbackDeviceId: playbackDeviceId,
+                playbackIntent: playbackIntent,
+                playbackMediaIdentity: playbackMediaIdentity,
                 updatedAt: updatedAt,
               ),
           createCompanionCallback:
@@ -6759,6 +7309,10 @@ class $$EpisodeRowsTableTableManager
                 Value<bool> downloaded = const Value.absent(),
                 Value<bool> isYoutube = const Value.absent(),
                 Value<String> chaptersJson = const Value.absent(),
+                Value<DateTime?> playbackUpdatedAt = const Value.absent(),
+                Value<String?> playbackDeviceId = const Value.absent(),
+                Value<String> playbackIntent = const Value.absent(),
+                Value<String> playbackMediaIdentity = const Value.absent(),
                 required DateTime updatedAt,
               }) => EpisodeRowsCompanion.insert(
                 id: id,
@@ -6776,6 +7330,10 @@ class $$EpisodeRowsTableTableManager
                 downloaded: downloaded,
                 isYoutube: isYoutube,
                 chaptersJson: chaptersJson,
+                playbackUpdatedAt: playbackUpdatedAt,
+                playbackDeviceId: playbackDeviceId,
+                playbackIntent: playbackIntent,
+                playbackMediaIdentity: playbackMediaIdentity,
                 updatedAt: updatedAt,
               ),
           withReferenceMapper: (p0) => p0
@@ -8923,6 +9481,168 @@ typedef $$QueueSyncStateRowsTableProcessedTableManager =
       QueueSyncStateRecord,
       PrefetchHooks Function()
     >;
+typedef $$SyncDeviceRowsTableCreateCompanionBuilder =
+    SyncDeviceRowsCompanion Function({
+      Value<int> id,
+      required String deviceId,
+      required DateTime createdAt,
+    });
+typedef $$SyncDeviceRowsTableUpdateCompanionBuilder =
+    SyncDeviceRowsCompanion Function({
+      Value<int> id,
+      Value<String> deviceId,
+      Value<DateTime> createdAt,
+    });
+
+class $$SyncDeviceRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncDeviceRowsTable> {
+  $$SyncDeviceRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncDeviceRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncDeviceRowsTable> {
+  $$SyncDeviceRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncDeviceRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncDeviceRowsTable> {
+  $$SyncDeviceRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$SyncDeviceRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncDeviceRowsTable,
+          SyncDeviceRecord,
+          $$SyncDeviceRowsTableFilterComposer,
+          $$SyncDeviceRowsTableOrderingComposer,
+          $$SyncDeviceRowsTableAnnotationComposer,
+          $$SyncDeviceRowsTableCreateCompanionBuilder,
+          $$SyncDeviceRowsTableUpdateCompanionBuilder,
+          (
+            SyncDeviceRecord,
+            BaseReferences<
+              _$AppDatabase,
+              $SyncDeviceRowsTable,
+              SyncDeviceRecord
+            >,
+          ),
+          SyncDeviceRecord,
+          PrefetchHooks Function()
+        > {
+  $$SyncDeviceRowsTableTableManager(
+    _$AppDatabase db,
+    $SyncDeviceRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncDeviceRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncDeviceRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncDeviceRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> deviceId = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => SyncDeviceRowsCompanion(
+                id: id,
+                deviceId: deviceId,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String deviceId,
+                required DateTime createdAt,
+              }) => SyncDeviceRowsCompanion.insert(
+                id: id,
+                deviceId: deviceId,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncDeviceRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncDeviceRowsTable,
+      SyncDeviceRecord,
+      $$SyncDeviceRowsTableFilterComposer,
+      $$SyncDeviceRowsTableOrderingComposer,
+      $$SyncDeviceRowsTableAnnotationComposer,
+      $$SyncDeviceRowsTableCreateCompanionBuilder,
+      $$SyncDeviceRowsTableUpdateCompanionBuilder,
+      (
+        SyncDeviceRecord,
+        BaseReferences<_$AppDatabase, $SyncDeviceRowsTable, SyncDeviceRecord>,
+      ),
+      SyncDeviceRecord,
+      PrefetchHooks Function()
+    >;
 typedef $$PlaybackPreferenceRowsTableCreateCompanionBuilder =
     PlaybackPreferenceRowsCompanion Function({
       Value<int> id,
@@ -9432,6 +10152,8 @@ class $AppDatabaseManager {
       $$SyncMutationsTableTableManager(_db, _db.syncMutations);
   $$QueueSyncStateRowsTableTableManager get queueSyncStateRows =>
       $$QueueSyncStateRowsTableTableManager(_db, _db.queueSyncStateRows);
+  $$SyncDeviceRowsTableTableManager get syncDeviceRows =>
+      $$SyncDeviceRowsTableTableManager(_db, _db.syncDeviceRows);
   $$PlaybackPreferenceRowsTableTableManager get playbackPreferenceRows =>
       $$PlaybackPreferenceRowsTableTableManager(
         _db,

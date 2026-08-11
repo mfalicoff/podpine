@@ -17,6 +17,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
     this._recordPosition,
     this._setCompleted, {
     Future<String> Function(EpisodeRecord episode)? chapterLoader,
+    this.recordSeek,
   }) : _loadChapters = chapterLoader {
     WidgetsBinding.instance.addObserver(this);
     _playbackSubscription = _handler.playbackState.listen(_onPlaybackState);
@@ -32,6 +33,8 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
   _recordPosition;
   final Future<void> Function(EpisodeRecord episode, bool completed)
   _setCompleted;
+  final Future<void> Function(EpisodeRecord episode, Duration position)?
+  recordSeek;
   final Future<String> Function(EpisodeRecord episode)? _loadChapters;
   final Map<int, EpisodeRecord> _episodesById = <int, EpisodeRecord>{};
   final Set<String> _handledCompletionEvents = <String>{};
@@ -202,7 +205,14 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
         : target;
     position = bounded;
     if (!_demoPlayback) await _handler.seek(bounded);
-    await _persist();
+    final episode = current;
+    final seekRecorder = recordSeek;
+    if (episode != null && seekRecorder != null) {
+      _lastPersistedSecond = position.inSeconds;
+      await seekRecorder(episode, position);
+    } else {
+      await _persist();
+    }
     notifyListeners();
   }
 

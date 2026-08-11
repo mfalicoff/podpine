@@ -60,5 +60,7 @@ EpisodeRecord _episode(int id) => EpisodeRecord(
   downloaded: false,
   isYoutube: false,
   chaptersJson: '[]',
+  playbackIntent: 'progress',
+  playbackMediaIdentity: 'https://example.test/$id.mp3',
   updatedAt: DateTime.utc(2026, 8, 10),
 );

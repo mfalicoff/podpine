@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/drift.dart';
@@ -10,6 +11,7 @@ import 'package:podpine/core/backend/pinepods_backend.dart';
 import 'package:podpine/core/backend/podcast_backend.dart';
 import 'package:podpine/core/database/app_database.dart';
 import 'package:podpine/core/storage/credential_store.dart';
+import 'package:podpine/core/sync/playback_sync.dart';
 import 'package:podpine/core/sync/sync_engine.dart';
 
 void main() {
@@ -93,6 +95,60 @@ void main() {
     ]);
     expect(await database.pendingMutations(), isEmpty);
   });
+
+  test(
+    'scalar backend preflight drops stale progress but keeps a seek',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      addTearDown(database.close);
+      final backend = _FakeBackend()..remotePosition = 90;
+      final occurredAt = DateTime.utc(2026, 8, 11, 10);
+
+      Future<void> enqueue({
+        required String id,
+        required int seconds,
+        required PlaybackEventKind kind,
+      }) => database.enqueueMutation(
+        SyncMutationsCompanion.insert(
+          id: id,
+          type: 'position',
+          episodeId: const Value(8),
+          payload: Value(
+            jsonEncode(
+              PlaybackSyncEvent(
+                episodeId: 8,
+                positionSeconds: seconds,
+                durationSeconds: 120,
+                completed: false,
+                kind: kind,
+                occurredAt: occurredAt,
+                deviceId: 'device-a',
+                mediaIdentity: 'https://example.test/episode.mp3',
+              ).toPayload(),
+            ),
+          ),
+          createdAt: occurredAt,
+        ),
+      );
+
+      await enqueue(
+        id: 'stale-progress',
+        seconds: 30,
+        kind: PlaybackEventKind.progress,
+      );
+      await SyncEngine(database, backend, 7).flushPendingMutations();
+      expect(backend.calls, ['episodes']);
+
+      backend.calls.clear();
+      await enqueue(
+        id: 'intentional-seek',
+        seconds: 10,
+        kind: PlaybackEventKind.seek,
+      );
+      await SyncEngine(database, backend, 7).flushPendingMutations();
+      expect(backend.calls, ['episodes', 'position:7:8:10']);
+    },
+  );
 
   test('queue operations retain their causal order in the outbox', () async {
     final database = AppDatabase(NativeDatabase.memory());
@@ -291,6 +347,7 @@ class _FakeBackend implements PodcastBackend, QueueControlBackend {
   int positionFailures = 0;
   int positionAttempts = 0;
   Object? positionError;
+  int remotePosition = 22;
   final positionObserved = Completer<void>();
 
   @override
@@ -323,10 +380,10 @@ class _FakeBackend implements PodcastBackend, QueueControlBackend {
         title: 'Test episode',
         description: '',
         artworkUrl: '',
-        audioUrl: '',
+        audioUrl: 'https://example.test/episode.mp3',
         publishedAt: DateTime.utc(2026, 8, 10),
         durationSeconds: 120,
-        positionSeconds: 22,
+        positionSeconds: remotePosition,
         completed: false,
         queued: false,
         downloaded: false,

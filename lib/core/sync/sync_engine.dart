@@ -6,6 +6,7 @@ import 'package:drift/drift.dart';
 import '../backend/pinepods_backend.dart';
 import '../backend/podcast_backend.dart';
 import '../database/app_database.dart';
+import 'playback_sync.dart';
 import 'queue_sync.dart';
 
 class SyncEngine {
@@ -84,32 +85,64 @@ class SyncEngine {
       }
     }
 
-    final episodeRows = episodesById.values
-        .map(
-          (episode) => EpisodeRowsCompanion.insert(
-            id: Value(episode.id),
-            podcastId: episode.podcastId,
-            podcastTitle: episode.podcastTitle,
-            title: episode.title,
-            description: Value(episode.description),
-            artworkUrl: Value(episode.artworkUrl),
-            audioUrl: Value(episode.audioUrl),
-            publishedAt: episode.publishedAt,
-            durationSeconds: Value(episode.durationSeconds),
-            positionSeconds: Value(episode.positionSeconds),
-            completed: Value(episode.completed),
-            queued: Value(queuedEpisodeIds.contains(episode.id)),
-            downloaded: Value(episode.downloaded),
-            isYoutube: Value(episode.isYoutube),
-            chaptersJson: Value(
-              episode.chaptersJson == '[]'
-                  ? cachedChapters[episode.id] ?? '[]'
-                  : episode.chaptersJson,
-            ),
-            updatedAt: now,
-          ),
-        )
-        .toList();
+    final localEpisodes = await Future.wait(
+      episodesById.keys.map(database.episodeById),
+    );
+    final localEpisodesById = {
+      for (final episode in localEpisodes.whereType<EpisodeRecord>())
+        episode.id: episode,
+    };
+    final episodeRows = episodesById.values.map((episode) {
+      final local = localEpisodesById[episode.id];
+      final playback = local == null
+          ? PlaybackSnapshotDecision(
+              positionSeconds: episode.completed ? 0 : episode.positionSeconds,
+              completed: episode.completed,
+              updatedAt: episode.playbackUpdatedAt ?? now,
+              deviceId: episode.playbackDeviceId,
+              intent: episode.completed
+                  ? PlaybackEventKind.completed
+                  : PlaybackEventKind.progress,
+              mediaIdentity: episode.audioUrl.trim(),
+            )
+          : mergePlaybackSnapshot(
+              localPositionSeconds: local.positionSeconds,
+              localDurationSeconds: local.durationSeconds,
+              localCompleted: local.completed,
+              localUpdatedAt: local.playbackUpdatedAt,
+              localDeviceId: local.playbackDeviceId,
+              localIntent: PlaybackEventKind.parse(local.playbackIntent),
+              localMediaIdentity: local.playbackMediaIdentity,
+              remote: episode,
+              observedAt: now,
+            );
+      return EpisodeRowsCompanion.insert(
+        id: Value(episode.id),
+        podcastId: episode.podcastId,
+        podcastTitle: episode.podcastTitle,
+        title: episode.title,
+        description: Value(episode.description),
+        artworkUrl: Value(episode.artworkUrl),
+        audioUrl: Value(episode.audioUrl),
+        publishedAt: episode.publishedAt,
+        durationSeconds: Value(episode.durationSeconds),
+        positionSeconds: Value(playback.positionSeconds),
+        completed: Value(playback.completed),
+        queued: Value(queuedEpisodeIds.contains(episode.id)),
+        downloaded: Value(episode.downloaded),
+        isYoutube: Value(episode.isYoutube),
+        chaptersJson: Value(
+          episode.chaptersJson == '[]'
+              ? cachedChapters[episode.id] ?? '[]'
+              : episode.chaptersJson,
+        ),
+        playbackUpdatedAt: Value(playback.updatedAt),
+        playbackDeviceId: Value(playback.deviceId),
+        playbackIntent: Value(playback.intent.name),
+        playbackMediaIdentity: Value(playback.mediaIdentity),
+        updatedAt: now,
+      );
+    }).toList();
 
     final queueRows = queue.indexed.map((entry) {
       final (index, episode) = entry;
@@ -129,6 +162,7 @@ class SyncEngine {
 
   Future<void> flushPendingMutations({bool ignoreBackoff = false}) async {
     final now = _clock();
+    Map<int, RemoteEpisode>? remoteEpisodes;
     for (final mutation in await database.readyMutations(
       now,
       ignoreBackoff: ignoreBackoff,
@@ -141,21 +175,68 @@ class SyncEngine {
             if (episodeId == null) {
               throw const FormatException('Position mutation has no episode.');
             }
+            final event = PlaybackSyncEvent.fromPayload(
+              episodeId: episodeId,
+              payload: payload,
+              fallbackOccurredAt: mutation.createdAt,
+              fallbackKind: PlaybackEventKind.progress,
+            );
+            if (backend is PlaybackEventBackend) {
+              await (backend as PlaybackEventBackend).updatePlaybackEvent(
+                userId,
+                event,
+              );
+              await database.acknowledgePlaybackEvent(event);
+              break;
+            }
+            final decision = await _resolveFallbackPlaybackEvent(
+              event,
+              payload,
+              remoteEpisodes,
+            );
+            remoteEpisodes = decision.remoteEpisodes;
+            if (decision.eventDecision?.shouldApply == false) {
+              await database.acknowledgePlaybackEvent(event);
+              break;
+            }
             await backend.updatePlayback(
               userId,
               episodeId,
-              Duration(seconds: payload['seconds'] as int? ?? 0),
+              Duration(
+                seconds:
+                    decision.eventDecision?.positionSeconds ??
+                    event.positionSeconds,
+              ),
             );
+            await database.acknowledgePlaybackEvent(event);
             break;
           case 'completed':
             if (episodeId == null) {
               throw const FormatException('Completed mutation has no episode.');
             }
-            await backend.markCompleted(
-              userId,
-              episodeId,
-              payload['value'] == true,
+            final event = PlaybackSyncEvent.fromPayload(
+              episodeId: episodeId,
+              payload: payload,
+              fallbackOccurredAt: mutation.createdAt,
+              fallbackKind: payload['value'] == true
+                  ? PlaybackEventKind.completed
+                  : PlaybackEventKind.uncompleted,
             );
+            if (backend is PlaybackEventBackend) {
+              await (backend as PlaybackEventBackend).updatePlaybackEvent(
+                userId,
+                event,
+              );
+              break;
+            }
+            final decision = await _resolveFallbackPlaybackEvent(
+              event,
+              payload,
+              remoteEpisodes,
+            );
+            remoteEpisodes = decision.remoteEpisodes;
+            if (decision.eventDecision?.shouldApply == false) break;
+            await backend.markCompleted(userId, episodeId, event.completed);
             break;
           case 'queue_add':
           case 'queue_remove':
@@ -243,6 +324,27 @@ class SyncEngine {
     );
   }
 
+  Future<_FallbackPlaybackDecision> _resolveFallbackPlaybackEvent(
+    PlaybackSyncEvent event,
+    Map<String, dynamic> payload,
+    Map<int, RemoteEpisode>? cachedRemoteEpisodes,
+  ) async {
+    if (payload['playbackEventVersion'] != 1) {
+      return _FallbackPlaybackDecision(cachedRemoteEpisodes, null);
+    }
+    final episodes =
+        cachedRemoteEpisodes ??
+        {
+          for (final episode in await backend.getEpisodes(userId))
+            episode.id: episode,
+        };
+    final remote = episodes[event.episodeId];
+    return _FallbackPlaybackDecision(
+      episodes,
+      remote == null ? null : resolvePlaybackEvent(event, remote),
+    );
+  }
+
   static bool _isPermanent(Object error) {
     if (error is UnsupportedError ||
         error is FormatException ||
@@ -279,6 +381,13 @@ class SyncEngine {
         explicit: Value(podcast.explicit),
         podcastIndexId: Value(podcast.podcastIndexId),
       );
+}
+
+class _FallbackPlaybackDecision {
+  const _FallbackPlaybackDecision(this.remoteEpisodes, this.eventDecision);
+
+  final Map<int, RemoteEpisode>? remoteEpisodes;
+  final PlaybackEventDecision? eventDecision;
 }
 
 class SyncDeferredException implements Exception {
