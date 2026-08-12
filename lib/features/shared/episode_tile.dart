@@ -17,11 +17,17 @@ class EpisodeTile extends ConsumerWidget {
     this.compact = false,
     this.onLongPress,
     this.onRemoveFromInbox,
+    this.selectionMode = false,
+    this.selected = false,
+    this.onSelected,
   });
   final EpisodeRecord episode;
   final bool compact;
   final VoidCallback? onLongPress;
   final Future<void> Function()? onRemoveFromInbox;
+  final bool selectionMode;
+  final bool selected;
+  final VoidCallback? onSelected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -35,35 +41,41 @@ class EpisodeTile extends ConsumerWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onLongPress: onLongPress,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => EpisodeDetailScreen(
-              episode: RemoteEpisode(
-                id: episode.id,
-                podcastId: episode.podcastId,
-                podcastTitle: episode.podcastTitle,
-                title: episode.title,
-                description: episode.description,
-                artworkUrl: episode.artworkUrl,
-                audioUrl: episode.audioUrl,
-                publishedAt: episode.publishedAt,
-                durationSeconds: episode.durationSeconds,
-                positionSeconds: episode.positionSeconds,
-                completed: episode.completed,
-                queued: episode.queued,
-                downloaded: episode.downloaded,
-                isYoutube: episode.isYoutube,
-                chaptersJson: episode.chaptersJson,
+        onTap: selectionMode
+            ? onSelected
+            : () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => EpisodeDetailScreen(
+                    episode: RemoteEpisode(
+                      id: episode.id,
+                      podcastId: episode.podcastId,
+                      podcastTitle: episode.podcastTitle,
+                      title: episode.title,
+                      description: episode.description,
+                      artworkUrl: episode.artworkUrl,
+                      audioUrl: episode.audioUrl,
+                      publishedAt: episode.publishedAt,
+                      durationSeconds: episode.durationSeconds,
+                      positionSeconds: episode.positionSeconds,
+                      completed: episode.completed,
+                      queued: episode.queued,
+                      downloaded: episode.downloaded,
+                      isYoutube: episode.isYoutube,
+                      chaptersJson: episode.chaptersJson,
+                    ),
+                    localEpisode: episode,
+                  ),
+                ),
               ),
-              localEpisode: episode,
-            ),
-          ),
-        ),
         child: Padding(
           padding: const EdgeInsets.all(8),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (selectionMode) ...[
+                Checkbox(value: selected, onChanged: (_) => onSelected?.call()),
+                const SizedBox(width: 4),
+              ],
               Artwork(
                 id: episode.podcastId,
                 title: episode.podcastTitle,
@@ -153,38 +165,39 @@ class EpisodeTile extends ConsumerWidget {
                   ],
                 ),
               ),
-              PopupMenuButton<String>(
-                tooltip: 'Episode actions',
-                onSelected: (value) => _handleAction(context, ref, value),
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'complete',
-                    child: Text(
-                      episode.completed ? 'Mark unplayed' : 'Mark played',
+              if (!selectionMode)
+                PopupMenuButton<String>(
+                  tooltip: 'Episode actions',
+                  onSelected: (value) => _handleAction(context, ref, value),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'complete',
+                      child: Text(
+                        episode.completed ? 'Mark unplayed' : 'Mark played',
+                      ),
                     ),
-                  ),
-                  PopupMenuItem(
-                    value: 'queue',
-                    child: Text(
-                      episode.queued ? 'Remove from queue' : 'Add to queue',
+                    PopupMenuItem(
+                      value: 'queue',
+                      child: Text(
+                        episode.queued ? 'Remove from queue' : 'Add to queue',
+                      ),
                     ),
-                  ),
-                  if (!episode.queued)
-                    const PopupMenuItem(
-                      value: 'next',
-                      child: Text('Play next'),
-                    ),
-                  ..._downloadMenuItems(download),
-                  if (onRemoveFromInbox != null) ...[
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'remove-inbox',
-                      child: Text('Remove from Inbox (keep unplayed)'),
-                    ),
+                    if (!episode.queued)
+                      const PopupMenuItem(
+                        value: 'next',
+                        child: Text('Play next'),
+                      ),
+                    ..._downloadMenuItems(download),
+                    if (onRemoveFromInbox != null) ...[
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'remove-inbox',
+                        child: Text('Remove from Inbox (keep unplayed)'),
+                      ),
+                    ],
                   ],
-                ],
-                icon: const Icon(Icons.more_horiz_rounded),
-              ),
+                  icon: const Icon(Icons.more_horiz_rounded),
+                ),
             ],
           ),
         ),

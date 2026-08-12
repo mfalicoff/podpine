@@ -6,6 +6,7 @@ import '../../core/downloads/download_actions.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
 import '../shared/episode_tile.dart';
+import '../shared/multi_select.dart';
 import 'inbox_models.dart';
 
 class InboxScreen extends ConsumerStatefulWidget {
@@ -18,6 +19,7 @@ class InboxScreen extends ConsumerStatefulWidget {
 class _InboxScreenState extends ConsumerState<InboxScreen> {
   InboxFilter _filter = InboxFilter.all;
   InboxSort _sort = InboxSort.newest;
+  final _selection = MultiSelectionController();
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +57,12 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                       onPressed: _editGlobalSwipeSettings,
                       icon: const Icon(Icons.swipe_rounded),
                     ),
+                    if (!_selection.isActive)
+                      IconButton(
+                        tooltip: 'Select episodes',
+                        onPressed: () => setState(_selection.begin),
+                        icon: const Icon(Icons.checklist_rounded),
+                      ),
                     PopupMenuButton<InboxSort>(
                       tooltip: 'Sort Inbox',
                       initialValue: _sort,
@@ -111,6 +119,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                   );
                 }
                 final episodes = snapshot.data!;
+                _selection.retain(episodes.map((episode) => episode.id));
                 if (episodes.isEmpty) {
                   return SliverFillRemaining(
                     hasScrollBody: false,
@@ -125,10 +134,29 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                     ),
                   );
                 }
-                return SliverList.builder(
-                  itemCount: episodes.length,
-                  itemBuilder: (_, index) =>
-                      _buildInboxEpisode(database, episodes[index]),
+                return SliverMainAxisGroup(
+                  slivers: [
+                    if (_selection.isActive)
+                      SliverToBoxAdapter(
+                        child: MultiSelectToolbar(
+                          selectedCount: _selection.count,
+                          totalCount: episodes.length,
+                          onClose: () => setState(_selection.clear),
+                          onSelectRange: (range) => setState(
+                            () => _selection.selectRange(
+                              episodes.map((episode) => episode.id).toList(),
+                              range,
+                            ),
+                          ),
+                          actions: _episodeActions(episodes),
+                        ),
+                      ),
+                    SliverList.builder(
+                      itemCount: episodes.length,
+                      itemBuilder: (_, index) =>
+                          _buildInboxEpisode(database, episodes[index]),
+                    ),
+                  ],
                 );
               },
             ),
@@ -147,6 +175,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
           final preferences = snapshot.data ?? const InboxSwipePreferences();
           return Dismissible(
             key: ValueKey('inbox-${episode.id}'),
+            direction: _selection.isActive
+                ? DismissDirection.none
+                : DismissDirection.horizontal,
             background: _SwipeBackground(
               action: preferences.right,
               alignment: Alignment.centerLeft,
@@ -164,7 +195,10 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
             },
             child: EpisodeTile(
               episode: episode,
-              onLongPress: () => _showEpisodeActions(episode),
+              selectionMode: _selection.isActive,
+              selected: _selection.contains(episode.id),
+              onLongPress: () => setState(() => _selection.start(episode.id)),
+              onSelected: () => setState(() => _selection.toggle(episode.id)),
               onRemoveFromInbox: () => _performAction(
                 episode,
                 InboxSwipeAction.remove,
@@ -175,46 +209,44 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         },
       );
 
-  Future<void> _showEpisodeActions(EpisodeRecord episode) async {
-    final choice = await showModalBottomSheet<Object>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.play_arrow_rounded),
-                title: const Text('Play'),
-                onTap: () => Navigator.pop(context, 'play'),
-              ),
-              ...InboxSwipeAction.values.map(
-                (action) => ListTile(
-                  leading: Icon(action.icon),
-                  title: Text(action.episodeLabel(episode)),
-                  onTap: () => Navigator.pop(context, action),
-                ),
-              ),
-              const Divider(),
-              ListTile(
-                leading: const Icon(Icons.tune_rounded),
-                title: Text('Swipe settings for ${episode.podcastTitle}'),
-                onTap: () => Navigator.pop(context, 'podcast-settings'),
-              ),
-            ],
-          ),
-        ),
+  List<MultiSelectAction> _episodeActions(List<EpisodeRecord> episodes) => [
+    ...EpisodeBulkAction.values.map(
+      (action) => MultiSelectAction(
+        label: action.label,
+        icon: action.icon,
+        onSelected: () => _runBulkAction(episodes, action),
       ),
+    ),
+    if (_selection.count == 1)
+      MultiSelectAction(
+        label: 'Podcast swipe settings',
+        icon: Icons.tune_rounded,
+        onSelected: () async {
+          final selected = _selection.selectedItems(
+            episodes,
+            (episode) => episode.id,
+          );
+          if (selected.isNotEmpty) {
+            await _editPodcastSwipeSettings(selected.single);
+          }
+        },
+      ),
+  ];
+
+  Future<void> _runBulkAction(
+    List<EpisodeRecord> episodes,
+    EpisodeBulkAction action,
+  ) async {
+    final selected = _selection.selectedItems(
+      episodes,
+      (episode) => episode.id,
     );
-    if (!mounted || choice == null) return;
-    if (choice == 'play') {
-      await ref.read(playerControllerProvider).playEpisode(episode);
-    } else if (choice == 'podcast-settings') {
-      await _editPodcastSwipeSettings(episode);
-    } else if (choice is InboxSwipeAction) {
-      await _performAction(episode, choice);
-    }
+    final result = await performEpisodeBulkAction(ref, selected, action);
+    if (!mounted) return;
+    setState(_selection.clear);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(bulkActionMessage(action, result))));
   }
 
   Future<void> _performAction(
@@ -544,17 +576,6 @@ extension on InboxSwipeAction {
     InboxSwipeAction.download => const Color(0xFF476C91),
     InboxSwipeAction.queue ||
     InboxSwipeAction.playNext => const Color(0xFF315F51),
-  };
-
-  String episodeLabel(EpisodeRecord episode) => switch (this) {
-    InboxSwipeAction.queue =>
-      episode.queued ? 'Remove from queue' : 'Add to queue',
-    InboxSwipeAction.remove => 'Remove from Inbox',
-    InboxSwipeAction.togglePlayed =>
-      episode.completed ? 'Mark unplayed' : 'Mark played',
-    InboxSwipeAction.download =>
-      episode.downloaded ? 'Delete download' : 'Download',
-    InboxSwipeAction.playNext => 'Play next',
   };
 
   String feedbackLabel(EpisodeRecord episode) => switch (this) {

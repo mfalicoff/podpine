@@ -10,6 +10,7 @@ import '../details/podcast_detail_screen.dart';
 import '../developer/background_sync_status_screen.dart';
 import '../shared/artwork.dart';
 import '../shared/episode_tile.dart';
+import '../shared/multi_select.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +21,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   _EpisodeFilter _filter = _EpisodeFilter.all;
+  final _selection = MultiSelectionController();
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +77,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         .where((e) => !e.completed && e.positionSeconds > 0)
         .firstOrNull;
     final filtered = episodes.where(_filter.matches).toList();
+    _selection.retain(filtered.map((episode) => episode.id));
     return [
       if (inProgress != null) ...[
         const SliverToBoxAdapter(child: SectionHeading('Continue listening')),
@@ -83,10 +86,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       SliverToBoxAdapter(
         child: SectionHeading(
           'All episodes',
-          trailing: TextButton.icon(
-            onPressed: () => ref.read(appControllerProvider).refresh(),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Refresh'),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!_selection.isActive)
+                IconButton(
+                  tooltip: 'Select episodes',
+                  onPressed: () => setState(_selection.begin),
+                  icon: const Icon(Icons.checklist_rounded),
+                ),
+              TextButton.icon(
+                onPressed: () => ref.read(appControllerProvider).refresh(),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Refresh'),
+              ),
+            ],
           ),
         ),
       ),
@@ -110,6 +124,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
+      if (_selection.isActive)
+        SliverToBoxAdapter(
+          child: MultiSelectToolbar(
+            selectedCount: _selection.count,
+            totalCount: filtered.length,
+            onClose: () => setState(_selection.clear),
+            onSelectRange: (range) => setState(
+              () => _selection.selectRange(
+                filtered.map((episode) => episode.id).toList(),
+                range,
+              ),
+            ),
+            actions: _episodeActions(filtered),
+          ),
+        ),
       if (filtered.isEmpty)
         const SliverToBoxAdapter(
           child: Padding(
@@ -124,11 +153,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       else
         SliverList.builder(
           itemCount: filtered.length,
-          itemBuilder: (context, index) =>
-              EpisodeTile(episode: filtered[index]),
+          itemBuilder: (context, index) {
+            final episode = filtered[index];
+            return EpisodeTile(
+              episode: episode,
+              selectionMode: _selection.isActive,
+              selected: _selection.contains(episode.id),
+              onLongPress: () => setState(() => _selection.start(episode.id)),
+              onSelected: () => setState(() => _selection.toggle(episode.id)),
+            );
+          },
         ),
       const SliverToBoxAdapter(child: SizedBox(height: 28)),
     ];
+  }
+
+  List<MultiSelectAction> _episodeActions(List<EpisodeRecord> episodes) =>
+      EpisodeBulkAction.values
+          .where((action) => action != EpisodeBulkAction.removeFromInbox)
+          .map(
+            (action) => MultiSelectAction(
+              label: action.label,
+              icon: action.icon,
+              onSelected: () => _runAction(episodes, action),
+            ),
+          )
+          .toList(growable: false);
+
+  Future<void> _runAction(
+    List<EpisodeRecord> episodes,
+    EpisodeBulkAction action,
+  ) async {
+    final selected = _selection.selectedItems(
+      episodes,
+      (episode) => episode.id,
+    );
+    final result = await performEpisodeBulkAction(ref, selected, action);
+    if (!mounted) return;
+    setState(_selection.clear);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(bulkActionMessage(action, result))));
   }
 }
 

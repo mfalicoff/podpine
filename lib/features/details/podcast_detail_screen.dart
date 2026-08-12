@@ -13,6 +13,7 @@ import '../../core/downloads/download_actions.dart';
 import '../../core/metadata_sanitizer.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
+import '../shared/multi_select.dart';
 import '../downloads/download_settings_screen.dart';
 
 class PodcastDetailScreen extends ConsumerStatefulWidget {
@@ -30,6 +31,7 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
   bool _refreshing = false;
   bool _changingSubscription = false;
   String? _error;
+  final _selection = MultiSelectionController();
 
   @override
   void initState() {
@@ -117,6 +119,13 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
   Widget build(BuildContext context) {
     final bundle = _bundle;
     final podcast = bundle?.podcast ?? widget.podcast;
+    final localEpisodes =
+        bundle?.episodes
+            .map((episode) => bundle.localEpisodes[episode.id])
+            .whereType<EpisodeRecord>()
+            .toList(growable: false) ??
+        const <EpisodeRecord>[];
+    _selection.retain(localEpisodes.map((episode) => episode.id));
     return Scaffold(
       appBar: AppBar(
         title: const Text('Podcast'),
@@ -219,9 +228,30 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
                       ),
                       if (podcast.episodeCount > 0)
                         Text('${podcast.episodeCount} total'),
+                      if (localEpisodes.isNotEmpty && !_selection.isActive)
+                        IconButton(
+                          tooltip: 'Select episodes',
+                          onPressed: () => setState(_selection.begin),
+                          icon: const Icon(Icons.checklist_rounded),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 8),
+                  if (_selection.isActive) ...[
+                    MultiSelectToolbar(
+                      selectedCount: _selection.count,
+                      totalCount: localEpisodes.length,
+                      onClose: () => setState(_selection.clear),
+                      onSelectRange: (range) => setState(
+                        () => _selection.selectRange(
+                          localEpisodes.map((episode) => episode.id).toList(),
+                          range,
+                        ),
+                      ),
+                      actions: _episodeActions(localEpisodes),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   if (bundle.episodes.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 36),
@@ -237,12 +267,58 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
                       (episode) => _EpisodeCard(
                         episode: episode,
                         local: bundle.localEpisodes[episode.id],
+                        selectionMode:
+                            _selection.isActive &&
+                            bundle.localEpisodes[episode.id] != null,
+                        selected: _selection.contains(episode.id),
+                        onLongPress: bundle.localEpisodes[episode.id] == null
+                            ? null
+                            : () =>
+                                  setState(() => _selection.start(episode.id)),
+                        onSelected: bundle.localEpisodes[episode.id] == null
+                            ? null
+                            : () =>
+                                  setState(() => _selection.toggle(episode.id)),
                       ),
                     ),
                 ],
               ),
             ),
     );
+  }
+
+  List<MultiSelectAction> _episodeActions(List<EpisodeRecord> episodes) =>
+      EpisodeBulkAction.values
+          .where((action) => action != EpisodeBulkAction.removeFromInbox)
+          .map(
+            (action) => MultiSelectAction(
+              label: action.label,
+              icon: action.icon,
+              onSelected: () => _runBulkAction(episodes, action),
+            ),
+          )
+          .toList(growable: false);
+
+  Future<void> _runBulkAction(
+    List<EpisodeRecord> episodes,
+    EpisodeBulkAction action,
+  ) async {
+    final selected = _selection.selectedItems(
+      episodes,
+      (episode) => episode.id,
+    );
+    final result = await performEpisodeBulkAction(ref, selected, action);
+    final updated = await ref
+        .read(appControllerProvider)
+        .cachedPodcastDetails(_bundle?.podcast ?? widget.podcast);
+    if (!mounted) return;
+    setState(() {
+      _bundle = updated;
+      _selection.clear();
+    });
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(bulkActionMessage(action, result))));
   }
 }
 
@@ -318,9 +394,20 @@ class _SafeLink extends StatelessWidget {
 }
 
 class _EpisodeCard extends StatelessWidget {
-  const _EpisodeCard({required this.episode, this.local});
+  const _EpisodeCard({
+    required this.episode,
+    this.local,
+    this.selectionMode = false,
+    this.selected = false,
+    this.onLongPress,
+    this.onSelected,
+  });
   final RemoteEpisode episode;
   final EpisodeRecord? local;
+  final bool selectionMode;
+  final bool selected;
+  final VoidCallback? onLongPress;
+  final VoidCallback? onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -331,13 +418,17 @@ class _EpisodeCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
+        selected: selected,
+        selectedTileColor: Theme.of(context).colorScheme.secondaryContainer,
         contentPadding: const EdgeInsets.all(12),
-        leading: Artwork(
-          id: episode.id,
-          title: episode.title,
-          url: episode.artworkUrl,
-          size: 58,
-        ),
+        leading: selectionMode
+            ? Checkbox(value: selected, onChanged: (_) => onSelected?.call())
+            : Artwork(
+                id: episode.id,
+                title: episode.title,
+                url: episode.artworkUrl,
+                size: 58,
+              ),
         title: Text(
           MetadataSanitizer.plainText(episode.title).isEmpty
               ? 'Untitled episode'
@@ -352,13 +443,20 @@ class _EpisodeCard extends StatelessWidget {
             if (local?.downloaded ?? episode.downloaded) 'Downloaded',
           ].join(' · '),
         ),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) =>
-                EpisodeDetailScreen(episode: episode, localEpisode: local),
-          ),
-        ),
+        trailing: selectionMode
+            ? null
+            : const Icon(Icons.chevron_right_rounded),
+        onLongPress: onLongPress,
+        onTap: selectionMode
+            ? onSelected
+            : () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => EpisodeDetailScreen(
+                    episode: episode,
+                    localEpisode: local,
+                  ),
+                ),
+              ),
       ),
     );
   }

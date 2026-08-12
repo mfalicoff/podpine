@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/downloads/download_models.dart';
 import '../../providers.dart';
+import '../shared/multi_select.dart';
 
 class DownloadStorageScreen extends ConsumerStatefulWidget {
   const DownloadStorageScreen({super.key});
@@ -18,6 +19,7 @@ class _DownloadStorageScreenState extends ConsumerState<DownloadStorageScreen> {
   _PlayedFilter _played = _PlayedFilter.any;
   int? _olderThanDays;
   bool _cleaning = false;
+  final _selection = MultiSelectionController();
 
   DownloadCleanupFilter _filter() => DownloadCleanupFilter(
     podcastId: _podcastId,
@@ -84,6 +86,9 @@ class _DownloadStorageScreenState extends ConsumerState<DownloadStorageScreen> {
   Widget build(BuildContext context) {
     final manager = ref.watch(downloadManagerProvider);
     final snapshot = manager.storageSnapshot;
+    _selection.retain(
+      snapshot?.items.map((item) => item.episode.id) ?? const <int>[],
+    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('Download storage'),
@@ -213,31 +218,111 @@ class _DownloadStorageScreenState extends ConsumerState<DownloadStorageScreen> {
                   },
                 ),
                 const Divider(height: 42),
-                Text(
-                  'Downloaded episodes',
-                  style: Theme.of(context).textTheme.titleLarge,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Downloaded episodes',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                    ),
+                    if (snapshot.items.isNotEmpty && !_selection.isActive)
+                      IconButton(
+                        tooltip: 'Select episodes',
+                        onPressed: () => setState(_selection.begin),
+                        icon: const Icon(Icons.checklist_rounded),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 8),
+                if (_selection.isActive) ...[
+                  MultiSelectToolbar(
+                    selectedCount: _selection.count,
+                    totalCount: snapshot.items.length,
+                    onClose: () => setState(_selection.clear),
+                    onSelectRange: (range) => setState(
+                      () => _selection.selectRange(
+                        snapshot.items.map((item) => item.episode.id).toList(),
+                        range,
+                      ),
+                    ),
+                    actions: _downloadActions(snapshot.items),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 if (snapshot.items.isEmpty)
                   const Text('Downloaded episodes will appear here.')
                 else
                   ...snapshot.items.map(
                     (item) => ListTile(
+                      selected: _selection.contains(item.episode.id),
+                      selectedTileColor: Theme.of(
+                        context,
+                      ).colorScheme.secondaryContainer,
                       contentPadding: EdgeInsets.zero,
                       title: Text(item.episode.title),
                       subtitle: Text(
                         '${item.episode.podcastTitle} · ${formatBytes(item.sizeBytes)} · ${DateFormat.yMMMd().format(item.downloadedAt.toLocal())}',
                       ),
-                      trailing: IconButton(
-                        tooltip: 'Delete download',
-                        onPressed: () => _deleteOne(item),
-                        icon: const Icon(Icons.delete_outline_rounded),
-                      ),
+                      onLongPress: () =>
+                          setState(() => _selection.start(item.episode.id)),
+                      onTap: _selection.isActive
+                          ? () => setState(
+                              () => _selection.toggle(item.episode.id),
+                            )
+                          : null,
+                      trailing: _selection.isActive
+                          ? Checkbox(
+                              value: _selection.contains(item.episode.id),
+                              onChanged: (_) => setState(
+                                () => _selection.toggle(item.episode.id),
+                              ),
+                            )
+                          : IconButton(
+                              tooltip: 'Delete download',
+                              onPressed: () => _deleteOne(item),
+                              icon: const Icon(Icons.delete_outline_rounded),
+                            ),
                     ),
                   ),
               ],
             ),
     );
+  }
+
+  List<MultiSelectAction> _downloadActions(List<DownloadStorageItem> items) {
+    const actions = [
+      EpisodeBulkAction.markPlayed,
+      EpisodeBulkAction.markUnplayed,
+      EpisodeBulkAction.deleteDownloads,
+    ];
+    return actions
+        .map(
+          (action) => MultiSelectAction(
+            label: action.label,
+            icon: action.icon,
+            onSelected: () => _runBulkAction(items, action),
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<void> _runBulkAction(
+    List<DownloadStorageItem> items,
+    EpisodeBulkAction action,
+  ) async {
+    final selected = _selection.selectedItems(items, (item) => item.episode.id);
+    final result = await performEpisodeBulkAction(
+      ref,
+      selected.map((item) => item.episode),
+      action,
+    );
+    await ref.read(downloadManagerProvider).refreshStorageSnapshot();
+    if (!mounted) return;
+    setState(_selection.clear);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(bulkActionMessage(action, result))));
   }
 }
 

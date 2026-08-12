@@ -5,6 +5,7 @@ import '../../core/database/app_database.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
 import '../shared/episode_tile.dart';
+import '../shared/multi_select.dart';
 
 class QueueScreen extends ConsumerStatefulWidget {
   const QueueScreen({super.key});
@@ -16,6 +17,7 @@ class QueueScreen extends ConsumerStatefulWidget {
 class _QueueScreenState extends ConsumerState<QueueScreen> {
   List<EpisodeRecord> _visibleItems = const <EpisodeRecord>[];
   bool _reorderPending = false;
+  final _selection = MultiSelectionController();
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +48,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
             data: (items) {
               if (!_reorderPending) _visibleItems = items;
               final visibleItems = _visibleItems;
+              _selection.retain(visibleItems.map((episode) => episode.id));
               return visibleItems.isEmpty
                   ? const [
                       SliverFillRemaining(
@@ -76,6 +79,12 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                                 tooltip: 'Clear queue',
                                 icon: const Icon(Icons.clear_all_rounded),
                               ),
+                              if (!_selection.isActive)
+                                IconButton(
+                                  onPressed: () => setState(_selection.begin),
+                                  tooltip: 'Select episodes',
+                                  icon: const Icon(Icons.checklist_rounded),
+                                ),
                               const Spacer(),
                               Text(
                                 '${visibleItems.length} episode${visibleItems.length == 1 ? '' : 's'}',
@@ -88,6 +97,23 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                           ),
                         ),
                       ),
+                      if (_selection.isActive)
+                        SliverToBoxAdapter(
+                          child: MultiSelectToolbar(
+                            selectedCount: _selection.count,
+                            totalCount: visibleItems.length,
+                            onClose: () => setState(_selection.clear),
+                            onSelectRange: (range) => setState(
+                              () => _selection.selectRange(
+                                visibleItems
+                                    .map((episode) => episode.id)
+                                    .toList(),
+                                range,
+                              ),
+                            ),
+                            actions: _episodeActions(visibleItems),
+                          ),
+                        ),
                       SliverReorderableList(
                         itemCount: visibleItems.length,
                         onReorderItem: _reorder,
@@ -99,6 +125,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                             children: [
                               ReorderableDragStartListener(
                                 index: index,
+                                enabled: !_selection.isActive,
                                 child: SizedBox(
                                   width: 44,
                                   child: Row(
@@ -124,6 +151,20 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                                 child: EpisodeTile(
                                   episode: visibleItems[index],
                                   compact: true,
+                                  selectionMode: _selection.isActive,
+                                  selected: _selection.contains(
+                                    visibleItems[index].id,
+                                  ),
+                                  onLongPress: () => setState(
+                                    () => _selection.start(
+                                      visibleItems[index].id,
+                                    ),
+                                  ),
+                                  onSelected: () => setState(
+                                    () => _selection.toggle(
+                                      visibleItems[index].id,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
@@ -151,6 +192,40 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
         ],
       ),
     );
+  }
+
+  List<MultiSelectAction> _episodeActions(List<EpisodeRecord> episodes) {
+    const actions = [
+      EpisodeBulkAction.markPlayed,
+      EpisodeBulkAction.markUnplayed,
+      EpisodeBulkAction.removeFromQueue,
+      EpisodeBulkAction.deleteDownloads,
+    ];
+    return actions
+        .map(
+          (action) => MultiSelectAction(
+            label: action.label,
+            icon: action.icon,
+            onSelected: () => _runAction(episodes, action),
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  Future<void> _runAction(
+    List<EpisodeRecord> episodes,
+    EpisodeBulkAction action,
+  ) async {
+    final selected = _selection.selectedItems(
+      episodes,
+      (episode) => episode.id,
+    );
+    final result = await performEpisodeBulkAction(ref, selected, action);
+    if (!mounted) return;
+    setState(_selection.clear);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(bulkActionMessage(action, result))));
   }
 
   Future<void> _reorder(int oldIndex, int newIndex) async {
