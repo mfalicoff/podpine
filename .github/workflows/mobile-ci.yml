@@ -58,28 +58,64 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - name: Build release app bundle and APK (verification signing only)
+      - name: Configure persistent Android signing
+        env:
+          PODPINE_ANDROID_KEYSTORE_BASE64: ${{ secrets.PODPINE_ANDROID_KEYSTORE_BASE64 }}
+          PODPINE_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.PODPINE_ANDROID_KEYSTORE_PASSWORD }}
+          PODPINE_ANDROID_KEY_ALIAS: ${{ secrets.PODPINE_ANDROID_KEY_ALIAS }}
+          PODPINE_ANDROID_KEY_PASSWORD: ${{ secrets.PODPINE_ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=0
+          for variable in \
+            PODPINE_ANDROID_KEYSTORE_BASE64 \
+            PODPINE_ANDROID_KEYSTORE_PASSWORD \
+            PODPINE_ANDROID_KEY_ALIAS \
+            PODPINE_ANDROID_KEY_PASSWORD; do
+            if [ -z "${!variable}" ]; then
+              echo "::error::The $variable repository secret is not configured."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+          keystore_path="${{ runner.temp }}/podpine-release.p12"
+          umask 077
+          printf '%s' "$PODPINE_ANDROID_KEYSTORE_BASE64" \
+            | base64 --decode > "$keystore_path"
+          keytool -list \
+            -keystore "$keystore_path" \
+            -storepass "$PODPINE_ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$PODPINE_ANDROID_KEY_ALIAS" > /dev/null
+      - name: Build signed release app bundle and APK
         env:
           PODPINE_SENTRY_DSN: ${{ secrets.PODPINE_SENTRY_DSN }}
+          PODPINE_ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/podpine-release.p12
+          PODPINE_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.PODPINE_ANDROID_KEYSTORE_PASSWORD }}
+          PODPINE_ANDROID_KEY_ALIAS: ${{ secrets.PODPINE_ANDROID_KEY_ALIAS }}
+          PODPINE_ANDROID_KEY_PASSWORD: ${{ secrets.PODPINE_ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$PODPINE_SENTRY_DSN" ]; then
             echo "::error::The PODPINE_SENTRY_DSN repository secret is not configured."
             exit 1
           fi
           flutter build appbundle --release \
+            --build-number="${{ github.run_number }}" \
             --dart-define=PODPINE_SENTRY_DSN="$PODPINE_SENTRY_DSN" \
             --dart-define=PODPINE_ENVIRONMENT=production
           flutter build apk --release \
+            --build-number="${{ github.run_number }}" \
             --dart-define=PODPINE_SENTRY_DSN="$PODPINE_SENTRY_DSN" \
             --dart-define=PODPINE_ENVIRONMENT=production
       - uses: actions/upload-artifact@v4
         with:
-          name: android-aab-release-verification
+          name: android-aab-release-signed
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 7
       - uses: actions/upload-artifact@v4
         with:
-          name: android-apk-release-verification
+          name: android-apk-release-signed
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 7
 
@@ -106,5 +142,6 @@ jobs:
             exit 1
           fi
           flutter build ios --release --no-codesign \
+            --build-number="${{ github.run_number }}" \
             --dart-define=PODPINE_SENTRY_DSN="$PODPINE_SENTRY_DSN" \
             --dart-define=PODPINE_ENVIRONMENT=production

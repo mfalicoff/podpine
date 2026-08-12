@@ -8,10 +8,11 @@ artifacts without putting credentials in the repository.
 The `Mobile CI` workflow is the release gate. Protect `main` and require its
 `Format, analyze, test, and Drift` check. Each push to `main` then compiles an
 Android release app bundle, an installable release APK on Linux, and an
-unsigned iOS release on macOS. Workflow artifacts are verification builds
-only: the Android job uses the debug keystore when production signing
-variables are absent, and the iOS job uses `--no-codesign`. Never upload these
-CI artifacts to a store.
+unsigned iOS release on macOS. Android CI artifacts are signed with one
+persistent secret-backed key so an APK from a later run can update an earlier
+one. The workflow refuses to build Android artifacts when signing secrets are
+absent; it never falls back to a runner's ephemeral debug key. The iOS job
+continues to use `--no-codesign`.
 
 Run the same quality gate locally before tagging:
 
@@ -25,8 +26,10 @@ git diff --exit-code -- lib/core/database/app_database.g.dart
 
 ## Version and production diagnostics
 
-1. Update `version` in `pubspec.yaml`. The suffix after `+` must increase for
-   every store upload.
+1. Update the release name in `pubspec.yaml` when preparing a release. Mobile
+   CI overrides the build-number suffix with the monotonically increasing
+   GitHub Actions run number; local store builds must still use a build number
+   greater than every previously uploaded build.
 2. Add the project DSN to GitHub Actions as the `PODPINE_SENTRY_DSN`
    repository secret. Keep it and any Sentry auth token out of source control.
 3. Pass these compile-time values to both platform builds:
@@ -48,13 +51,77 @@ download breadcrumbs only contain allowlisted states, counts, status families,
 and size buckets. Error messages, URLs, credentials, titles, file paths, feed
 addresses, and user identifiers are removed before sending.
 
-## Android signed app bundle
+## Android signing and update-compatible APKs
+
+Use the repository generator to create a persistent key and a restricted file
+containing the four GitHub Actions secret values:
+
+```sh
+./scripts/generate_android_signing_secrets.sh
+```
+
+The default output is `.secrets/android-signing`, which Git ignores. If the
+GitHub CLI is installed and authenticated, the script can also upload the
+values without printing them:
+
+```sh
+./scripts/generate_android_signing_secrets.sh \
+  --output /secure/path/podpine-android-signing \
+  --upload \
+  --repository mfalicoff/podpine
+```
+
+The script refuses to overwrite an existing output directory. Keep its
+keystore and credentials file in a secure backup.
+
+To create the credentials manually instead, generate one long-lived signing
+key. The same key must sign every directly installed APK for Android to accept
+it as an update:
+
+```sh
+keytool -genkeypair \
+  -keystore podpine-release.p12 \
+  -storetype PKCS12 \
+  -alias podpine \
+  -keyalg RSA \
+  -keysize 4096 \
+  -validity 10000
+```
+
+Back up the keystore and its credentials before using it. Losing the key means
+future APKs cannot update existing direct installations.
+
+Encode the keystore without committing it:
+
+```sh
+base64 < podpine-release.p12 | tr -d '\n'
+```
+
+Add the result and credentials as these GitHub Actions repository secrets:
+
+- `PODPINE_ANDROID_KEYSTORE_BASE64`
+- `PODPINE_ANDROID_KEYSTORE_PASSWORD`
+- `PODPINE_ANDROID_KEY_ALIAS`
+- `PODPINE_ANDROID_KEY_PASSWORD`
+
+The Android CI job decodes the keystore into the runner's temporary directory,
+validates the configured alias, and passes the four existing signing variables
+to Gradle. Both its APK and AAB use the workflow run number as Android's
+`versionCode`.
+
+An app installed from an older CI artifact that used an ephemeral debug key
+must be uninstalled once before installing the first persistently signed APK.
+After that migration, later CI APKs install as normal updates. An app installed
+through Google Play must be updated through a Play testing or production track
+because Play App Signing may use a different certificate.
+
+## Android local signed app bundle
 
 Store the upload keystore outside the repository. Set all four variables in the
 release shell or secret-backed CI job:
 
 ```sh
-export PODPINE_ANDROID_KEYSTORE_PATH=/secure/path/podpine-upload.jks
+export PODPINE_ANDROID_KEYSTORE_PATH=/secure/path/podpine-release.p12
 export PODPINE_ANDROID_KEYSTORE_PASSWORD=...
 export PODPINE_ANDROID_KEY_ALIAS=...
 export PODPINE_ANDROID_KEY_PASSWORD=...

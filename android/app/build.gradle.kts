@@ -14,6 +14,16 @@ val hasReleaseSigning = listOf(
     releaseKeyAlias,
     releaseKeyPassword,
 ).all { !it.isNullOrBlank() }
+val isCiBuild = providers.environmentVariable("CI").orNull == "true"
+val isReleaseBuild = gradle.startParameter.taskNames.any {
+    it.contains("Release", ignoreCase = true)
+}
+
+if (isCiBuild && isReleaseBuild && !hasReleaseSigning) {
+    throw GradleException(
+        "CI release builds require persistent PODPINE_ANDROID_* signing variables.",
+    )
+}
 
 android {
     namespace = "app.podpine.podpine"
@@ -39,6 +49,7 @@ android {
         if (hasReleaseSigning) {
             create("release") {
                 storeFile = file(releaseKeystorePath!!)
+                storeType = "PKCS12"
                 storePassword = releaseKeystorePassword
                 keyAlias = releaseKeyAlias
                 keyPassword = releaseKeyPassword
@@ -48,8 +59,8 @@ android {
 
     buildTypes {
         release {
-            // CI verifies release compilation without production credentials.
-            // Store artifacts must set all PODPINE_ANDROID_* variables above.
+            // Local release builds may use the debug key for development.
+            // CI is guarded above and always requires the persistent key.
             signingConfig = signingConfigs.getByName(
                 if (hasReleaseSigning) "release" else "debug",
             )
