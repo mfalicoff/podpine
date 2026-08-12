@@ -220,6 +220,30 @@ void main() {
     expect(controller.isPlaying, isTrue);
   });
 
+  test('queue setup cannot reset an episode resume position', () async {
+    final database = AppDatabase(NativeDatabase.memory());
+    final handler = _RecordingAudioHandler(resetPositionWhileSelecting: true);
+    final episode = _episode(1, title: 'Resume me');
+    await database.into(database.podcastRows).insert(_podcast);
+    await database.into(database.episodeRows).insert(episode);
+    await database.addToQueue(episode.id);
+    final controller = PlayerController(
+      database,
+      handler,
+      (_, _) async {},
+      (_, _) async {},
+    );
+    addTearDown(() {
+      controller.dispose();
+      return database.close();
+    });
+
+    await controller.playEpisode(episode);
+
+    expect(handler.seeks.last, const Duration(seconds: 12));
+    expect(controller.position, const Duration(seconds: 12));
+  });
+
   test('queue reordering preserves the active episode and position', () async {
     final database = AppDatabase(NativeDatabase.memory());
     final handler = _RecordingAudioHandler();
@@ -569,6 +593,9 @@ EpisodeRecord _episode(int id, {required String title}) => EpisodeRecord(
 );
 
 class _RecordingAudioHandler extends BaseAudioHandler {
+  _RecordingAudioHandler({this.resetPositionWhileSelecting = false});
+
+  final bool resetPositionWhileSelecting;
   List<MediaItem> receivedQueue = <MediaItem>[];
   final queueUpdates = <List<MediaItem>>[];
   final selectedIndices = <int>[];
@@ -586,13 +613,27 @@ class _RecordingAudioHandler extends BaseAudioHandler {
     receivedQueue = List<MediaItem>.of(items);
     queueUpdates.add(receivedQueue);
     queue.add(receivedQueue);
+    if (resetPositionWhileSelecting) {
+      playbackState.add(
+        playbackState.value.copyWith(updatePosition: Duration.zero),
+      );
+      await pumpEventQueue();
+    }
   }
 
   @override
   Future<void> skipToQueueItem(int index) async {
     selectedIndices.add(index);
     mediaItem.add(receivedQueue[index]);
-    playbackState.add(playbackState.value.copyWith(queueIndex: index));
+    playbackState.add(
+      resetPositionWhileSelecting
+          ? playbackState.value.copyWith(
+              queueIndex: index,
+              updatePosition: Duration.zero,
+            )
+          : playbackState.value.copyWith(queueIndex: index),
+    );
+    if (resetPositionWhileSelecting) await pumpEventQueue();
   }
 
   @override

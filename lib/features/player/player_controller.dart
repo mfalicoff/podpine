@@ -111,7 +111,8 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
     _completedEpisodeIds.remove(episode.id);
     current = episode;
     unawaited(_hydrateChapters(episode));
-    position = Duration(seconds: episode.positionSeconds);
+    final resumePosition = Duration(seconds: episode.positionSeconds);
+    position = resumePosition;
     _lastPersistedSecond = -1;
     loading = true;
     error = null;
@@ -153,7 +154,10 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
           .toList(growable: false);
       _playbackQueueAudioUrls = _audioUrls(queue);
       await _handler.skipToQueueItem(activeIndex);
-      await _handler.seek(position);
+      // Queue selection briefly reports its initial position (zero) through
+      // the playback-state stream. Keep the persisted resume point captured
+      // above so that transient state cannot change the requested seek.
+      await _handler.seek(resumePosition);
       await _handler.setSpeed(speed);
       await _applySkipSilence();
       isPlaying = true;
