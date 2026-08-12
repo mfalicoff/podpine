@@ -11,6 +11,7 @@ class Artwork extends StatelessWidget {
     this.url = '',
     this.size = 58,
     this.radius = 14,
+    @visibleForTesting this.imageProvider,
   });
 
   final int id;
@@ -18,10 +19,18 @@ class Artwork extends StatelessWidget {
   final String url;
   final double size;
   final double radius;
+  final ImageProvider<Object>? imageProvider;
 
   @override
   Widget build(BuildContext context) {
     final safeUrl = MetadataSanitizer.safeHttpUrl(url);
+    final cacheDimension = (size * MediaQuery.devicePixelRatioOf(context))
+        .ceil();
+    final source =
+        imageProvider ?? (safeUrl.isEmpty ? null : NetworkImage(safeUrl));
+    final cachedSource = source == null
+        ? null
+        : ResizeImage.resizeIfNeeded(cacheDimension, cacheDimension, source);
     final palette = [
       const [Color(0xFF173F35), Color(0xFF6EA58C)],
       const [Color(0xFF653C43), Color(0xFFE58B79)],
@@ -52,11 +61,15 @@ class Artwork extends StatelessWidget {
       child: SizedBox(
         width: size,
         height: size,
-        child: safeUrl.isEmpty
+        child: cachedSource == null
             ? placeholder
-            : Image.network(
-                safeUrl,
+            : Image(
+                image: cachedSource,
                 fit: BoxFit.cover,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (wasSynchronouslyLoaded || frame != null) return child;
+                  return placeholder;
+                },
                 errorBuilder: (_, _, _) => placeholder,
               ),
       ),
