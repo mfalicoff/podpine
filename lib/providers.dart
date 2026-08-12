@@ -82,6 +82,9 @@ final playerControllerProvider = ChangeNotifierProvider<PlayerController>((
   ref.listen(queueProvider, (_, queue) {
     queue.whenData(controller.syncQueue);
   }, fireImmediately: true);
+  ref.listen(downloadJobsProvider, (_, jobs) {
+    jobs.whenData(controller.syncDownloadJobs);
+  }, fireImmediately: true);
   ref.onDispose(() {
     if (identical(app.activeEpisodeId, activeEpisodeId)) {
       app.activeEpisodeId = null;

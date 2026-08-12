@@ -47,6 +47,8 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
   late final Future<void> _settingsReady;
   PlaybackState _playbackState = PlaybackState();
   List<int> _playbackQueueIds = const <int>[];
+  List<String> _playbackQueueAudioUrls = const <String>[];
+  Map<int, String> _completedDownloadPaths = const <int, String>{};
 
   EpisodeRecord? current;
   Duration position = Duration.zero;
@@ -54,6 +56,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
   bool loading = false;
   bool _demoPlayback = false;
   bool _selectingEpisode = false;
+  bool _downloadSourceRefreshPending = false;
   int _lastPersistedSecond = -1;
   double speed = 1;
   PlaybackPreferences globalPreferences = const PlaybackPreferences();
@@ -148,6 +151,7 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
       _playbackQueueIds = playableQueue
           .map((episode) => episode.id)
           .toList(growable: false);
+      _playbackQueueAudioUrls = _audioUrls(queue);
       await _handler.skipToQueueItem(activeIndex);
       await _handler.seek(position);
       await _handler.setSpeed(speed);
@@ -161,6 +165,9 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
     } finally {
       _selectingEpisode = false;
       loading = false;
+      if (_downloadSourceRefreshPending) {
+        _refreshPlaybackSourcesWhenReady();
+      }
       notifyListeners();
     }
   }
@@ -369,6 +376,40 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
     await _syncPlaybackQueue(storedQueue, active);
   }
 
+  void syncDownloadJobs(List<DownloadJobRecord> jobs) {
+    final completedPaths = <int, String>{
+      for (final job in jobs)
+        if (job.state == 'completed') job.episodeId: job.filePath,
+    };
+    final hasNewCompletedSource = completedPaths.entries.any(
+      (entry) => _completedDownloadPaths[entry.key] != entry.value,
+    );
+    _completedDownloadPaths = completedPaths;
+    if (!hasNewCompletedSource) return;
+
+    _refreshPlaybackSourcesWhenReady();
+  }
+
+  void _refreshPlaybackSourcesWhenReady() {
+    final active = current;
+    if (active == null || _demoPlayback) return;
+    if (_selectingEpisode) {
+      _downloadSourceRefreshPending = true;
+      return;
+    }
+    _downloadSourceRefreshPending = false;
+    unawaited(_refreshPlaybackSources(active.id));
+  }
+
+  Future<void> _refreshPlaybackSources(int activeEpisodeId) async {
+    final active = current;
+    if (active == null || active.id != activeEpisodeId) return;
+    final storedQueue = await database.watchQueue().first;
+    final refreshedActive = await database.episodeById(activeEpisodeId);
+    if (current?.id != activeEpisodeId) return;
+    await _syncPlaybackQueue(storedQueue, refreshedActive ?? active);
+  }
+
   Future<void> _syncPlaybackQueue(
     List<EpisodeRecord> storedQueue,
     EpisodeRecord active,
@@ -382,15 +423,21 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
     final ids = playableQueue
         .map((episode) => episode.id)
         .toList(growable: false);
+    final queue = await _mediaItems(playableQueue);
+    final audioUrls = _audioUrls(queue);
     _episodesById
       ..clear()
       ..addEntries(
         playableQueue.map((episode) => MapEntry(episode.id, episode)),
       );
-    if (listEquals(ids, _playbackQueueIds)) return;
+    if (listEquals(ids, _playbackQueueIds) &&
+        listEquals(audioUrls, _playbackQueueAudioUrls)) {
+      return;
+    }
     try {
-      await _handler.updateQueue(await _mediaItems(playableQueue));
+      await _handler.updateQueue(queue);
       _playbackQueueIds = ids;
+      _playbackQueueAudioUrls = audioUrls;
     } catch (_) {
       // Playback continues on its existing queue. A later database emission
       // retries the update without replacing the active episode in the UI.
@@ -408,6 +455,10 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
         )
         .toList(growable: false);
   }
+
+  List<String> _audioUrls(List<MediaItem> items) => items
+      .map((item) => item.extras?[audioUrlExtra] as String? ?? '')
+      .toList(growable: false);
 
   void _onCustomEvent(dynamic event) {
     if (event is! Map) return;

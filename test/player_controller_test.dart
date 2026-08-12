@@ -65,6 +65,68 @@ void main() {
     );
   });
 
+  test(
+    'active playback switches to a completed download at the same position',
+    () async {
+      final database = AppDatabase(NativeDatabase.memory());
+      final handler = _RecordingAudioHandler();
+      final episode = _episode(1, title: 'Downloading episode');
+      await database.into(database.podcastRows).insert(_podcast);
+      await database.into(database.episodeRows).insert(episode);
+      final controller = PlayerController(
+        database,
+        handler,
+        (_, _) async {},
+        (_, _) async {},
+      );
+      addTearDown(() {
+        controller.dispose();
+        return database.close();
+      });
+
+      await controller.playEpisode(episode);
+      handler.playbackState.add(
+        PlaybackState(
+          processingState: AudioProcessingState.ready,
+          playing: true,
+          updatePosition: const Duration(seconds: 42),
+        ),
+      );
+      await pumpEventQueue();
+      expect(handler.queueUpdates, hasLength(1));
+      expect(
+        handler.receivedQueue.single.extras?[audioUrlExtra],
+        episode.audioUrl,
+      );
+
+      await database.upsertDownloadJob(
+        DownloadJobRowsCompanion.insert(
+          episodeId: const Value(1),
+          sourceUrl: episode.audioUrl,
+          filePath: '/downloads/completed.mp3',
+          partialPath: '/downloads/completed.mp3.part',
+          state: 'completed',
+          bytesDownloaded: const Value(4),
+          totalBytes: const Value(4),
+          createdAt: DateTime.utc(2026, 8, 10),
+          updatedAt: DateTime.utc(2026, 8, 10),
+        ),
+      );
+      controller.syncDownloadJobs(await database.downloadJobs());
+      await pumpEventQueue(times: 50);
+
+      expect(handler.queueUpdates, hasLength(2));
+      expect(handler.receivedQueue, hasLength(1));
+      expect(
+        handler.receivedQueue.single.extras?[audioUrlExtra],
+        Uri.file('/downloads/completed.mp3').toString(),
+      );
+      expect(controller.current?.id, episode.id);
+      expect(controller.position, const Duration(seconds: 42));
+      expect(controller.isPlaying, isTrue);
+    },
+  );
+
   test('system controls expose podcast skip and seek actions', () {
     final pausedActions = PodpineAudioHandler.notificationControls(
       playing: false,
@@ -508,6 +570,7 @@ EpisodeRecord _episode(int id, {required String title}) => EpisodeRecord(
 
 class _RecordingAudioHandler extends BaseAudioHandler {
   List<MediaItem> receivedQueue = <MediaItem>[];
+  final queueUpdates = <List<MediaItem>>[];
   final selectedIndices = <int>[];
   final seeks = <Duration>[];
   final speedCalls = <double>[];
@@ -521,6 +584,7 @@ class _RecordingAudioHandler extends BaseAudioHandler {
   @override
   Future<void> updateQueue(List<MediaItem> items) async {
     receivedQueue = List<MediaItem>.of(items);
+    queueUpdates.add(receivedQueue);
     queue.add(receivedQueue);
   }
 
