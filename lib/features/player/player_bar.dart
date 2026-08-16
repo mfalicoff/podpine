@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/semantics.dart';
 
-import '../../core/theme.dart';
 import '../../core/metadata_sanitizer.dart';
+import '../../core/l10n.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
+import '../shared/linkified_text.dart';
 import 'playback_options.dart';
 import 'player_controller.dart';
 
@@ -19,88 +21,144 @@ class PlayerBar extends ConsumerWidget {
     final progress = player.duration.inMilliseconds == 0
         ? 0.0
         : player.position.inMilliseconds / player.duration.inMilliseconds;
-    return Material(
-      color: const Color(0xFFFDFCF8),
-      child: InkWell(
-        onTap: () => showModalBottomSheet<void>(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: PodpineTheme.cream,
-          builder: (_) => const _FullPlayer(),
-        ),
-        child: Column(
-          children: [
-            if (player.error != null) _PlaybackError(player: player),
-            LinearProgressIndicator(
-              value: progress.clamp(0, 1),
-              minHeight: 2,
-              backgroundColor: Colors.black12,
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-              child: Row(
-                children: [
-                  Artwork(
-                    id: episode.podcastId,
-                    title: episode.podcastTitle,
-                    url: episode.artworkUrl,
-                    size: 44,
-                    radius: 10,
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          episode.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        Text(
-                          episode.podcastTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'sans-serif',
-                            fontSize: 11,
-                            color: Colors.black45,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => player.skip(-15),
-                    icon: const Icon(Icons.replay_10_rounded),
-                  ),
-                  IconButton.filled(
-                    onPressed: player.loading ? null : player.toggle,
-                    icon: player.loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            player.isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                          ),
-                  ),
-                  IconButton(
-                    onPressed: () => player.skip(30),
-                    icon: const Icon(Icons.forward_30_rounded),
-                  ),
-                ],
+    return Semantics(
+      container: true,
+      button: true,
+      explicitChildNodes: true,
+      label: context.l10n.openPlayer(episode.title),
+      child: Material(
+        color: Theme.of(context).navigationBarTheme.backgroundColor,
+        child: InkWell(
+          onTap: () => showModalBottomSheet<void>(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            requestFocus: true,
+            sheetAnimationStyle: MediaQuery.of(context).disableAnimations
+                ? AnimationStyle.noAnimation
+                : null,
+            builder: (_) => const _FullPlayer(),
+          ),
+          child: Column(
+            children: [
+              if (player.error != null) _PlaybackError(player: player),
+              LinearProgressIndicator(
+                value: progress.clamp(0, 1),
+                minHeight: 2,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+                child: Row(
+                  children: [
+                    Artwork(
+                      id: episode.podcastId,
+                      title: episode.podcastTitle,
+                      url: episode.artworkUrl,
+                      size: 44,
+                      radius: 10,
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            episode.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Text(
+                            episode.podcastTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontFamily: 'sans-serif',
+                              fontSize: 11,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _OrderedPlaybackControl(
+                      order: 1,
+                      label: context.l10n.skipBack,
+                      child: IconButton(
+                        tooltip: context.l10n.skipBack,
+                        onPressed: () => player.skip(-15),
+                        icon: const Icon(Icons.replay_10_rounded),
+                      ),
+                    ),
+                    _OrderedPlaybackControl(
+                      order: 2,
+                      label: player.isPlaying
+                          ? context.l10n.pause
+                          : context.l10n.play,
+                      child: IconButton.filled(
+                        tooltip: player.isPlaying
+                            ? context.l10n.pause
+                            : context.l10n.play,
+                        onPressed: player.loading ? null : player.toggle,
+                        icon: player.loading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                player.isPlaying
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                              ),
+                      ),
+                    ),
+                    _OrderedPlaybackControl(
+                      order: 3,
+                      label: context.l10n.skipForward,
+                      child: IconButton(
+                        tooltip: context.l10n.skipForward,
+                        onPressed: () => player.skip(30),
+                        icon: const Icon(Icons.forward_30_rounded),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _OrderedPlaybackControl extends StatelessWidget {
+  const _OrderedPlaybackControl({
+    required this.order,
+    required this.label,
+    required this.child,
+  });
+
+  final double order;
+  final String label;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    sortKey: OrdinalSortKey(order),
+    label: label,
+    button: true,
+    excludeSemantics: true,
+    child: FocusTraversalOrder(order: NumericFocusOrder(order), child: child),
+  );
 }
 
 class _PlaybackError extends StatelessWidget {
@@ -130,9 +188,9 @@ class _PlaybackError extends StatelessWidget {
           ),
         ),
         if (player.errorCanRetry)
-          TextButton(onPressed: player.retry, child: const Text('Retry')),
+          TextButton(onPressed: player.retry, child: Text(context.l10n.retry)),
         IconButton(
-          tooltip: 'Dismiss playback error',
+          tooltip: context.l10n.dismissPlaybackError,
           onPressed: player.dismissError,
           icon: const Icon(Icons.close_rounded),
         ),
@@ -164,7 +222,9 @@ class _FullPlayer extends ConsumerWidget {
               width: 42,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.black26,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: .65),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -173,31 +233,27 @@ class _FullPlayer extends ConsumerWidget {
               id: episode.podcastId,
               title: episode.podcastTitle,
               url: episode.artworkUrl,
-              size: 230,
+              size: (MediaQuery.sizeOf(context).width - 56).clamp(120, 230),
               radius: 28,
             ),
             const SizedBox(height: 24),
             Text(
               episode.title,
               textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 7),
             Text(
               episode.podcastTitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'sans-serif',
-                color: Colors.black54,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             if (player.currentChapter case final chapter?) ...[
               const SizedBox(height: 8),
               Text(
                 chapter.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: 'sans-serif',
                   color: Theme.of(context).colorScheme.primary,
@@ -222,14 +278,14 @@ class _FullPlayer extends ConsumerWidget {
                       '${player.skipSilence.label}${player.hasPodcastSkipSilenceOverride ? ' · podcast' : ''}',
                 ),
                 if (player.sleepAtEpisodeEnd)
-                  const _SettingChip(
+                  _SettingChip(
                     icon: Icons.bedtime_outlined,
-                    label: 'End of episode',
+                    label: context.l10n.endOfEpisode,
                   )
                 else if (player.sleepTimerRemaining case final remaining?)
                   _SettingChip(
                     icon: Icons.bedtime_outlined,
-                    label: '${remaining.inMinutes + 1} min',
+                    label: context.l10n.minutesShort(remaining.inMinutes + 1),
                   ),
               ],
             ),
@@ -242,6 +298,8 @@ class _FullPlayer extends ConsumerWidget {
               max: max,
               onChanged: (value) =>
                   player.seek(Duration(milliseconds: value.round())),
+              semanticFormatterCallback: (value) =>
+                  '${context.l10n.playbackPosition} ${_time(Duration(milliseconds: value.round()))}',
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -250,18 +308,18 @@ class _FullPlayer extends ConsumerWidget {
                 children: [
                   Text(
                     _time(player.position),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'sans-serif',
                       fontSize: 11,
-                      color: Colors.black45,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   Text(
                     '-${_time(player.duration - player.position)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'sans-serif',
                       fontSize: 11,
-                      color: Colors.black45,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -272,11 +330,15 @@ class _FullPlayer extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 IconButton(
+                  tooltip: context.l10n.skipBack,
                   iconSize: 32,
                   onPressed: () => player.skip(-15),
                   icon: const Icon(Icons.replay_10_rounded),
                 ),
                 IconButton.filled(
+                  tooltip: player.isPlaying
+                      ? context.l10n.pause
+                      : context.l10n.play,
                   iconSize: 40,
                   padding: const EdgeInsets.all(16),
                   onPressed: player.toggle,
@@ -287,6 +349,7 @@ class _FullPlayer extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
+                  tooltip: context.l10n.skipForward,
                   iconSize: 32,
                   onPressed: () => player.skip(30),
                   icon: const Icon(Icons.forward_30_rounded),
@@ -301,23 +364,23 @@ class _FullPlayer extends ConsumerWidget {
                 TextButton.icon(
                   onPressed: () => _showSpeed(context, player),
                   icon: const Icon(Icons.speed_rounded),
-                  label: const Text('Speed'),
+                  label: Text(context.l10n.speed),
                 ),
                 TextButton.icon(
                   onPressed: () => _showSkipSilence(context, player),
                   icon: const Icon(Icons.graphic_eq_rounded),
-                  label: const Text('Silence'),
+                  label: Text(context.l10n.silence),
                 ),
                 if (player.chapters.isNotEmpty)
                   TextButton.icon(
                     onPressed: () => _showChapters(context, player),
                     icon: const Icon(Icons.list_rounded),
-                    label: Text('${player.chapters.length} chapters'),
+                    label: Text(context.l10n.chapters(player.chapters.length)),
                   ),
                 TextButton.icon(
                   onPressed: () => _showSleepTimer(context, player),
                   icon: const Icon(Icons.bedtime_outlined),
-                  label: const Text('Timer'),
+                  label: Text(context.l10n.timer),
                 ),
               ],
             ),
@@ -330,17 +393,19 @@ class _FullPlayer extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Show notes',
+                    context.l10n.showNotes,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 9),
                   if (showNotes.isEmpty)
-                    const Text(
-                      'No show notes were provided for this episode.',
-                      style: TextStyle(color: Colors.black54),
+                    Text(
+                      context.l10n.noShowNotes,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     )
                   else
-                    SelectableText(showNotes),
+                    LinkifiedText(showNotes),
                 ],
               ),
             ),
@@ -367,7 +432,7 @@ class _FullPlayer extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Playback speed'),
+          title: Text(context.l10n.playbackSpeed),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -386,10 +451,12 @@ class _FullPlayer extends ConsumerWidget {
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 value: forPodcast,
-                title: Text('Only for ${player.current?.podcastTitle}'),
-                subtitle: const Text(
-                  'Otherwise this becomes the global default.',
+                title: Text(
+                  context.l10n.onlyForPodcast(
+                    player.current?.podcastTitle ?? '',
+                  ),
                 ),
+                subtitle: Text(context.l10n.globalDefaultExplanation),
                 onChanged: (value) =>
                     setState(() => forPodcast = value ?? false),
               ),
@@ -402,18 +469,18 @@ class _FullPlayer extends ConsumerWidget {
                   await player.clearPodcastSpeedOverride();
                   if (context.mounted) Navigator.pop(context);
                 },
-                child: const Text('Use global'),
+                child: Text(context.l10n.useGlobal),
               ),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.cancel),
             ),
             FilledButton(
               onPressed: () async {
                 await player.setSpeed(selected, forPodcast: forPodcast);
                 if (context.mounted) Navigator.pop(context);
               },
-              child: const Text('Apply'),
+              child: Text(context.l10n.apply),
             ),
           ],
         ),
@@ -431,7 +498,7 @@ class _FullPlayer extends ConsumerWidget {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Skip silence'),
+          title: Text(context.l10n.skipSilence),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -448,7 +515,7 @@ class _FullPlayer extends ConsumerWidget {
                         value: strength,
                         title: Text(strength.label),
                         subtitle: strength == SkipSilenceStrength.conservative
-                            ? const Text('Recommended for natural speech')
+                            ? Text(context.l10n.recommendedNaturalSpeech)
                             : null,
                       ),
                   ],
@@ -457,7 +524,11 @@ class _FullPlayer extends ConsumerWidget {
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
                 value: forPodcast,
-                title: Text('Only for ${player.current?.podcastTitle}'),
+                title: Text(
+                  context.l10n.onlyForPodcast(
+                    player.current?.podcastTitle ?? '',
+                  ),
+                ),
                 onChanged: (value) =>
                     setState(() => forPodcast = value ?? false),
               ),
@@ -474,14 +545,14 @@ class _FullPlayer extends ConsumerWidget {
                   await player.clearPodcastSkipSilenceOverride();
                   if (context.mounted) Navigator.pop(context);
                 },
-                child: const Text('Use global'),
+                child: Text(context.l10n.useGlobal),
               ),
             FilledButton(
               onPressed: () async {
                 await player.setSkipSilence(selected, forPodcast: forPodcast);
                 if (context.mounted) Navigator.pop(context);
               },
-              child: const Text('Apply'),
+              child: Text(context.l10n.apply),
             ),
           ],
         ),
@@ -495,7 +566,7 @@ class _FullPlayer extends ConsumerWidget {
   ) => showDialog<void>(
     context: context,
     builder: (context) => SimpleDialog(
-      title: const Text('Sleep timer'),
+      title: Text(context.l10n.sleepTimer),
       children: [
         for (final minutes in <int>[10, 15, 30, 45, 60])
           SimpleDialogOption(
@@ -503,14 +574,14 @@ class _FullPlayer extends ConsumerWidget {
               await player.setSleepTimer(Duration(minutes: minutes));
               if (context.mounted) Navigator.pop(context);
             },
-            child: Text('$minutes minutes'),
+            child: Text(context.l10n.minutes(minutes)),
           ),
         SimpleDialogOption(
           onPressed: () async {
             await player.setSleepTimer(null, endOfEpisode: true);
             if (context.mounted) Navigator.pop(context);
           },
-          child: const Text('End of episode'),
+          child: Text(context.l10n.endOfEpisode),
         ),
         if (player.sleepTimerEndsAt != null || player.sleepAtEpisodeEnd)
           SimpleDialogOption(
@@ -518,7 +589,7 @@ class _FullPlayer extends ConsumerWidget {
               await player.setSleepTimer(null);
               if (context.mounted) Navigator.pop(context);
             },
-            child: const Text('Cancel timer'),
+            child: Text(context.l10n.cancelTimer),
           ),
       ],
     ),
@@ -530,6 +601,9 @@ class _FullPlayer extends ConsumerWidget {
   ) => showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    sheetAnimationStyle: MediaQuery.of(context).disableAnimations
+        ? AnimationStyle.noAnimation
+        : null,
     builder: (context) => SafeArea(
       child: ListView(
         shrinkWrap: true,
@@ -537,7 +611,7 @@ class _FullPlayer extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 4, 24, 12),
             child: Text(
-              'Chapters',
+              context.l10n.chapters(player.chapters.length),
               style: Theme.of(context).textTheme.headlineSmall,
             ),
           ),

@@ -3,6 +3,18 @@ class MetadataSanitizer {
 
   static String plainText(String input) {
     var value = input
+        .replaceAllMapped(
+          RegExp(
+            r'''<a\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)</a>''',
+            caseSensitive: false,
+          ),
+          (match) {
+            final label = match.group(2)!.replaceAll(RegExp(r'<[^>]*>'), ' ');
+            final url = safeHttpUrl(match.group(1)!);
+            if (url.isEmpty || label.contains(url)) return label;
+            return '$label ($url)';
+          },
+        )
         .replaceAll(
           RegExp(r'<(script|style)[^>]*>[\s\S]*?</\1>', caseSensitive: false),
           ' ',

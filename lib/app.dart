@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/l10n.dart';
 import 'core/theme.dart';
 import 'features/onboarding/connect_screen.dart';
 import 'features/shell/app_shell.dart';
 import 'providers.dart';
+import 'l10n/generated/app_localizations.dart';
 
 class PodpineApp extends ConsumerWidget {
   const PodpineApp({super.key});
@@ -12,10 +15,20 @@ class PodpineApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final app = ref.watch(appControllerProvider);
+    final preferences = ref.watch(appPreferencesProvider);
     return MaterialApp(
-      title: 'Podpine',
+      onGenerateTitle: (context) => context.l10n.appName,
       debugShowCheckedModeBanner: false,
       theme: PodpineTheme.light,
+      darkTheme: PodpineTheme.dark,
+      themeMode: preferences.themeMode,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
       home: !app.initialized
           ? const _BootScreen()
           : app.connected
@@ -29,19 +42,19 @@ class _BootScreen extends StatelessWidget {
   const _BootScreen();
 
   @override
-  Widget build(BuildContext context) => const Scaffold(
+  Widget build(BuildContext context) => Scaffold(
     body: Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _PineMark(size: 64),
-          SizedBox(height: 20),
+          const _PineMark(size: 64),
+          const SizedBox(height: 20),
           Text(
-            'Podpine',
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+            context.l10n.appName,
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
           ),
-          SizedBox(height: 20),
-          SizedBox(
+          const SizedBox(height: 20),
+          const SizedBox(
             width: 22,
             height: 22,
             child: CircularProgressIndicator(strokeWidth: 2),

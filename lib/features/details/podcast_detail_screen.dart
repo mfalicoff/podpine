@@ -11,9 +11,11 @@ import '../../core/database/app_database.dart';
 import '../../core/downloads/download_models.dart';
 import '../../core/downloads/download_actions.dart';
 import '../../core/metadata_sanitizer.dart';
+import '../../core/l10n.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
 import '../shared/multi_select.dart';
+import '../shared/linkified_text.dart';
 import '../downloads/download_settings_screen.dart';
 
 class PodcastDetailScreen extends ConsumerStatefulWidget {
@@ -62,8 +64,8 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
       if (mounted) {
         setState(() {
           _error = _bundle == null || _bundle!.episodes.isEmpty
-              ? 'Podcast details are unavailable while offline.'
-              : 'Offline — showing saved details.';
+              ? context.l10n.podcastOffline
+              : context.l10n.savedOffline;
         });
       }
     } finally {
@@ -78,18 +80,20 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Unsubscribe?'),
+          title: Text(context.l10n.unsubscribeQuestion),
           content: Text(
-            'Remove ${MetadataSanitizer.plainText(bundle.podcast.title)} and its locally cached episodes from your library?',
+            context.l10n.unsubscribeBody(
+              MetadataSanitizer.plainText(bundle.podcast.title),
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Unsubscribe'),
+              child: Text(context.l10n.unsubscribe),
             ),
           ],
         ),
@@ -128,10 +132,10 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
     _selection.retain(localEpisodes.map((episode) => episode.id));
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Podcast'),
+        title: Text(context.l10n.podcast),
         actions: [
           IconButton(
-            tooltip: 'Podcast download settings',
+            tooltip: context.l10n.podcastDownloadSettings,
             onPressed: podcast.id == 0
                 ? null
                 : () => Navigator.of(context).push(
@@ -145,7 +149,7 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
             icon: const Icon(Icons.download_for_offline_outlined),
           ),
           IconButton(
-            tooltip: 'Refresh details',
+            tooltip: context.l10n.refreshDetails,
             onPressed: _refreshing ? null : _refresh,
             icon: _refreshing
                 ? const SizedBox.square(
@@ -179,7 +183,11 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
                                 ? Icons.check_rounded
                                 : Icons.add_rounded,
                           ),
-                    label: Text(bundle.subscribed ? 'Subscribed' : 'Subscribe'),
+                    label: Text(
+                      bundle.subscribed
+                          ? context.l10n.subscribed
+                          : context.l10n.subscribe,
+                    ),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
@@ -190,11 +198,11 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
                     podcast.description,
                   ).isNotEmpty) ...[
                     Text(
-                      'About',
+                      context.l10n.about,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 8),
-                    SelectableText(
+                    LinkifiedText(
                       MetadataSanitizer.plainText(podcast.description),
                     ),
                     const SizedBox(height: 18),
@@ -215,22 +223,28 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
                           .toList(),
                     ),
                   if (podcast.categories.isNotEmpty) const SizedBox(height: 14),
-                  _SafeLink(label: 'Website', value: podcast.websiteUrl),
-                  _SafeLink(label: 'Feed URL', value: podcast.feedUrl),
+                  _SafeLink(
+                    label: context.l10n.website,
+                    value: podcast.websiteUrl,
+                  ),
+                  _SafeLink(
+                    label: context.l10n.feedUrl,
+                    value: podcast.feedUrl,
+                  ),
                   const SizedBox(height: 25),
                   Row(
                     children: [
                       Expanded(
                         child: Text(
-                          'Episodes',
+                          context.l10n.episodes,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ),
                       if (podcast.episodeCount > 0)
-                        Text('${podcast.episodeCount} total'),
+                        Text(context.l10n.totalCount(podcast.episodeCount)),
                       if (localEpisodes.isNotEmpty && !_selection.isActive)
                         IconButton(
-                          tooltip: 'Select episodes',
+                          tooltip: context.l10n.selectEpisodes,
                           onPressed: () => setState(_selection.begin),
                           icon: const Icon(Icons.checklist_rounded),
                         ),
@@ -253,13 +267,12 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
                     const SizedBox(height: 8),
                   ],
                   if (bundle.episodes.isEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(vertical: 36),
                       child: EmptyState(
                         icon: Icons.podcasts_outlined,
-                        title: 'No episodes available',
-                        body:
-                            'This feed may still be updating. Pull down to try again.',
+                        title: context.l10n.noEpisodesAvailable,
+                        body: context.l10n.feedUpdating,
                       ),
                     )
                   else
@@ -292,7 +305,7 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
           .where((action) => action != EpisodeBulkAction.removeFromInbox)
           .map(
             (action) => MultiSelectAction(
-              label: action.label,
+              label: action.label(context),
               icon: action.icon,
               onSelected: () => _runBulkAction(episodes, action),
             ),
@@ -316,9 +329,9 @@ class _PodcastDetailScreenState extends ConsumerState<PodcastDetailScreen> {
       _bundle = updated;
       _selection.clear();
     });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(bulkActionMessage(action, result))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(bulkActionMessage(context, action, result))),
+    );
   }
 }
 
@@ -327,45 +340,56 @@ class _PodcastHeader extends StatelessWidget {
   final RemotePodcast podcast;
 
   @override
-  Widget build(BuildContext context) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Artwork(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final artwork = Artwork(
         id: podcast.id == 0 ? podcast.podcastIndexId : podcast.id,
         title: podcast.title,
         url: podcast.artworkUrl,
-        size: 126,
+        size: constraints.maxWidth < 520 ? 112 : 126,
         radius: 24,
-      ),
-      const SizedBox(width: 18),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              MetadataSanitizer.plainText(podcast.title).isEmpty
-                  ? 'Untitled podcast'
-                  : MetadataSanitizer.plainText(podcast.title),
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            if (MetadataSanitizer.plainText(podcast.author).isNotEmpty) ...[
-              const SizedBox(height: 7),
-              Text(MetadataSanitizer.plainText(podcast.author)),
-            ],
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 7,
-              runSpacing: 7,
-              children: [
-                if (podcast.episodeCount > 0)
-                  Chip(label: Text('${podcast.episodeCount} episodes')),
-                if (podcast.explicit) const Chip(label: Text('Explicit')),
-              ],
-            ),
+      );
+      final details = Column(
+        crossAxisAlignment: constraints.maxWidth < 520
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.start,
+        children: [
+          Text(
+            MetadataSanitizer.plainText(podcast.title).isEmpty
+                ? context.l10n.untitledPodcast
+                : MetadataSanitizer.plainText(podcast.title),
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          if (MetadataSanitizer.plainText(podcast.author).isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Text(MetadataSanitizer.plainText(podcast.author)),
           ],
-        ),
-      ),
-    ],
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: [
+              if (podcast.episodeCount > 0)
+                Chip(
+                  label: Text(context.l10n.episodeCount(podcast.episodeCount)),
+                ),
+              if (podcast.explicit) Chip(label: Text(context.l10n.explicit)),
+            ],
+          ),
+        ],
+      );
+      if (constraints.maxWidth < 520) {
+        return Column(children: [artwork, const SizedBox(height: 16), details]);
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          artwork,
+          const SizedBox(width: 18),
+          Expanded(child: details),
+        ],
+      );
+    },
   );
 }
 
@@ -378,17 +402,21 @@ class _SafeLink extends StatelessWidget {
   Widget build(BuildContext context) {
     final uri = MetadataSanitizer.safeHttpUri(value);
     if (uri == null) return const SizedBox.shrink();
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      dense: true,
-      leading: const Icon(Icons.open_in_new_rounded),
-      title: Text(label),
-      subtitle: Text(
-        uri.toString(),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+    return Semantics(
+      link: true,
+      label: context.l10n.openLink(uri.toString()),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+        leading: const Icon(Icons.open_in_new_rounded),
+        title: Text(label),
+        subtitle: Text(
+          uri.toString(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        onTap: () => launchUrl(uri, mode: LaunchMode.externalApplication),
       ),
-      onTap: () => launchUrl(uri, mode: LaunchMode.externalApplication),
     );
   }
 }
@@ -413,7 +441,9 @@ class _EpisodeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final date = episode.publishedAt.year <= 1971
         ? null
-        : DateFormat.yMMMd().format(episode.publishedAt.toLocal());
+        : DateFormat.yMMMd(
+            Localizations.localeOf(context).toLanguageTag(),
+          ).format(episode.publishedAt.toLocal());
     final minutes = (episode.durationSeconds / 60).round();
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -431,7 +461,7 @@ class _EpisodeCard extends StatelessWidget {
               ),
         title: Text(
           MetadataSanitizer.plainText(episode.title).isEmpty
-              ? 'Untitled episode'
+              ? context.l10n.untitledEpisode
               : MetadataSanitizer.plainText(episode.title),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -439,8 +469,9 @@ class _EpisodeCard extends StatelessWidget {
         subtitle: Text(
           [
             ?date,
-            if (minutes > 0) '$minutes min',
-            if (local?.downloaded ?? episode.downloaded) 'Downloaded',
+            if (minutes > 0) context.l10n.minutesShort(minutes),
+            if (local?.downloaded ?? episode.downloaded)
+              context.l10n.downloaded,
           ].join(' · '),
         ),
         trailing: selectionMode
@@ -483,14 +514,19 @@ class EpisodeDetailScreen extends ConsumerWidget {
         break;
       }
     }
-    final chapters = _chapters(local?.chaptersJson ?? episode.chaptersJson);
+    final chapters = _chapters(
+      context,
+      local?.chaptersJson ?? episode.chaptersJson,
+    );
     final description = MetadataSanitizer.plainText(episode.description);
     final published = episode.publishedAt.year <= 1971
-        ? 'Publication date unavailable'
-        : DateFormat.yMMMMd().format(episode.publishedAt.toLocal());
+        ? context.l10n.publicationUnavailable
+        : DateFormat.yMMMMd(
+            Localizations.localeOf(context).toLanguageTag(),
+          ).format(episode.publishedAt.toLocal());
     final duration = _duration(episode.durationSeconds);
     return Scaffold(
-      appBar: AppBar(title: const Text('Episode')),
+      appBar: AppBar(title: Text(context.l10n.episode)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
@@ -506,7 +542,7 @@ class EpisodeDetailScreen extends ConsumerWidget {
           const SizedBox(height: 22),
           Text(
             MetadataSanitizer.plainText(episode.title).isEmpty
-                ? 'Untitled episode'
+                ? context.l10n.untitledEpisode
                 : MetadataSanitizer.plainText(episode.title),
             style: Theme.of(context).textTheme.headlineSmall,
           ),
@@ -522,13 +558,13 @@ class EpisodeDetailScreen extends ConsumerWidget {
             runSpacing: 8,
             children: [
               if (local?.completed ?? episode.completed)
-                const Chip(label: Text('Played'))
+                Chip(label: Text(context.l10n.played))
               else if ((local?.positionSeconds ?? episode.positionSeconds) > 0)
-                const Chip(label: Text('In progress')),
+                Chip(label: Text(context.l10n.inProgress)),
               if (local?.queued ?? episode.queued)
-                const Chip(label: Text('Queued')),
+                Chip(label: Text(context.l10n.queued)),
               if (local?.downloaded ?? episode.downloaded)
-                const Chip(label: Text('Downloaded')),
+                Chip(label: Text(context.l10n.downloaded)),
             ],
           ),
           if (local != null && local.audioUrl.isNotEmpty) ...[
@@ -537,7 +573,11 @@ class EpisodeDetailScreen extends ConsumerWidget {
               onPressed: () =>
                   ref.read(playerControllerProvider).playEpisode(local),
               icon: const Icon(Icons.play_arrow_rounded),
-              label: Text(local.positionSeconds > 0 ? 'Resume' : 'Play'),
+              label: Text(
+                local.positionSeconds > 0
+                    ? context.l10n.resume
+                    : context.l10n.play,
+              ),
             ),
           ],
           if (local != null) ...[
@@ -546,13 +586,19 @@ class EpisodeDetailScreen extends ConsumerWidget {
           ],
           if (description.isNotEmpty) ...[
             const SizedBox(height: 26),
-            Text('Show notes', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              context.l10n.showNotes,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 9),
-            SelectableText(description),
+            LinkifiedText(description),
           ],
           if (chapters.isNotEmpty) ...[
             const SizedBox(height: 26),
-            Text('Chapters', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              context.l10n.chapters(chapters.length),
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 7),
             ...chapters.map(
               (chapter) => ListTile(
@@ -578,7 +624,7 @@ class EpisodeDetailScreen extends ConsumerWidget {
     );
   }
 
-  static List<(double, String)> _chapters(String value) {
+  static List<(double, String)> _chapters(BuildContext context, String value) {
     try {
       return (jsonDecode(value) as List)
           .whereType<Map>()
@@ -590,7 +636,7 @@ class EpisodeDetailScreen extends ConsumerWidget {
             final title = MetadataSanitizer.plainText(
               '${chapter['title'] ?? ''}',
             );
-            return (seconds, title.isEmpty ? 'Chapter' : title);
+            return (seconds, title.isEmpty ? context.l10n.chapter : title);
           })
           .toList(growable: false);
     } catch (_) {
@@ -622,27 +668,27 @@ class _DownloadControls extends ConsumerWidget {
     final (icon, label, action) = switch (state) {
       null => (
         Icons.download_rounded,
-        'Download',
+        context.l10n.download,
         () => startDownloadWithCellularConfirmation(context, ref, episode),
       ),
       DownloadState.queued || DownloadState.downloading => (
         Icons.pause_rounded,
-        'Pause download',
+        context.l10n.pauseDownload,
         () => ref.read(downloadManagerProvider).pause(episode.id),
       ),
       DownloadState.paused => (
         Icons.download_rounded,
-        'Resume download',
+        context.l10n.resumeDownload,
         () => startDownloadWithCellularConfirmation(context, ref, episode),
       ),
       DownloadState.failed => (
         Icons.refresh_rounded,
-        'Retry download',
+        context.l10n.retryDownload,
         () => startDownloadWithCellularConfirmation(context, ref, episode),
       ),
       DownloadState.completed => (
         Icons.delete_outline_rounded,
-        'Delete download',
+        context.l10n.deleteDownload,
         () => ref.read(downloadManagerProvider).delete(episode.id),
       ),
     };
@@ -680,7 +726,7 @@ class _DownloadControls extends ConsumerWidget {
             child: TextButton(
               onPressed: () =>
                   ref.read(downloadManagerProvider).cancel(episode.id),
-              child: const Text('Cancel'),
+              child: Text(context.l10n.cancel),
             ),
           ),
         ],

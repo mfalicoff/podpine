@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/l10n.dart';
 import '../../providers.dart';
 import '../shared/artwork.dart';
 import '../shared/episode_tile.dart';
@@ -32,13 +33,15 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Up next',
+                    context.l10n.upNext,
                     style: Theme.of(context).textTheme.headlineLarge,
                   ),
                   const SizedBox(height: 5),
-                  const Text(
-                    'This queue follows you across devices.',
-                    style: TextStyle(color: Colors.black54),
+                  Text(
+                    context.l10n.queueFollowsDevices,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -50,13 +53,13 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
               final visibleItems = _visibleItems;
               _selection.retain(visibleItems.map((episode) => episode.id));
               return visibleItems.isEmpty
-                  ? const [
+                  ? [
                       SliverFillRemaining(
                         hasScrollBody: false,
                         child: EmptyState(
                           icon: Icons.queue_music_rounded,
-                          title: 'Nothing queued',
-                          body: 'Open an episode menu and choose Add to queue.',
+                          title: context.l10n.nothingQueued,
+                          body: context.l10n.queueEmptyBody,
                         ),
                       ),
                     ]
@@ -71,26 +74,28 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                                     .read(playerControllerProvider)
                                     .playEpisode(visibleItems.first),
                                 icon: const Icon(Icons.play_arrow_rounded),
-                                label: const Text('Play queue'),
+                                label: Text(context.l10n.playQueue),
                               ),
                               const SizedBox(width: 8),
                               IconButton(
                                 onPressed: _confirmClear,
-                                tooltip: 'Clear queue',
+                                tooltip: context.l10n.clearQueue,
                                 icon: const Icon(Icons.clear_all_rounded),
                               ),
                               if (!_selection.isActive)
                                 IconButton(
                                   onPressed: () => setState(_selection.begin),
-                                  tooltip: 'Select episodes',
+                                  tooltip: context.l10n.selectEpisodes,
                                   icon: const Icon(Icons.checklist_rounded),
                                 ),
                               const Spacer(),
                               Text(
-                                '${visibleItems.length} episode${visibleItems.length == 1 ? '' : 's'}',
-                                style: const TextStyle(
+                                context.l10n.episodeCount(visibleItems.length),
+                                style: TextStyle(
                                   fontFamily: 'sans-serif',
-                                  color: Colors.black45,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -133,15 +138,19 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                                     children: [
                                       Text(
                                         '${index + 1}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontFamily: 'sans-serif',
-                                          color: Colors.black38,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
                                         ),
                                       ),
-                                      const Icon(
+                                      Icon(
                                         Icons.drag_handle_rounded,
                                         size: 18,
-                                        color: Colors.black38,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
                                     ],
                                   ),
@@ -179,12 +188,12 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
                 child: Center(child: CircularProgressIndicator()),
               ),
             ],
-            error: (_, _) => const [
+            error: (_, _) => [
               SliverFillRemaining(
                 child: EmptyState(
                   icon: Icons.error_outline,
-                  title: 'Couldn’t open the queue',
-                  body: 'Try again in a moment.',
+                  title: context.l10n.queueUnavailable,
+                  body: context.l10n.queueUnavailableBody,
                 ),
               ),
             ],
@@ -204,7 +213,7 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     return actions
         .map(
           (action) => MultiSelectAction(
-            label: action.label,
+            label: action.label(context),
             icon: action.icon,
             onSelected: () => _runAction(episodes, action),
           ),
@@ -223,9 +232,9 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     final result = await performEpisodeBulkAction(ref, selected, action);
     if (!mounted) return;
     setState(_selection.clear);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(bulkActionMessage(action, result))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(bulkActionMessage(context, action, result))),
+    );
   }
 
   Future<void> _reorder(int oldIndex, int newIndex) async {
@@ -247,19 +256,16 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear queue?'),
-        content: const Text(
-          'This removes every queued episode on all connected devices. '
-          'Anything already playing will keep playing.',
-        ),
+        title: Text(context.l10n.clearQueueQuestion),
+        content: Text(context.l10n.clearQueueBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Clear queue'),
+            child: Text(context.l10n.clearQueue),
           ),
         ],
       ),
