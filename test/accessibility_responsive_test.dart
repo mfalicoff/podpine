@@ -31,7 +31,10 @@ void main() {
     if (localComparator is LocalFileComparator) {
       goldenFileComparator = _TolerantGoldenFileComparator(
         localComparator.basedir.resolve('accessibility_responsive_test.dart'),
-        precisionTolerance: .01,
+        // Linux rasterizes the compact phone shell about 2.2% differently
+        // from the macOS-generated baseline. Breakpoint structure and
+        // overflow behavior are asserted separately below.
+        precisionTolerance: .025,
       );
     }
   });
