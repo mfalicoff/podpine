@@ -45,9 +45,13 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                             style: Theme.of(context).textTheme.headlineLarge,
                           ),
                           const SizedBox(height: 5),
-                          const Text(
+                          Text(
                             'Triage new episodes before they join your queue.',
-                            style: TextStyle(color: Colors.black54),
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
@@ -212,7 +216,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
   List<MultiSelectAction> _episodeActions(List<EpisodeRecord> episodes) => [
     ...EpisodeBulkAction.values.map(
       (action) => MultiSelectAction(
-        label: action.label,
+        label: action.label(context),
         icon: action.icon,
         onSelected: () => _runBulkAction(episodes, action),
       ),
@@ -244,9 +248,9 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     final result = await performEpisodeBulkAction(ref, selected, action);
     if (!mounted) return;
     setState(_selection.clear);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(bulkActionMessage(action, result))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(bulkActionMessage(context, action, result))),
+    );
   }
 
   Future<void> _performAction(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/l10n.dart';
 import '../../providers.dart';
 
 class MultiSelectionController {
@@ -104,39 +105,39 @@ class MultiSelectToolbar extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            tooltip: 'Exit selection',
+            tooltip: context.l10n.exitSelection,
             onPressed: onClose,
             icon: const Icon(Icons.close_rounded),
           ),
           Expanded(
             child: Text(
-              '$selectedCount of $totalCount selected',
+              context.l10n.selectedCount(selectedCount, totalCount),
               style: Theme.of(context).textTheme.titleSmall,
             ),
           ),
           PopupMenuButton<SelectionRange>(
-            tooltip: 'Expand selection',
+            tooltip: context.l10n.expandSelection,
             onSelected: onSelectRange,
             itemBuilder: (_) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: SelectionRange.all,
-                child: Text('Select all'),
+                child: Text(context.l10n.selectAll),
               ),
               PopupMenuItem(
                 value: SelectionRange.above,
                 enabled: selectedCount > 0,
-                child: const Text('Select all above'),
+                child: Text(context.l10n.selectAllAbove),
               ),
               PopupMenuItem(
                 value: SelectionRange.below,
                 enabled: selectedCount > 0,
-                child: const Text('Select all below'),
+                child: Text(context.l10n.selectAllBelow),
               ),
             ],
             icon: const Icon(Icons.select_all_rounded),
           ),
           PopupMenuButton<MultiSelectAction>(
-            tooltip: 'Actions for selected items',
+            tooltip: context.l10n.selectedActions,
             enabled: selectedCount > 0 && actions.isNotEmpty,
             onSelected: (action) => action.onSelected(),
             itemBuilder: (_) => actions
@@ -160,17 +161,25 @@ class MultiSelectToolbar extends StatelessWidget {
 }
 
 enum EpisodeBulkAction {
-  markPlayed('Mark played', Icons.check_circle_outline_rounded),
-  markUnplayed('Mark unplayed', Icons.radio_button_unchecked_rounded),
-  addToQueue('Add to queue', Icons.playlist_add_rounded),
-  removeFromQueue('Remove from queue', Icons.playlist_remove_rounded),
-  deleteDownloads('Delete from device', Icons.delete_outline_rounded),
-  removeFromInbox('Remove from Inbox', Icons.inbox_outlined);
+  markPlayed(Icons.check_circle_outline_rounded),
+  markUnplayed(Icons.radio_button_unchecked_rounded),
+  addToQueue(Icons.playlist_add_rounded),
+  removeFromQueue(Icons.playlist_remove_rounded),
+  deleteDownloads(Icons.delete_outline_rounded),
+  removeFromInbox(Icons.inbox_outlined);
 
-  const EpisodeBulkAction(this.label, this.icon);
+  const EpisodeBulkAction(this.icon);
 
-  final String label;
   final IconData icon;
+
+  String label(BuildContext context) => switch (this) {
+    EpisodeBulkAction.markPlayed => context.l10n.markPlayed,
+    EpisodeBulkAction.markUnplayed => context.l10n.markUnplayed,
+    EpisodeBulkAction.addToQueue => context.l10n.addToQueue,
+    EpisodeBulkAction.removeFromQueue => context.l10n.removeFromQueue,
+    EpisodeBulkAction.deleteDownloads => context.l10n.deleteFromDevice,
+    EpisodeBulkAction.removeFromInbox => context.l10n.removeFromInbox,
+  };
 }
 
 class BulkActionResult {
@@ -212,7 +221,17 @@ Future<BulkActionResult> performEpisodeBulkAction(
   return BulkActionResult(succeeded: succeeded, failed: failed);
 }
 
-String bulkActionMessage(EpisodeBulkAction action, BulkActionResult result) {
-  final failure = result.failed == 0 ? '' : ' ${result.failed} failed.';
-  return '${action.label}: ${result.succeeded} updated.$failure';
+String bulkActionMessage(
+  BuildContext context,
+  EpisodeBulkAction action,
+  BulkActionResult result,
+) {
+  final failure = result.failed == 0
+      ? ''
+      : context.l10n.bulkFailures(result.failed);
+  return context.l10n.bulkActionResult(
+    action.label(context),
+    result.succeeded,
+    failure,
+  );
 }

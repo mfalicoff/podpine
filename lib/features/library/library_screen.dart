@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers.dart';
 import '../../core/backend/podcast_backend.dart';
 import '../../core/database/app_database.dart';
+import '../../core/l10n.dart';
 import '../details/podcast_detail_screen.dart';
 import '../downloads/download_settings_screen.dart';
 import '../downloads/download_storage_screen.dart';
@@ -39,18 +40,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Library',
+                          context.l10n.library,
                           style: Theme.of(context).textTheme.headlineLarge,
                         ),
                       ),
                       if (!_selection.isActive)
                         IconButton(
-                          tooltip: 'Select podcasts',
+                          tooltip: context.l10n.selectPodcasts,
                           onPressed: () => setState(_selection.begin),
                           icon: const Icon(Icons.checklist_rounded),
                         ),
                       IconButton(
-                        tooltip: 'Automatic download settings',
+                        tooltip: context.l10n.automaticDownloadSettings,
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const DownloadSettingsScreen(),
@@ -61,9 +62,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     ],
                   ),
                   const SizedBox(height: 5),
-                  const Text(
-                    'Your subscriptions, saved on this device.',
-                    style: TextStyle(color: Colors.black54),
+                  Text(
+                    context.l10n.subscriptionsSaved,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   if (downloads.isLowStorage) ...[
                     const SizedBox(height: 12),
@@ -72,10 +75,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                       color: Theme.of(context).colorScheme.errorContainer,
                       child: ListTile(
                         leading: const Icon(Icons.warning_amber_rounded),
-                        title: const Text('Device storage is low'),
-                        subtitle: const Text(
-                          'Clean up downloads before saving more episodes.',
-                        ),
+                        title: Text(context.l10n.lowStorage),
+                        subtitle: Text(context.l10n.lowStorageBody),
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute<void>(
@@ -93,14 +94,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             data: (items) {
               _selection.retain(items.map((podcast) => podcast.id));
               return items.isEmpty
-                  ? const [
+                  ? [
                       SliverFillRemaining(
                         hasScrollBody: false,
                         child: EmptyState(
                           icon: Icons.library_music_outlined,
-                          title: 'No subscriptions yet',
-                          body:
-                              'Use Discover to find and subscribe to a podcast.',
+                          title: context.l10n.noSubscriptions,
+                          body: context.l10n.noSubscriptionsBody,
                         ),
                       ),
                     ]
@@ -119,7 +119,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                             ),
                             actions: [
                               MultiSelectAction(
-                                label: 'Unsubscribe',
+                                label: context.l10n.unsubscribe,
                                 icon: Icons.unsubscribe_rounded,
                                 onSelected: () => _unsubscribeSelected(items),
                               ),
@@ -204,14 +204,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                                               const SizedBox(height: 3),
                                               Text(
                                                 podcast.author.isEmpty
-                                                    ? '${podcast.episodeCount} episodes'
+                                                    ? context.l10n.episodeCount(
+                                                        podcast.episodeCount,
+                                                      )
                                                     : podcast.author,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontFamily: 'sans-serif',
                                                   fontSize: 11,
-                                                  color: Colors.black45,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
                                                 ),
                                               ),
                                             ],
@@ -248,12 +252,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 child: Center(child: CircularProgressIndicator()),
               ),
             ],
-            error: (_, _) => const [
+            error: (_, _) => [
               SliverFillRemaining(
                 child: EmptyState(
                   icon: Icons.error_outline,
-                  title: 'Couldn’t open the library',
-                  body: 'Try again in a moment.',
+                  title: context.l10n.libraryUnavailable,
+                  body: context.l10n.libraryUnavailableBody,
                 ),
               ),
             ],
@@ -271,20 +275,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          'Unsubscribe from ${selected.length} ${selected.length == 1 ? 'podcast' : 'podcasts'}?',
-        ),
-        content: const Text(
-          'Their locally cached episodes will be removed from the library.',
-        ),
+        title: Text(context.l10n.unsubscribeSelectedQuestion(selected.length)),
+        content: Text(context.l10n.unsubscribeSelectedBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Unsubscribe'),
+            child: Text(context.l10n.unsubscribe),
           ),
         ],
       ),
@@ -304,9 +304,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     }
     if (!mounted) return;
     setState(_selection.clear);
-    final failures = failed == 0 ? '' : ' $failed failed.';
+    final failures = failed == 0 ? '' : context.l10n.bulkFailures(failed);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Unsubscribed from $succeeded.$failures')),
+      SnackBar(
+        content: Text(context.l10n.unsubscribedResult(succeeded, failures)),
+      ),
     );
   }
 

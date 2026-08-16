@@ -299,7 +299,7 @@ class _DownloadStorageScreenState extends ConsumerState<DownloadStorageScreen> {
     return actions
         .map(
           (action) => MultiSelectAction(
-            label: action.label,
+            label: action.label(context),
             icon: action.icon,
             onSelected: () => _runBulkAction(items, action),
           ),
@@ -320,9 +320,9 @@ class _DownloadStorageScreenState extends ConsumerState<DownloadStorageScreen> {
     await ref.read(downloadManagerProvider).refreshStorageSnapshot();
     if (!mounted) return;
     setState(_selection.clear);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(bulkActionMessage(action, result))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(bulkActionMessage(context, action, result))),
+    );
   }
 }
 
