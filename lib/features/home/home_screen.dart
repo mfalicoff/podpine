@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app_controller.dart';
 import '../../core/backend/podcast_backend.dart';
 import '../../core/database/app_database.dart';
+import '../../core/l10n.dart';
 import '../../core/theme.dart';
 import '../../providers.dart';
 import '../details/podcast_detail_screen.dart';
@@ -40,12 +41,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Center(child: CircularProgressIndicator()),
                 ),
               ],
-              error: (_, _) => const [
+              error: (_, _) => [
                 SliverFillRemaining(
                   child: EmptyState(
                     icon: Icons.cloud_off_outlined,
-                    title: 'Library unavailable',
-                    body: 'Pull down to try loading it again.',
+                    title: context.l10n.libraryUnavailable,
+                    body: context.l10n.pullToRetry,
                   ),
                 ),
               ],
@@ -62,13 +63,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     List<EpisodeRecord> episodes,
   ) {
     if (episodes.isEmpty) {
-      return const [
+      return [
         SliverFillRemaining(
           hasScrollBody: false,
           child: EmptyState(
             icon: Icons.podcasts_rounded,
-            title: 'Your library is ready',
-            body: 'Use Discover to add your first subscription.',
+            title: context.l10n.libraryReady,
+            body: context.l10n.discoverFirstSubscription,
           ),
         ),
       ];
@@ -80,25 +81,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _selection.retain(filtered.map((episode) => episode.id));
     return [
       if (inProgress != null) ...[
-        const SliverToBoxAdapter(child: SectionHeading('Continue listening')),
+        SliverToBoxAdapter(
+          child: SectionHeading(context.l10n.continueListening),
+        ),
         SliverToBoxAdapter(child: _ContinueCard(episode: inProgress)),
       ],
       SliverToBoxAdapter(
         child: SectionHeading(
-          'All episodes',
+          context.l10n.allEpisodes,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (!_selection.isActive)
                 IconButton(
-                  tooltip: 'Select episodes',
+                  tooltip: context.l10n.selectEpisodes,
                   onPressed: () => setState(_selection.begin),
                   icon: const Icon(Icons.checklist_rounded),
                 ),
               TextButton.icon(
                 onPressed: () => ref.read(appControllerProvider).refresh(),
                 icon: const Icon(Icons.refresh_rounded, size: 18),
-                label: const Text('Refresh'),
+                label: Text(context.l10n.refresh),
               ),
             ],
           ),
@@ -114,7 +117,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   (filter) => Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: FilterChip(
-                      label: Text(filter.label),
+                      label: Text(filter.label(context)),
                       selected: _filter == filter,
                       onSelected: (_) => setState(() => _filter = filter),
                     ),
@@ -136,17 +139,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 range,
               ),
             ),
-            actions: _episodeActions(filtered),
+            actions: _episodeActions(context, filtered),
           ),
         ),
       if (filtered.isEmpty)
-        const SliverToBoxAdapter(
+        SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
             child: EmptyState(
               icon: Icons.filter_alt_off_outlined,
-              title: 'No matching episodes',
-              body: 'Choose another filter or refresh your subscriptions.',
+              title: context.l10n.noMatchingEpisodes,
+              body: context.l10n.chooseAnotherFilter,
             ),
           ),
         )
@@ -168,17 +171,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ];
   }
 
-  List<MultiSelectAction> _episodeActions(List<EpisodeRecord> episodes) =>
-      EpisodeBulkAction.values
-          .where((action) => action != EpisodeBulkAction.removeFromInbox)
-          .map(
-            (action) => MultiSelectAction(
-              label: action.label,
-              icon: action.icon,
-              onSelected: () => _runAction(episodes, action),
-            ),
-          )
-          .toList(growable: false);
+  List<MultiSelectAction> _episodeActions(
+    BuildContext context,
+    List<EpisodeRecord> episodes,
+  ) => EpisodeBulkAction.values
+      .where((action) => action != EpisodeBulkAction.removeFromInbox)
+      .map(
+        (action) => MultiSelectAction(
+          label: action.label(context),
+          icon: action.icon,
+          onSelected: () => _runAction(episodes, action),
+        ),
+      )
+      .toList(growable: false);
 
   Future<void> _runAction(
     List<EpisodeRecord> episodes,
@@ -191,22 +196,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final result = await performEpisodeBulkAction(ref, selected, action);
     if (!mounted) return;
     setState(_selection.clear);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(bulkActionMessage(action, result))));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(bulkActionMessage(context, action, result))),
+    );
   }
 }
 
 enum _EpisodeFilter {
-  all('All'),
-  unplayed('Unplayed'),
-  played('Played'),
-  downloaded('Downloaded'),
-  queued('Queued');
+  all,
+  unplayed,
+  played,
+  downloaded,
+  queued;
 
-  const _EpisodeFilter(this.label);
-
-  final String label;
+  String label(BuildContext context) => switch (this) {
+    _EpisodeFilter.all => context.l10n.filterAll,
+    _EpisodeFilter.unplayed => context.l10n.filterUnplayed,
+    _EpisodeFilter.played => context.l10n.filterPlayed,
+    _EpisodeFilter.downloaded => context.l10n.filterDownloaded,
+    _EpisodeFilter.queued => context.l10n.filterQueued,
+  };
 
   bool matches(EpisodeRecord episode) => switch (this) {
     _EpisodeFilter.all => true,
@@ -217,12 +226,12 @@ enum _EpisodeFilter {
   };
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   const _Header({required this.app});
   final AppController app;
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context, WidgetRef ref) => Padding(
     padding: const EdgeInsets.fromLTRB(20, 18, 14, 0),
     child: Row(
       children: [
@@ -230,29 +239,29 @@ class _Header extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'PODPINE',
+              Text(
+                context.l10n.appName.toUpperCase(),
                 style: TextStyle(
                   fontFamily: 'sans-serif',
                   fontSize: 11,
                   letterSpacing: 2,
                   fontWeight: FontWeight.w900,
-                  color: PodpineTheme.fern,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(height: 5),
               Text(
-                'Good listening.',
+                context.l10n.goodListening,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               if (app.error != null) ...[
                 const SizedBox(height: 4),
                 Text(
                   app.error!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'sans-serif',
                     fontSize: 11,
-                    color: Colors.black45,
+                    color: Theme.of(context).colorScheme.error,
                   ),
                 ),
               ],
@@ -273,6 +282,8 @@ class _Header extends StatelessWidget {
               );
             } else if (value == 'disconnect') {
               app.disconnect();
+            } else if (value == 'theme') {
+              _showThemeDialog(context, ref);
             }
           },
           itemBuilder: (_) => [
@@ -281,24 +292,68 @@ class _Header extends StatelessWidget {
               child: Text(app.serverUrl ?? 'Pinepods'),
             ),
             const PopupMenuDivider(),
-            const PopupMenuItem(
-              value: 'background-sync',
+            PopupMenuItem(
+              value: 'theme',
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.developer_mode_rounded),
-                title: Text('Background sync status'),
+                leading: const Icon(Icons.contrast_rounded),
+                title: Text(context.l10n.theme),
+              ),
+            ),
+            const PopupMenuDivider(),
+            PopupMenuItem(
+              value: 'background-sync',
+              child: ListTile(
+                contentPadding: const EdgeInsets.all(0),
+                leading: const Icon(Icons.developer_mode_rounded),
+                title: Text(context.l10n.backgroundSyncStatus),
               ),
             ),
             const PopupMenuDivider(),
             PopupMenuItem(
               value: 'disconnect',
-              child: Text(app.demoMode ? 'Leave demo' : 'Disconnect server'),
+              child: Text(
+                app.demoMode
+                    ? context.l10n.leaveDemo
+                    : context.l10n.disconnectServer,
+              ),
             ),
           ],
         ),
       ],
     ),
   );
+
+  Future<void> _showThemeDialog(BuildContext context, WidgetRef ref) async {
+    final preferences = ref.read(appPreferencesProvider);
+    final selected = await showDialog<ThemeMode>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: Text(dialogContext.l10n.themeDialogTitle),
+        children: [
+          RadioGroup<ThemeMode>(
+            groupValue: preferences.themeMode,
+            onChanged: (value) => Navigator.pop(dialogContext, value),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final mode in ThemeMode.values)
+                  RadioListTile<ThemeMode>(
+                    value: mode,
+                    title: Text(switch (mode) {
+                      ThemeMode.system => dialogContext.l10n.themeSystem,
+                      ThemeMode.light => dialogContext.l10n.themeLight,
+                      ThemeMode.dark => dialogContext.l10n.themeDark,
+                    }),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    if (selected != null) await preferences.setThemeMode(selected);
+  }
 }
 
 class _ContinueCard extends ConsumerWidget {
@@ -393,6 +448,7 @@ class _ContinueCard extends ConsumerWidget {
                 ),
                 onPressed: () =>
                     ref.read(playerControllerProvider).playEpisode(episode),
+                tooltip: context.l10n.play,
                 icon: const Icon(Icons.play_arrow_rounded),
               ),
             ],

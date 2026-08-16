@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/backend/podcast_backend.dart';
 import '../../core/metadata_sanitizer.dart';
+import '../../core/l10n.dart';
 import '../../providers.dart';
 import '../details/podcast_detail_screen.dart';
 import '../shared/artwork.dart';
@@ -57,7 +58,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         setState(() {
           _error = cached.isEmpty
               ? exception.toString()
-              : 'Offline — showing saved search results.';
+              : context.l10n.offlineSavedSearch;
         });
       }
     } finally {
@@ -74,7 +75,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
             child: Text(
-              'Discover',
+              context.l10n.discover,
               style: Theme.of(context).textTheme.headlineLarge,
             ),
           ),
@@ -87,15 +88,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     controller: _controller,
                     textInputAction: TextInputAction.search,
                     onSubmitted: (_) => _search(),
-                    decoration: const InputDecoration(
-                      hintText: 'Search podcasts',
-                      prefixIcon: Icon(Icons.search_rounded),
+                    decoration: InputDecoration(
+                      hintText: context.l10n.searchPodcasts,
+                      prefixIcon: const Icon(Icons.search_rounded),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filled(
-                  tooltip: 'Search',
+                  tooltip: context.l10n.search,
                   onPressed: _loading ? null : _search,
                   icon: const Icon(Icons.arrow_forward_rounded),
                 ),
@@ -106,16 +107,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: DropdownButtonFormField<String>(
               initialValue: _provider,
-              decoration: const InputDecoration(
-                labelText: 'Pinepods search provider',
+              decoration: InputDecoration(
+                labelText: context.l10n.searchProvider,
                 isDense: true,
               ),
-              items: const [
+              items: [
                 DropdownMenuItem(
                   value: 'podcast_index',
-                  child: Text('Podcast Index'),
+                  child: Text(context.l10n.podcastIndex),
                 ),
-                DropdownMenuItem(value: 'itunes', child: Text('iTunes')),
+                DropdownMenuItem(
+                  value: 'itunes',
+                  child: Text(context.l10n.itunes),
+                ),
               ],
               onChanged: (value) {
                 if (value == null) return;
@@ -142,21 +146,20 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   Widget _content() {
     if (_controller.text.trim().isEmpty && _results.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.travel_explore_rounded,
-        title: 'Find something worth hearing',
-        body:
-            'Search through the discovery provider configured on your Pinepods server.',
+        title: context.l10n.findSomething,
+        body: context.l10n.searchBody,
       );
     }
     if (_loading && _results.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
     if (_results.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.search_off_rounded,
-        title: 'No podcasts found',
-        body: 'Try another title, author, or search provider.',
+        title: context.l10n.noPodcastsFound,
+        body: context.l10n.tryDifferentSearch,
       );
     }
     return ListView.builder(
@@ -176,7 +179,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
             title: Text(
               MetadataSanitizer.plainText(podcast.title).isEmpty
-                  ? 'Untitled podcast'
+                  ? context.l10n.untitledPodcast
                   : MetadataSanitizer.plainText(podcast.title),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -185,8 +188,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               author.isNotEmpty
                   ? author
                   : podcast.episodeCount > 0
-                  ? '${podcast.episodeCount} episodes'
-                  : 'Podcast',
+                  ? context.l10n.episodeCount(podcast.episodeCount)
+                  : context.l10n.podcast,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

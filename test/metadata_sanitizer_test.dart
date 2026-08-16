@@ -23,4 +23,19 @@ void main() {
     );
     expect(MetadataSanitizer.safeHttpUri('file:///private/data'), isNull);
   });
+
+  test('preserves safe anchor destinations for linkified show notes', () {
+    expect(
+      MetadataSanitizer.plainText(
+        '<p>Read the <a href="https://example.test/transcript">transcript</a>.</p>',
+      ),
+      'Read the transcript (https://example.test/transcript).',
+    );
+    expect(
+      MetadataSanitizer.plainText(
+        '<a href="javascript:alert(1)">unsafe destination</a>',
+      ),
+      'unsafe destination',
+    );
+  });
 }

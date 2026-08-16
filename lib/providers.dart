@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'app_controller.dart';
+import 'core/app_preferences.dart';
 import 'core/database/app_database.dart';
 import 'core/downloads/download_manager.dart';
 import 'core/storage/credential_store.dart';
@@ -23,6 +24,10 @@ final databaseProvider = Provider<AppDatabase>((ref) {
 final credentialStoreProvider = Provider<CredentialStore>(
   (ref) => const CredentialStore(FlutterSecureStorage()),
 );
+
+final appPreferencesProvider = ChangeNotifierProvider<AppPreferences>((ref) {
+  return AppPreferences();
+});
 
 final appControllerProvider = ChangeNotifierProvider<AppController>((ref) {
   final controller = AppController(
