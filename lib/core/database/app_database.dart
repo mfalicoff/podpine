@@ -5,6 +5,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 
 import '../../features/player/playback_options.dart';
 import '../../features/inbox/inbox_models.dart';
+import '../../features/library/library_models.dart';
 import '../sync/queue_sync.dart';
 import '../sync/playback_sync.dart';
 
@@ -225,6 +226,30 @@ class PodcastPlaybackOverrideRows extends Table {
   Set<Column<Object>> get primaryKey => {podcastId};
 }
 
+@DataClassName('LibraryPreferencesRecord')
+class LibraryPreferenceRows extends Table {
+  IntColumn get id => integer().withDefault(const Constant(0))();
+  TextColumn get artworkSize => text().withDefault(const Constant('medium'))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+@DataClassName('LibraryFolderRecord')
+class LibraryFolderRows extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+}
+
+@DataClassName('LibraryFolderMembershipRecord')
+class LibraryFolderMembershipRows extends Table {
+  IntColumn get podcastId => integer().references(PodcastRows, #id)();
+  IntColumn get folderId => integer().references(LibraryFolderRows, #id)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {podcastId};
+}
+
 @DriftDatabase(
   tables: [
     PodcastRows,
@@ -242,6 +267,9 @@ class PodcastPlaybackOverrideRows extends Table {
     SyncDeviceRows,
     PlaybackPreferenceRows,
     PodcastPlaybackOverrideRows,
+    LibraryPreferenceRows,
+    LibraryFolderRows,
+    LibraryFolderMembershipRows,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -258,7 +286,7 @@ class AppDatabase extends _$AppDatabase {
       );
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -344,6 +372,11 @@ class AppDatabase extends _$AppDatabase {
         await migrator.createTable(downloadPreferenceRows);
         await migrator.createTable(podcastDownloadOverrideRows);
       }
+      if (from < 11) {
+        await migrator.createTable(libraryPreferenceRows);
+        await migrator.createTable(libraryFolderRows);
+        await migrator.createTable(libraryFolderMembershipRows);
+      }
     },
   );
 
@@ -355,6 +388,106 @@ class AppDatabase extends _$AppDatabase {
   Stream<List<PodcastRecord>> watchPodcasts() => (select(
     podcastRows,
   )..orderBy([(p) => OrderingTerm.asc(p.title)])).watch();
+
+  Stream<Map<int, int>> watchPodcastUnplayedCounts() {
+    final count = episodeRows.id.count();
+    final query = selectOnly(episodeRows)
+      ..addColumns([episodeRows.podcastId, count])
+      ..where(episodeRows.completed.equals(false))
+      ..groupBy([episodeRows.podcastId]);
+    return query.watch().map(
+      (rows) => {
+        for (final row in rows)
+          row.read(episodeRows.podcastId)!: row.read(count) ?? 0,
+      },
+    );
+  }
+
+  Stream<LibraryPreferences> watchLibraryPreferences() =>
+      (select(
+        libraryPreferenceRows,
+      )..where((row) => row.id.equals(0))).watchSingleOrNull().map(
+        (row) => LibraryPreferences(
+          artworkSize: LibraryArtworkSize.parse(row?.artworkSize),
+        ),
+      );
+
+  Future<void> setLibraryArtworkSize(LibraryArtworkSize size) =>
+      into(libraryPreferenceRows).insertOnConflictUpdate(
+        LibraryPreferenceRowsCompanion.insert(
+          id: const Value(0),
+          artworkSize: Value(size.name),
+        ),
+      );
+
+  Stream<List<LibraryFolderRecord>> watchLibraryFolders() => (select(
+    libraryFolderRows,
+  )..orderBy([(folder) => OrderingTerm.asc(folder.name)])).watch();
+
+  Stream<Map<int, int>> watchLibraryFolderAssignments() =>
+      select(libraryFolderMembershipRows).watch().map(
+        (rows) => {for (final row in rows) row.podcastId: row.folderId},
+      );
+
+  Future<int> createLibraryFolder(String name) async {
+    final normalized = name.trim();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Folder name cannot be empty.');
+    }
+    final existing = await select(libraryFolderRows).get();
+    if (existing.any(
+      (folder) => folder.name.toLowerCase() == normalized.toLowerCase(),
+    )) {
+      throw ArgumentError.value(name, 'name', 'Folder already exists.');
+    }
+    return into(
+      libraryFolderRows,
+    ).insert(LibraryFolderRowsCompanion.insert(name: normalized));
+  }
+
+  Future<void> renameLibraryFolder(int folderId, String name) async {
+    final normalized = name.trim();
+    if (normalized.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Folder name cannot be empty.');
+    }
+    final existing = await select(libraryFolderRows).get();
+    if (existing.any(
+      (folder) =>
+          folder.id != folderId &&
+          folder.name.toLowerCase() == normalized.toLowerCase(),
+    )) {
+      throw ArgumentError.value(name, 'name', 'Folder already exists.');
+    }
+    await (update(libraryFolderRows)
+          ..where((folder) => folder.id.equals(folderId)))
+        .write(LibraryFolderRowsCompanion(name: Value(normalized)));
+  }
+
+  Future<void> deleteLibraryFolder(int folderId) async {
+    await transaction(() async {
+      await (delete(
+        libraryFolderMembershipRows,
+      )..where((row) => row.folderId.equals(folderId))).go();
+      await (delete(
+        libraryFolderRows,
+      )..where((row) => row.id.equals(folderId))).go();
+    });
+  }
+
+  Future<void> movePodcastToLibraryFolder(int podcastId, int? folderId) async {
+    if (folderId == null) {
+      await (delete(
+        libraryFolderMembershipRows,
+      )..where((row) => row.podcastId.equals(podcastId))).go();
+      return;
+    }
+    await into(libraryFolderMembershipRows).insertOnConflictUpdate(
+      LibraryFolderMembershipRowsCompanion.insert(
+        podcastId: Value(podcastId),
+        folderId: folderId,
+      ),
+    );
+  }
 
   Stream<List<EpisodeRecord>> watchRecentEpisodes() =>
       (select(episodeRows)
@@ -517,6 +650,20 @@ class AppDatabase extends _$AppDatabase {
     await transaction(() async {
       await into(podcastRows).insertOnConflictUpdate(podcast);
       if (temporaryId != podcast.id.value) {
+        final membership = await (select(
+          libraryFolderMembershipRows,
+        )..where((row) => row.podcastId.equals(temporaryId))).getSingleOrNull();
+        if (membership != null) {
+          await into(libraryFolderMembershipRows).insertOnConflictUpdate(
+            LibraryFolderMembershipRowsCompanion.insert(
+              podcastId: podcast.id,
+              folderId: membership.folderId,
+            ),
+          );
+          await (delete(
+            libraryFolderMembershipRows,
+          )..where((row) => row.podcastId.equals(temporaryId))).go();
+        }
         await (delete(
           podcastRows,
         )..where((row) => row.id.equals(temporaryId))).go();
@@ -560,6 +707,9 @@ class AppDatabase extends _$AppDatabase {
       )..where((row) => row.podcastId.equals(podcastId))).go();
       await (delete(
         podcastDownloadOverrideRows,
+      )..where((row) => row.podcastId.equals(podcastId))).go();
+      await (delete(
+        libraryFolderMembershipRows,
       )..where((row) => row.podcastId.equals(podcastId))).go();
       await (delete(
         episodeRows,
@@ -1275,6 +1425,9 @@ class AppDatabase extends _$AppDatabase {
       await delete(podcastPlaybackOverrideRows).go();
       await delete(podcastDownloadOverrideRows).go();
       await delete(downloadPreferenceRows).go();
+      await delete(libraryFolderMembershipRows).go();
+      await delete(libraryFolderRows).go();
+      await delete(libraryPreferenceRows).go();
       await delete(episodeRows).go();
       await delete(podcastRows).go();
     });

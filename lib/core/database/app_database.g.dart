@@ -6996,6 +6996,634 @@ class PodcastPlaybackOverrideRowsCompanion
   }
 }
 
+class $LibraryPreferenceRowsTable extends LibraryPreferenceRows
+    with TableInfo<$LibraryPreferenceRowsTable, LibraryPreferencesRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LibraryPreferenceRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _artworkSizeMeta = const VerificationMeta(
+    'artworkSize',
+  );
+  @override
+  late final GeneratedColumn<String> artworkSize = GeneratedColumn<String>(
+    'artwork_size',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('medium'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, artworkSize];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'library_preference_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LibraryPreferencesRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('artwork_size')) {
+      context.handle(
+        _artworkSizeMeta,
+        artworkSize.isAcceptableOrUnknown(
+          data['artwork_size']!,
+          _artworkSizeMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LibraryPreferencesRecord map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LibraryPreferencesRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      artworkSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}artwork_size'],
+      )!,
+    );
+  }
+
+  @override
+  $LibraryPreferenceRowsTable createAlias(String alias) {
+    return $LibraryPreferenceRowsTable(attachedDatabase, alias);
+  }
+}
+
+class LibraryPreferencesRecord extends DataClass
+    implements Insertable<LibraryPreferencesRecord> {
+  final int id;
+  final String artworkSize;
+  const LibraryPreferencesRecord({required this.id, required this.artworkSize});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['artwork_size'] = Variable<String>(artworkSize);
+    return map;
+  }
+
+  LibraryPreferenceRowsCompanion toCompanion(bool nullToAbsent) {
+    return LibraryPreferenceRowsCompanion(
+      id: Value(id),
+      artworkSize: Value(artworkSize),
+    );
+  }
+
+  factory LibraryPreferencesRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LibraryPreferencesRecord(
+      id: serializer.fromJson<int>(json['id']),
+      artworkSize: serializer.fromJson<String>(json['artworkSize']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'artworkSize': serializer.toJson<String>(artworkSize),
+    };
+  }
+
+  LibraryPreferencesRecord copyWith({int? id, String? artworkSize}) =>
+      LibraryPreferencesRecord(
+        id: id ?? this.id,
+        artworkSize: artworkSize ?? this.artworkSize,
+      );
+  LibraryPreferencesRecord copyWithCompanion(
+    LibraryPreferenceRowsCompanion data,
+  ) {
+    return LibraryPreferencesRecord(
+      id: data.id.present ? data.id.value : this.id,
+      artworkSize: data.artworkSize.present
+          ? data.artworkSize.value
+          : this.artworkSize,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LibraryPreferencesRecord(')
+          ..write('id: $id, ')
+          ..write('artworkSize: $artworkSize')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, artworkSize);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LibraryPreferencesRecord &&
+          other.id == this.id &&
+          other.artworkSize == this.artworkSize);
+}
+
+class LibraryPreferenceRowsCompanion
+    extends UpdateCompanion<LibraryPreferencesRecord> {
+  final Value<int> id;
+  final Value<String> artworkSize;
+  const LibraryPreferenceRowsCompanion({
+    this.id = const Value.absent(),
+    this.artworkSize = const Value.absent(),
+  });
+  LibraryPreferenceRowsCompanion.insert({
+    this.id = const Value.absent(),
+    this.artworkSize = const Value.absent(),
+  });
+  static Insertable<LibraryPreferencesRecord> custom({
+    Expression<int>? id,
+    Expression<String>? artworkSize,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (artworkSize != null) 'artwork_size': artworkSize,
+    });
+  }
+
+  LibraryPreferenceRowsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? artworkSize,
+  }) {
+    return LibraryPreferenceRowsCompanion(
+      id: id ?? this.id,
+      artworkSize: artworkSize ?? this.artworkSize,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (artworkSize.present) {
+      map['artwork_size'] = Variable<String>(artworkSize.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LibraryPreferenceRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('artworkSize: $artworkSize')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LibraryFolderRowsTable extends LibraryFolderRows
+    with TableInfo<$LibraryFolderRowsTable, LibraryFolderRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LibraryFolderRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'library_folder_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LibraryFolderRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LibraryFolderRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LibraryFolderRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+    );
+  }
+
+  @override
+  $LibraryFolderRowsTable createAlias(String alias) {
+    return $LibraryFolderRowsTable(attachedDatabase, alias);
+  }
+}
+
+class LibraryFolderRecord extends DataClass
+    implements Insertable<LibraryFolderRecord> {
+  final int id;
+  final String name;
+  const LibraryFolderRecord({required this.id, required this.name});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    return map;
+  }
+
+  LibraryFolderRowsCompanion toCompanion(bool nullToAbsent) {
+    return LibraryFolderRowsCompanion(id: Value(id), name: Value(name));
+  }
+
+  factory LibraryFolderRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LibraryFolderRecord(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+    };
+  }
+
+  LibraryFolderRecord copyWith({int? id, String? name}) =>
+      LibraryFolderRecord(id: id ?? this.id, name: name ?? this.name);
+  LibraryFolderRecord copyWithCompanion(LibraryFolderRowsCompanion data) {
+    return LibraryFolderRecord(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LibraryFolderRecord(')
+          ..write('id: $id, ')
+          ..write('name: $name')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LibraryFolderRecord &&
+          other.id == this.id &&
+          other.name == this.name);
+}
+
+class LibraryFolderRowsCompanion extends UpdateCompanion<LibraryFolderRecord> {
+  final Value<int> id;
+  final Value<String> name;
+  const LibraryFolderRowsCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+  });
+  LibraryFolderRowsCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+  }) : name = Value(name);
+  static Insertable<LibraryFolderRecord> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+    });
+  }
+
+  LibraryFolderRowsCompanion copyWith({Value<int>? id, Value<String>? name}) {
+    return LibraryFolderRowsCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LibraryFolderRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LibraryFolderMembershipRowsTable extends LibraryFolderMembershipRows
+    with
+        TableInfo<
+          $LibraryFolderMembershipRowsTable,
+          LibraryFolderMembershipRecord
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LibraryFolderMembershipRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _podcastIdMeta = const VerificationMeta(
+    'podcastId',
+  );
+  @override
+  late final GeneratedColumn<int> podcastId = GeneratedColumn<int>(
+    'podcast_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES podcast_rows (id)',
+    ),
+  );
+  static const VerificationMeta _folderIdMeta = const VerificationMeta(
+    'folderId',
+  );
+  @override
+  late final GeneratedColumn<int> folderId = GeneratedColumn<int>(
+    'folder_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES library_folder_rows (id)',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [podcastId, folderId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'library_folder_membership_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LibraryFolderMembershipRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('podcast_id')) {
+      context.handle(
+        _podcastIdMeta,
+        podcastId.isAcceptableOrUnknown(data['podcast_id']!, _podcastIdMeta),
+      );
+    }
+    if (data.containsKey('folder_id')) {
+      context.handle(
+        _folderIdMeta,
+        folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_folderIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {podcastId};
+  @override
+  LibraryFolderMembershipRecord map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LibraryFolderMembershipRecord(
+      podcastId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}podcast_id'],
+      )!,
+      folderId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}folder_id'],
+      )!,
+    );
+  }
+
+  @override
+  $LibraryFolderMembershipRowsTable createAlias(String alias) {
+    return $LibraryFolderMembershipRowsTable(attachedDatabase, alias);
+  }
+}
+
+class LibraryFolderMembershipRecord extends DataClass
+    implements Insertable<LibraryFolderMembershipRecord> {
+  final int podcastId;
+  final int folderId;
+  const LibraryFolderMembershipRecord({
+    required this.podcastId,
+    required this.folderId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['podcast_id'] = Variable<int>(podcastId);
+    map['folder_id'] = Variable<int>(folderId);
+    return map;
+  }
+
+  LibraryFolderMembershipRowsCompanion toCompanion(bool nullToAbsent) {
+    return LibraryFolderMembershipRowsCompanion(
+      podcastId: Value(podcastId),
+      folderId: Value(folderId),
+    );
+  }
+
+  factory LibraryFolderMembershipRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LibraryFolderMembershipRecord(
+      podcastId: serializer.fromJson<int>(json['podcastId']),
+      folderId: serializer.fromJson<int>(json['folderId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'podcastId': serializer.toJson<int>(podcastId),
+      'folderId': serializer.toJson<int>(folderId),
+    };
+  }
+
+  LibraryFolderMembershipRecord copyWith({int? podcastId, int? folderId}) =>
+      LibraryFolderMembershipRecord(
+        podcastId: podcastId ?? this.podcastId,
+        folderId: folderId ?? this.folderId,
+      );
+  LibraryFolderMembershipRecord copyWithCompanion(
+    LibraryFolderMembershipRowsCompanion data,
+  ) {
+    return LibraryFolderMembershipRecord(
+      podcastId: data.podcastId.present ? data.podcastId.value : this.podcastId,
+      folderId: data.folderId.present ? data.folderId.value : this.folderId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LibraryFolderMembershipRecord(')
+          ..write('podcastId: $podcastId, ')
+          ..write('folderId: $folderId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(podcastId, folderId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LibraryFolderMembershipRecord &&
+          other.podcastId == this.podcastId &&
+          other.folderId == this.folderId);
+}
+
+class LibraryFolderMembershipRowsCompanion
+    extends UpdateCompanion<LibraryFolderMembershipRecord> {
+  final Value<int> podcastId;
+  final Value<int> folderId;
+  const LibraryFolderMembershipRowsCompanion({
+    this.podcastId = const Value.absent(),
+    this.folderId = const Value.absent(),
+  });
+  LibraryFolderMembershipRowsCompanion.insert({
+    this.podcastId = const Value.absent(),
+    required int folderId,
+  }) : folderId = Value(folderId);
+  static Insertable<LibraryFolderMembershipRecord> custom({
+    Expression<int>? podcastId,
+    Expression<int>? folderId,
+  }) {
+    return RawValuesInsertable({
+      if (podcastId != null) 'podcast_id': podcastId,
+      if (folderId != null) 'folder_id': folderId,
+    });
+  }
+
+  LibraryFolderMembershipRowsCompanion copyWith({
+    Value<int>? podcastId,
+    Value<int>? folderId,
+  }) {
+    return LibraryFolderMembershipRowsCompanion(
+      podcastId: podcastId ?? this.podcastId,
+      folderId: folderId ?? this.folderId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (podcastId.present) {
+      map['podcast_id'] = Variable<int>(podcastId.value);
+    }
+    if (folderId.present) {
+      map['folder_id'] = Variable<int>(folderId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LibraryFolderMembershipRowsCompanion(')
+          ..write('podcastId: $podcastId, ')
+          ..write('folderId: $folderId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7024,6 +7652,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $PlaybackPreferenceRowsTable(this);
   late final $PodcastPlaybackOverrideRowsTable podcastPlaybackOverrideRows =
       $PodcastPlaybackOverrideRowsTable(this);
+  late final $LibraryPreferenceRowsTable libraryPreferenceRows =
+      $LibraryPreferenceRowsTable(this);
+  late final $LibraryFolderRowsTable libraryFolderRows =
+      $LibraryFolderRowsTable(this);
+  late final $LibraryFolderMembershipRowsTable libraryFolderMembershipRows =
+      $LibraryFolderMembershipRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7044,6 +7678,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncDeviceRows,
     playbackPreferenceRows,
     podcastPlaybackOverrideRows,
+    libraryPreferenceRows,
+    libraryFolderRows,
+    libraryFolderMembershipRows,
   ];
 }
 
@@ -7169,6 +7806,32 @@ final class $$PodcastRowsTableReferences
 
     final cache = $_typedResult.readTableOrNull(
       _podcastPlaybackOverrideRowsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $LibraryFolderMembershipRowsTable,
+    List<LibraryFolderMembershipRecord>
+  >
+  _libraryFolderMembershipRowsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.libraryFolderMembershipRows,
+        aliasName:
+            'podcast_rows__id__library_folder_membership_rows__podcast_id',
+      );
+
+  $$LibraryFolderMembershipRowsTableProcessedTableManager
+  get libraryFolderMembershipRowsRefs {
+    final manager = $$LibraryFolderMembershipRowsTableTableManager(
+      $_db,
+      $_db.libraryFolderMembershipRows,
+    ).filter((f) => f.podcastId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _libraryFolderMembershipRowsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -7341,6 +8004,35 @@ class $$PodcastRowsTableFilterComposer
               }) => $$PodcastPlaybackOverrideRowsTableFilterComposer(
                 $db: $db,
                 $table: $db.podcastPlaybackOverrideRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> libraryFolderMembershipRowsRefs(
+    Expression<bool> Function(
+      $$LibraryFolderMembershipRowsTableFilterComposer f,
+    )
+    f,
+  ) {
+    final $$LibraryFolderMembershipRowsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.libraryFolderMembershipRows,
+          getReferencedColumn: (t) => t.podcastId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$LibraryFolderMembershipRowsTableFilterComposer(
+                $db: $db,
+                $table: $db.libraryFolderMembershipRows,
                 $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
                 joinBuilder: joinBuilder,
                 $removeJoinBuilderFromRootComposer:
@@ -7579,6 +8271,35 @@ class $$PodcastRowsTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> libraryFolderMembershipRowsRefs<T extends Object>(
+    Expression<T> Function(
+      $$LibraryFolderMembershipRowsTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$LibraryFolderMembershipRowsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.libraryFolderMembershipRows,
+          getReferencedColumn: (t) => t.podcastId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$LibraryFolderMembershipRowsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.libraryFolderMembershipRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$PodcastRowsTableTableManager
@@ -7599,6 +8320,7 @@ class $$PodcastRowsTableTableManager
             bool podcastDownloadOverrideRowsRefs,
             bool podcastInboxOverrideRowsRefs,
             bool podcastPlaybackOverrideRowsRefs,
+            bool libraryFolderMembershipRowsRefs,
           })
         > {
   $$PodcastRowsTableTableManager(_$AppDatabase db, $PodcastRowsTable table)
@@ -7678,6 +8400,7 @@ class $$PodcastRowsTableTableManager
                 podcastDownloadOverrideRowsRefs = false,
                 podcastInboxOverrideRowsRefs = false,
                 podcastPlaybackOverrideRowsRefs = false,
+                libraryFolderMembershipRowsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -7689,6 +8412,8 @@ class $$PodcastRowsTableTableManager
                       db.podcastInboxOverrideRows,
                     if (podcastPlaybackOverrideRowsRefs)
                       db.podcastPlaybackOverrideRows,
+                    if (libraryFolderMembershipRowsRefs)
+                      db.libraryFolderMembershipRows,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -7777,6 +8502,27 @@ class $$PodcastRowsTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (libraryFolderMembershipRowsRefs)
+                        await $_getPrefetchedData<
+                          PodcastRecord,
+                          $PodcastRowsTable,
+                          LibraryFolderMembershipRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$PodcastRowsTableReferences
+                              ._libraryFolderMembershipRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$PodcastRowsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).libraryFolderMembershipRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.podcastId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -7802,6 +8548,7 @@ typedef $$PodcastRowsTableProcessedTableManager =
         bool podcastDownloadOverrideRowsRefs,
         bool podcastInboxOverrideRowsRefs,
         bool podcastPlaybackOverrideRowsRefs,
+        bool libraryFolderMembershipRowsRefs,
       })
     >;
 typedef $$DiscoveryCacheRowsTableCreateCompanionBuilder =
@@ -12357,6 +13104,797 @@ typedef $$PodcastPlaybackOverrideRowsTableProcessedTableManager =
       PodcastPlaybackOverrideRecord,
       PrefetchHooks Function({bool podcastId})
     >;
+typedef $$LibraryPreferenceRowsTableCreateCompanionBuilder =
+    LibraryPreferenceRowsCompanion Function({
+      Value<int> id,
+      Value<String> artworkSize,
+    });
+typedef $$LibraryPreferenceRowsTableUpdateCompanionBuilder =
+    LibraryPreferenceRowsCompanion Function({
+      Value<int> id,
+      Value<String> artworkSize,
+    });
+
+class $$LibraryPreferenceRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $LibraryPreferenceRowsTable> {
+  $$LibraryPreferenceRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get artworkSize => $composableBuilder(
+    column: $table.artworkSize,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LibraryPreferenceRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LibraryPreferenceRowsTable> {
+  $$LibraryPreferenceRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get artworkSize => $composableBuilder(
+    column: $table.artworkSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LibraryPreferenceRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LibraryPreferenceRowsTable> {
+  $$LibraryPreferenceRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get artworkSize => $composableBuilder(
+    column: $table.artworkSize,
+    builder: (column) => column,
+  );
+}
+
+class $$LibraryPreferenceRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LibraryPreferenceRowsTable,
+          LibraryPreferencesRecord,
+          $$LibraryPreferenceRowsTableFilterComposer,
+          $$LibraryPreferenceRowsTableOrderingComposer,
+          $$LibraryPreferenceRowsTableAnnotationComposer,
+          $$LibraryPreferenceRowsTableCreateCompanionBuilder,
+          $$LibraryPreferenceRowsTableUpdateCompanionBuilder,
+          (
+            LibraryPreferencesRecord,
+            BaseReferences<
+              _$AppDatabase,
+              $LibraryPreferenceRowsTable,
+              LibraryPreferencesRecord
+            >,
+          ),
+          LibraryPreferencesRecord,
+          PrefetchHooks Function()
+        > {
+  $$LibraryPreferenceRowsTableTableManager(
+    _$AppDatabase db,
+    $LibraryPreferenceRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LibraryPreferenceRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$LibraryPreferenceRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$LibraryPreferenceRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> artworkSize = const Value.absent(),
+              }) => LibraryPreferenceRowsCompanion(
+                id: id,
+                artworkSize: artworkSize,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> artworkSize = const Value.absent(),
+              }) => LibraryPreferenceRowsCompanion.insert(
+                id: id,
+                artworkSize: artworkSize,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LibraryPreferenceRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LibraryPreferenceRowsTable,
+      LibraryPreferencesRecord,
+      $$LibraryPreferenceRowsTableFilterComposer,
+      $$LibraryPreferenceRowsTableOrderingComposer,
+      $$LibraryPreferenceRowsTableAnnotationComposer,
+      $$LibraryPreferenceRowsTableCreateCompanionBuilder,
+      $$LibraryPreferenceRowsTableUpdateCompanionBuilder,
+      (
+        LibraryPreferencesRecord,
+        BaseReferences<
+          _$AppDatabase,
+          $LibraryPreferenceRowsTable,
+          LibraryPreferencesRecord
+        >,
+      ),
+      LibraryPreferencesRecord,
+      PrefetchHooks Function()
+    >;
+typedef $$LibraryFolderRowsTableCreateCompanionBuilder =
+    LibraryFolderRowsCompanion Function({Value<int> id, required String name});
+typedef $$LibraryFolderRowsTableUpdateCompanionBuilder =
+    LibraryFolderRowsCompanion Function({Value<int> id, Value<String> name});
+
+final class $$LibraryFolderRowsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $LibraryFolderRowsTable,
+          LibraryFolderRecord
+        > {
+  $$LibraryFolderRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<
+    $LibraryFolderMembershipRowsTable,
+    List<LibraryFolderMembershipRecord>
+  >
+  _libraryFolderMembershipRowsRefsTable(
+    _$AppDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.libraryFolderMembershipRows,
+    aliasName:
+        'library_folder_rows__id__library_folder_membership_rows__folder_id',
+  );
+
+  $$LibraryFolderMembershipRowsTableProcessedTableManager
+  get libraryFolderMembershipRowsRefs {
+    final manager = $$LibraryFolderMembershipRowsTableTableManager(
+      $_db,
+      $_db.libraryFolderMembershipRows,
+    ).filter((f) => f.folderId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _libraryFolderMembershipRowsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$LibraryFolderRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $LibraryFolderRowsTable> {
+  $$LibraryFolderRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  Expression<bool> libraryFolderMembershipRowsRefs(
+    Expression<bool> Function(
+      $$LibraryFolderMembershipRowsTableFilterComposer f,
+    )
+    f,
+  ) {
+    final $$LibraryFolderMembershipRowsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.libraryFolderMembershipRows,
+          getReferencedColumn: (t) => t.folderId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$LibraryFolderMembershipRowsTableFilterComposer(
+                $db: $db,
+                $table: $db.libraryFolderMembershipRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$LibraryFolderRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LibraryFolderRowsTable> {
+  $$LibraryFolderRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LibraryFolderRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LibraryFolderRowsTable> {
+  $$LibraryFolderRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  Expression<T> libraryFolderMembershipRowsRefs<T extends Object>(
+    Expression<T> Function(
+      $$LibraryFolderMembershipRowsTableAnnotationComposer a,
+    )
+    f,
+  ) {
+    final $$LibraryFolderMembershipRowsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.libraryFolderMembershipRows,
+          getReferencedColumn: (t) => t.folderId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$LibraryFolderMembershipRowsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.libraryFolderMembershipRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$LibraryFolderRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LibraryFolderRowsTable,
+          LibraryFolderRecord,
+          $$LibraryFolderRowsTableFilterComposer,
+          $$LibraryFolderRowsTableOrderingComposer,
+          $$LibraryFolderRowsTableAnnotationComposer,
+          $$LibraryFolderRowsTableCreateCompanionBuilder,
+          $$LibraryFolderRowsTableUpdateCompanionBuilder,
+          (LibraryFolderRecord, $$LibraryFolderRowsTableReferences),
+          LibraryFolderRecord,
+          PrefetchHooks Function({bool libraryFolderMembershipRowsRefs})
+        > {
+  $$LibraryFolderRowsTableTableManager(
+    _$AppDatabase db,
+    $LibraryFolderRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LibraryFolderRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LibraryFolderRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LibraryFolderRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+              }) => LibraryFolderRowsCompanion(id: id, name: name),
+          createCompanionCallback:
+              ({Value<int> id = const Value.absent(), required String name}) =>
+                  LibraryFolderRowsCompanion.insert(id: id, name: name),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$LibraryFolderRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({libraryFolderMembershipRowsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (libraryFolderMembershipRowsRefs)
+                  db.libraryFolderMembershipRows,
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (libraryFolderMembershipRowsRefs)
+                    await $_getPrefetchedData<
+                      LibraryFolderRecord,
+                      $LibraryFolderRowsTable,
+                      LibraryFolderMembershipRecord
+                    >(
+                      currentTable: table,
+                      referencedTable: $$LibraryFolderRowsTableReferences
+                          ._libraryFolderMembershipRowsRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$LibraryFolderRowsTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).libraryFolderMembershipRowsRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.folderId == item.id),
+                      typedResults: items,
+                    ),
+                ];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$LibraryFolderRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LibraryFolderRowsTable,
+      LibraryFolderRecord,
+      $$LibraryFolderRowsTableFilterComposer,
+      $$LibraryFolderRowsTableOrderingComposer,
+      $$LibraryFolderRowsTableAnnotationComposer,
+      $$LibraryFolderRowsTableCreateCompanionBuilder,
+      $$LibraryFolderRowsTableUpdateCompanionBuilder,
+      (LibraryFolderRecord, $$LibraryFolderRowsTableReferences),
+      LibraryFolderRecord,
+      PrefetchHooks Function({bool libraryFolderMembershipRowsRefs})
+    >;
+typedef $$LibraryFolderMembershipRowsTableCreateCompanionBuilder =
+    LibraryFolderMembershipRowsCompanion Function({
+      Value<int> podcastId,
+      required int folderId,
+    });
+typedef $$LibraryFolderMembershipRowsTableUpdateCompanionBuilder =
+    LibraryFolderMembershipRowsCompanion Function({
+      Value<int> podcastId,
+      Value<int> folderId,
+    });
+
+final class $$LibraryFolderMembershipRowsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $LibraryFolderMembershipRowsTable,
+          LibraryFolderMembershipRecord
+        > {
+  $$LibraryFolderMembershipRowsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $PodcastRowsTable _podcastIdTable(_$AppDatabase db) =>
+      db.podcastRows.createAlias(
+        'library_folder_membership_rows__podcast_id__podcast_rows__id',
+      );
+
+  $$PodcastRowsTableProcessedTableManager get podcastId {
+    final $_column = $_itemColumn<int>('podcast_id')!;
+
+    final manager = $$PodcastRowsTableTableManager(
+      $_db,
+      $_db.podcastRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_podcastIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $LibraryFolderRowsTable _folderIdTable(_$AppDatabase db) =>
+      db.libraryFolderRows.createAlias(
+        'library_folder_membership_rows__folder_id__library_folder_rows__id',
+      );
+
+  $$LibraryFolderRowsTableProcessedTableManager get folderId {
+    final $_column = $_itemColumn<int>('folder_id')!;
+
+    final manager = $$LibraryFolderRowsTableTableManager(
+      $_db,
+      $_db.libraryFolderRows,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_folderIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$LibraryFolderMembershipRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $LibraryFolderMembershipRowsTable> {
+  $$LibraryFolderMembershipRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$PodcastRowsTableFilterComposer get podcastId {
+    final $$PodcastRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$LibraryFolderRowsTableFilterComposer get folderId {
+    final $$LibraryFolderRowsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.libraryFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LibraryFolderRowsTableFilterComposer(
+            $db: $db,
+            $table: $db.libraryFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LibraryFolderMembershipRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LibraryFolderMembershipRowsTable> {
+  $$LibraryFolderMembershipRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$PodcastRowsTableOrderingComposer get podcastId {
+    final $$PodcastRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$LibraryFolderRowsTableOrderingComposer get folderId {
+    final $$LibraryFolderRowsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.folderId,
+      referencedTable: $db.libraryFolderRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$LibraryFolderRowsTableOrderingComposer(
+            $db: $db,
+            $table: $db.libraryFolderRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$LibraryFolderMembershipRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LibraryFolderMembershipRowsTable> {
+  $$LibraryFolderMembershipRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  $$PodcastRowsTableAnnotationComposer get podcastId {
+    final $$PodcastRowsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.podcastId,
+      referencedTable: $db.podcastRows,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$PodcastRowsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.podcastRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$LibraryFolderRowsTableAnnotationComposer get folderId {
+    final $$LibraryFolderRowsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.folderId,
+          referencedTable: $db.libraryFolderRows,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$LibraryFolderRowsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.libraryFolderRows,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$LibraryFolderMembershipRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LibraryFolderMembershipRowsTable,
+          LibraryFolderMembershipRecord,
+          $$LibraryFolderMembershipRowsTableFilterComposer,
+          $$LibraryFolderMembershipRowsTableOrderingComposer,
+          $$LibraryFolderMembershipRowsTableAnnotationComposer,
+          $$LibraryFolderMembershipRowsTableCreateCompanionBuilder,
+          $$LibraryFolderMembershipRowsTableUpdateCompanionBuilder,
+          (
+            LibraryFolderMembershipRecord,
+            $$LibraryFolderMembershipRowsTableReferences,
+          ),
+          LibraryFolderMembershipRecord,
+          PrefetchHooks Function({bool podcastId, bool folderId})
+        > {
+  $$LibraryFolderMembershipRowsTableTableManager(
+    _$AppDatabase db,
+    $LibraryFolderMembershipRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LibraryFolderMembershipRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$LibraryFolderMembershipRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$LibraryFolderMembershipRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> podcastId = const Value.absent(),
+                Value<int> folderId = const Value.absent(),
+              }) => LibraryFolderMembershipRowsCompanion(
+                podcastId: podcastId,
+                folderId: folderId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> podcastId = const Value.absent(),
+                required int folderId,
+              }) => LibraryFolderMembershipRowsCompanion.insert(
+                podcastId: podcastId,
+                folderId: folderId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$LibraryFolderMembershipRowsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({podcastId = false, folderId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (podcastId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.podcastId,
+                                referencedTable:
+                                    $$LibraryFolderMembershipRowsTableReferences
+                                        ._podcastIdTable(db),
+                                referencedColumn:
+                                    $$LibraryFolderMembershipRowsTableReferences
+                                        ._podcastIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (folderId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.folderId,
+                                referencedTable:
+                                    $$LibraryFolderMembershipRowsTableReferences
+                                        ._folderIdTable(db),
+                                referencedColumn:
+                                    $$LibraryFolderMembershipRowsTableReferences
+                                        ._folderIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$LibraryFolderMembershipRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LibraryFolderMembershipRowsTable,
+      LibraryFolderMembershipRecord,
+      $$LibraryFolderMembershipRowsTableFilterComposer,
+      $$LibraryFolderMembershipRowsTableOrderingComposer,
+      $$LibraryFolderMembershipRowsTableAnnotationComposer,
+      $$LibraryFolderMembershipRowsTableCreateCompanionBuilder,
+      $$LibraryFolderMembershipRowsTableUpdateCompanionBuilder,
+      (
+        LibraryFolderMembershipRecord,
+        $$LibraryFolderMembershipRowsTableReferences,
+      ),
+      LibraryFolderMembershipRecord,
+      PrefetchHooks Function({bool podcastId, bool folderId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -12407,5 +13945,15 @@ class $AppDatabaseManager {
       $$PodcastPlaybackOverrideRowsTableTableManager(
         _db,
         _db.podcastPlaybackOverrideRows,
+      );
+  $$LibraryPreferenceRowsTableTableManager get libraryPreferenceRows =>
+      $$LibraryPreferenceRowsTableTableManager(_db, _db.libraryPreferenceRows);
+  $$LibraryFolderRowsTableTableManager get libraryFolderRows =>
+      $$LibraryFolderRowsTableTableManager(_db, _db.libraryFolderRows);
+  $$LibraryFolderMembershipRowsTableTableManager
+  get libraryFolderMembershipRows =>
+      $$LibraryFolderMembershipRowsTableTableManager(
+        _db,
+        _db.libraryFolderMembershipRows,
       );
 }

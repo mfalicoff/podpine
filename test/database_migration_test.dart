@@ -1,9 +1,10 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:podpine/core/database/app_database.dart';
+import 'package:podpine/features/library/library_models.dart';
 
 void main() {
-  test('v1 database upgrades to v10 without losing user data', () async {
+  test('v1 database upgrades to v11 without losing user data', () async {
     final executor = NativeDatabase.memory(
       setup: (database) {
         database.execute('''
@@ -91,7 +92,7 @@ void main() {
     final database = AppDatabase(executor);
     addTearDown(database.close);
 
-    // Opening the first typed query runs every migration from v1 through v10.
+    // Opening the first typed query runs every migration from v1 through v11.
     final episode = await database.episodeById(73);
     final podcast = await database.podcastById(41);
     final queue = await database.watchQueue().first;
@@ -105,7 +106,7 @@ void main() {
         .customSelect('PRAGMA user_version')
         .getSingle();
 
-    expect(schemaVersion.data['user_version'], 10);
+    expect(schemaVersion.data['user_version'], 11);
     expect(podcast?.title, 'Existing podcast');
     expect(podcast?.author, 'Existing author');
     expect(podcast?.feedUrl, 'https://fixtures.invalid/feed.xml');
@@ -123,5 +124,11 @@ void main() {
     expect(inbox.data['removed_at'], isNotNull);
     expect(await database.downloadPreferences(), isNull);
     expect(await database.podcastDownloadOverrides(), isEmpty);
+    expect(
+      await database.watchLibraryPreferences().first,
+      isA<LibraryPreferences>(),
+    );
+    expect(await database.watchLibraryFolders().first, isEmpty);
+    expect(await database.watchLibraryFolderAssignments().first, isEmpty);
   });
 }
