@@ -409,6 +409,12 @@ class AppController extends ChangeNotifier {
     Duration position, {
     bool userInitiatedSeek = false,
   }) async {
+    if (kDebugMode) {
+      debugPrint(
+        '[PodpinePlayback][persistence] recordPosition id=${episode.id} '
+        'position=${position.inSeconds}s seek=$userInitiatedSeek',
+      );
+    }
     final occurredAt = DateTime.now().toUtc();
     final deviceId = await _playbackDeviceId();
     final event = PlaybackSyncEvent(

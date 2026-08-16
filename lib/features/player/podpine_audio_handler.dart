@@ -121,6 +121,10 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
     final activeItem = mediaItem.value;
     final activePosition = _player.position;
     final wasPlaying = _player.playing;
+    _audioTrace(
+      'updateQueue size=${queue.length} active=${activeItem?.id} '
+      'nativePosition=${activePosition.inMilliseconds}ms playing=$wasPlaying',
+    );
     _queueGeneration++;
     _completedIndices.clear();
     final newQueue = List<MediaItem>.unmodifiable(queue);
@@ -156,6 +160,11 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
       initialPosition: preservedIndex < 0 ? Duration.zero : activePosition,
       preload: false,
     );
+    _audioTrace(
+      'sourcesSet index=${_player.currentIndex} '
+      'nativePosition=${_player.position.inMilliseconds}ms '
+      'preservedIndex=$preservedIndex',
+    );
     if (preservedIndex >= 0) {
       mediaItem.add(newQueue[preservedIndex]);
       if (wasPlaying) unawaited(_player.play());
@@ -180,7 +189,15 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> skipToQueueItem(int index) async {
     final items = queue.value;
     if (index < 0 || index >= items.length) return;
+    _audioTrace(
+      'skipToQueueItem index=$index '
+      'before=${_player.position.inMilliseconds}ms',
+    );
     await _player.seek(Duration.zero, index: index);
+    _audioTrace(
+      'skipToQueueItem complete index=${_player.currentIndex} '
+      'after=${_player.position.inMilliseconds}ms',
+    );
     mediaItem.add(items[index]);
     _broadcastState(_player.playbackEvent);
   }
@@ -206,14 +223,44 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> play() async {
     await _ready;
+    _audioTrace(
+      'play index=${_player.currentIndex} '
+      'position=${_player.position.inMilliseconds}ms',
+    );
     await _player.play();
+  }
+
+  @override
+  Future<void> prepare() async {
+    await _ready;
+    _audioTrace(
+      'prepare state=${_player.processingState.name} '
+      'index=${_player.currentIndex} position=${_player.position.inMilliseconds}ms',
+    );
+    if (_player.processingState == ProcessingState.idle) {
+      await _player.load();
+    }
+    _audioTrace(
+      'prepare complete state=${_player.processingState.name} '
+      'index=${_player.currentIndex} position=${_player.position.inMilliseconds}ms',
+    );
   }
 
   @override
   Future<void> pause() => _player.pause();
 
   @override
-  Future<void> seek(Duration position) => _player.seek(position);
+  Future<void> seek(Duration position) async {
+    _audioTrace(
+      'seek requested=${position.inMilliseconds}ms '
+      'index=${_player.currentIndex} before=${_player.position.inMilliseconds}ms',
+    );
+    await _player.seek(position);
+    _audioTrace(
+      'seek complete requested=${position.inMilliseconds}ms '
+      'index=${_player.currentIndex} after=${_player.position.inMilliseconds}ms',
+    );
+  }
 
   @override
   Future<void> fastForward() =>
@@ -382,4 +429,8 @@ class PodpineAudioHandler extends BaseAudioHandler with SeekHandler {
     await _errorSubscription?.cancel();
     await _player.dispose();
   }
+}
+
+void _audioTrace(String message) {
+  if (kDebugMode) debugPrint('[PodpinePlayback][audio] $message');
 }

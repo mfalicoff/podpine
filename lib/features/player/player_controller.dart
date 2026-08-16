@@ -108,6 +108,12 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
 
     await _settingsReady;
     await _persist();
+    final storedEpisode = await database.episodeById(episode.id);
+    _playbackTrace(
+      'playEpisode id=${episode.id} uiPosition=${episode.positionSeconds}s '
+      'databasePosition=${storedEpisode?.positionSeconds}s '
+      'currentId=${current?.id}',
+    );
     _completedEpisodeIds.remove(episode.id);
     current = episode;
     unawaited(_hydrateChapters(episode));
@@ -147,6 +153,10 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
       final activeIndex = playableQueue.indexWhere(
         (item) => item.id == episode.id,
       );
+      _playbackTrace(
+        'selectQueue id=${episode.id} index=$activeIndex '
+        'resume=${resumePosition.inSeconds}s queueSize=${queue.length}',
+      );
 
       await _handler.updateQueue(queue);
       _playbackQueueIds = playableQueue
@@ -154,10 +164,18 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
           .toList(growable: false);
       _playbackQueueAudioUrls = _audioUrls(queue);
       await _handler.skipToQueueItem(activeIndex);
+      // `updateQueue` deliberately avoids preloading network media. Prepare
+      // the selected source before seeking: on Android, an idle ExoPlayer can
+      // report an accepted seek and then reset it when `play()` loads media.
+      await _handler.prepare();
       // Queue selection briefly reports its initial position (zero) through
       // the playback-state stream. Keep the persisted resume point captured
       // above so that transient state cannot change the requested seek.
       await _handler.seek(resumePosition);
+      _playbackTrace(
+        'seekSent id=${episode.id} requested=${resumePosition.inSeconds}s '
+        'controllerPosition=${position.inSeconds}s',
+      );
       await _handler.setSpeed(speed);
       await _applySkipSilence();
       isPlaying = true;
@@ -345,6 +363,14 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
         state.processingState == AudioProcessingState.loading ||
         state.processingState == AudioProcessingState.buffering;
     position = state.position;
+    if (_selectingEpisode) {
+      _playbackTrace(
+        'selectionState id=${current?.id} '
+        'processing=${state.processingState.name} '
+        'position=${state.position.inMilliseconds}ms '
+        'playing=${state.playing}',
+      );
+    }
     if (!_selectingEpisode) speed = state.speed;
     if (state.processingState == AudioProcessingState.error) {
       error ??= 'This episode could not be played. Try again.';
@@ -688,4 +714,8 @@ class PlayerController extends ChangeNotifier with WidgetsBindingObserver {
     unawaited(_customEventSubscription?.cancel());
     super.dispose();
   }
+}
+
+void _playbackTrace(String message) {
+  if (kDebugMode) debugPrint('[PodpinePlayback][controller] $message');
 }

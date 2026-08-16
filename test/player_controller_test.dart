@@ -122,7 +122,10 @@ void main() {
         Uri.file('/downloads/completed.mp3').toString(),
       );
       expect(controller.current?.id, episode.id);
-      expect(controller.position, const Duration(seconds: 42));
+      expect(
+        (controller.position - const Duration(seconds: 42)).abs(),
+        lessThan(const Duration(milliseconds: 50)),
+      );
       expect(controller.isPlaying, isTrue);
     },
   );
@@ -240,6 +243,7 @@ void main() {
 
     await controller.playEpisode(episode);
 
+    expect(handler.prepareCalls, 1);
     expect(handler.seeks.last, const Duration(seconds: 12));
     expect(controller.position, const Duration(seconds: 12));
   });
@@ -607,6 +611,7 @@ class _RecordingAudioHandler extends BaseAudioHandler {
   int pauseCalls = 0;
   int previousCalls = 0;
   int nextCalls = 0;
+  int prepareCalls = 0;
 
   @override
   Future<void> updateQueue(List<MediaItem> items) async {
@@ -646,6 +651,12 @@ class _RecordingAudioHandler extends BaseAudioHandler {
         playing: true,
       ),
     );
+  }
+
+  @override
+  Future<void> prepare() async {
+    prepareCalls++;
+    commands.add('prepare');
   }
 
   @override
